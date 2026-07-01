@@ -8,7 +8,6 @@ st.title("🎾 Profesyonel Tenis Turnuva Yönetim Sistemi")
 # --- 1. OTOMASYON MOTORU ---
 def eslesmeleri_olustur(grup_adi, takimlar, grup_tipi):
     if grup_tipi == "4'lü Grup":
-        # ESKİ ÇALIŞAN KODUNUZ (Aynen Korundu)
         base_matches = [
             {"Gün": "1. Gün", "Eşleşme": "1 ve 4", "Takım 1": takimlar[0], "Takım 2": takimlar[3]},
             {"Gün": "1. Gün", "Eşleşme": "2 ve 3", "Takım 1": takimlar[1], "Takım 2": takimlar[2]},
@@ -18,7 +17,6 @@ def eslesmeleri_olustur(grup_adi, takimlar, grup_tipi):
             {"Gün": "3. Gün", "Eşleşme": "3 ve 4", "Takım 1": takimlar[2], "Takım 2": takimlar[3]},
         ]
     else:
-        # YENİ 5'Lİ GRUP KODUNUZ
         base_matches = [
             {"Gün": "1. Gün", "Eşleşme": "2 ve 5", "Takım 1": takimlar[1], "Takım 2": takimlar[4]},
             {"Gün": "1. Gün", "Eşleşme": "3 ve 4", "Takım 1": takimlar[2], "Takım 2": takimlar[3]},
@@ -46,24 +44,23 @@ def eslesmeleri_olustur(grup_adi, takimlar, grup_tipi):
 if 'skor_tablosu' not in st.session_state:
     st.session_state.skor_tablosu = pd.DataFrame(columns=["Grup", "Gün", "Eşleşme", "Branş", "Takım 1", "Takım 2", "1.Set T1", "1.Set T2", "2.Set T1", "2.Set T2", "3.Set T1", "3.Set T2"])
 
-# --- 3. SEKMELER ---
-tab1, tab2, tab3, tab4 = st.tabs(["👥 1. Grup Ayarları", "✍️ 2. Skor Girişi", "🏆 3. Puan Durumu", "⚙️ 4. Yönetim"])
+# Yeni eklenen Maç Programı Hafızası
+if 'mac_programi' not in st.session_state:
+    st.session_state.mac_programi = pd.DataFrame(columns=["Maç Saati", "Takım 1", "Takım 2", "Kort", "Maç Skoru"])
+
+# --- 3. SEKMELER (5 Sekmeye Çıkarıldı) ---
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["👥 1. Grup Ayarları", "✍️ 2. Skor Girişi", "🏆 3. Puan Durumu", "📅 4. Maç Programı", "⚙️ 5. Yönetim"])
 
 with tab1:
     st.subheader("Grup Takımlarını Seç ve Eşleşmeleri Oluştur")
-    
-    # --- YENİ SEÇİM ALANI ---
     grup_tipi = st.radio("Kurulacak Grup Tipini Seçin:", ["4'lü Grup", "5'li Grup"], horizontal=True)
-    
     grup_adi = st.text_input("Grup Adı")
     
-    # Dinamik yönlendirme mesajı
     beklenen_sayi = 4 if grup_tipi == "4'lü Grup" else 5
     takim_listesi = st.text_area(f"Takımları Alt Alta Yaz (Tam olarak {beklenen_sayi} Takım Olmalı)")
     
     if st.button("🚀 Eşleşmeleri Oluştur"):
         takimlar = [t.strip() for t in takim_listesi.split('\n') if t.strip()]
-        
         if len(takimlar) == beklenen_sayi:
             yeni_maclar = eslesmeleri_olustur(grup_adi, takimlar, grup_tipi)
             yeni_df = pd.DataFrame(yeni_maclar)
@@ -83,13 +80,11 @@ with tab2:
         df_grup = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] == secilen_grup].copy()
         edited_dfs = {}
         
-        # DİNAMİK GÜN HESAPLAMA: Seçilen grupta kaç gün varsa (3 veya 5) sadece onları listeler
         def gun_sirala(gun_adi):
             try: return int(gun_adi.split('.')[0])
             except: return 99
             
         aktif_gunler = sorted(df_grup['Gün'].unique(), key=gun_sirala)
-        
         for gun in aktif_gunler:
             st.markdown(f"### {gun}")
             df_gun = df_grup[df_grup['Gün'] == gun]
@@ -135,7 +130,83 @@ with tab3:
             grup_df.index = range(1, len(grup_df) + 1)
             st.dataframe(grup_df, use_container_width=True)
 
+# --- YENİ EKLENEN 4. SEKME: MAÇ PROGRAMI ---
 with tab4:
+    st.subheader("📅 Maç Programı Oluşturucu")
+    if not st.session_state.skor_tablosu.empty:
+        st.markdown("**1. Listeden Maç Seç ve Programa Ekle**")
+        c1, c2, c3 = st.columns(3)
+        
+        gruplar_prog = st.session_state.skor_tablosu['Grup'].unique()
+        sec_grup_prog = c1.selectbox("Grup Seç:", gruplar_prog, key="prog_grup")
+        
+        df_g_prog = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] == sec_grup_prog]
+        
+        def gun_sirala_prog(gun_adi):
+            try: return int(gun_adi.split('.')[0])
+            except: return 99
+            
+        gunler_prog = sorted(df_g_prog['Gün'].unique(), key=gun_sirala_prog)
+        sec_gun_prog = c2.selectbox("Gün Seç:", gunler_prog, key="prog_gun")
+        
+        df_m_prog = df_g_prog[df_g_prog['Gün'] == sec_gun_prog]
+        
+        # Maçları dropdown için hazırlıyoruz (Branşını da yanına yazarak netleştiriyoruz)
+        mac_listesi = []
+        for idx, row in df_m_prog.iterrows():
+            mac_adi = f"{row['Takım 1']} vs {row['Takım 2']} ({row['Branş']})"
+            mac_listesi.append(mac_adi)
+            
+        sec_mac_adi = c3.selectbox("Maç Seç:", mac_listesi, key="prog_mac")
+        
+        if st.button("➕ Programa Ekle"):
+            # Seçilen maçın satırını bulup verilerini alalım
+            secilen_row = df_m_prog.iloc[mac_listesi.index(sec_mac_adi)]
+            
+            yeni_kayit = pd.DataFrame([{
+                "Maç Saati": "",
+                "Takım 1": f"{secilen_row['Takım 1']} ({secilen_row['Branş']})", # Karışmasın diye branşı T1 yanına ekledim
+                "Takım 2": secilen_row['Takım 2'],
+                "Kort": "",
+                "Maç Skoru": ""
+            }])
+            st.session_state.mac_programi = pd.concat([st.session_state.mac_programi, yeni_kayit], ignore_index=True)
+            st.success("Maç programa eklendi!")
+            st.rerun()
+            
+        st.divider()
+        st.markdown("**2. Oluşturulan Maç Programı**")
+        if not st.session_state.mac_programi.empty:
+            st.info("💡 Tablo üzerinde Saat, Kort ve Skor kısımlarına **çift tıklayarak** elle giriş yapabilirsiniz.")
+            
+            # Dinamik tablo (Takımlar kilitli, diğerleri düzenlenebilir)
+            guncel_program = st.data_editor(
+                st.session_state.mac_programi,
+                column_config={
+                    "Takım 1": st.column_config.TextColumn(disabled=True),
+                    "Takım 2": st.column_config.TextColumn(disabled=True)
+                },
+                use_container_width=True,
+                num_rows="dynamic", # Tablodan satır silinmesine de olanak tanır
+                key="program_editor"
+            )
+            
+            col_k, col_t = st.columns(2)
+            if col_k.button("💾 Değişiklikleri Kaydet"):
+                st.session_state.mac_programi = guncel_program
+                st.success("Program güncellendi!")
+                st.rerun()
+                
+            if col_t.button("🗑️ Tüm Programı Temizle"):
+                st.session_state.mac_programi = pd.DataFrame(columns=["Maç Saati", "Takım 1", "Takım 2", "Kort", "Maç Skoru"])
+                st.rerun()
+        else:
+            st.warning("Henüz programa maç eklemediniz.")
+    else:
+        st.info("Önce 1. Sekmeden grup ve eşleşmeleri oluşturmalısınız.")
+
+# --- 5. SEKME: YÖNETİM ---
+with tab5:
     st.subheader("⚙️ Yönetim Paneli")
     
     st.markdown("### 📁 Veri Dosyası İşlemleri")
@@ -158,27 +229,4 @@ with tab4:
         gruplar = st.session_state.skor_tablosu['Grup'].unique()
         grup_sec = st.selectbox("Düzenlenecek Grubu Seç:", gruplar)
         
-        df_grup = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] == grup_sec]
-        tum_takimlar = sorted(list(set(df_grup['Takım 1'].unique().tolist() + df_grup['Takım 2'].unique().tolist())))
-        
-        eski_isim = st.selectbox("Değiştirilecek Takım:", tum_takimlar)
-        yeni_isim = st.text_input("Yeni İsim:")
-        
-        if st.button("Takımı Güncelle"):
-            st.session_state.skor_tablosu.loc[st.session_state.skor_tablosu['Takım 1'] == eski_isim, 'Takım 1'] = yeni_isim
-            st.session_state.skor_tablosu.loc[st.session_state.skor_tablosu['Takım 2'] == eski_isim, 'Takım 2'] = yeni_isim
-            st.rerun()
-            
-        st.divider()
-        silinecek_grup = st.selectbox("Silinecek Grup:", gruplar)
-        if st.button("❌ Bu Grubu Tamamen Sil"):
-            st.session_state.skor_tablosu = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] != silinecek_grup]
-            st.session_state.skor_tablosu.index = range(1, len(st.session_state.skor_tablosu) + 1)
-            st.rerun()
-    else:
-        st.info("Henüz grup yok.")
-
-    st.divider()
-    if st.button("🚨 TÜM VERİLERİ SIFIRLA"):
-        st.session_state.skor_tablosu = pd.DataFrame(columns=["Grup", "Gün", "Eşleşme", "Branş", "Takım 1", "Takım 2", "1.Set T1", "1.Set T2", "2.Set T1", "2.Set T2", "3.Set T1", "3.Set T2"])
-        st.rerun()
+        df_grup = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] == grup_
