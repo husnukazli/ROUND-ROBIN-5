@@ -229,4 +229,28 @@ with tab5:
         gruplar = st.session_state.skor_tablosu['Grup'].unique()
         grup_sec = st.selectbox("Düzenlenecek Grubu Seç:", gruplar)
         
-        df_grup = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] == grup_
+        df_grup = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] == grup_sec]
+        tum_takimlar = sorted(list(set(df_grup['Takım 1'].unique().tolist() + df_grup['Takım 2'].unique().tolist())))
+        
+        eski_isim = st.selectbox("Değiştirilecek Takım:", tum_takimlar)
+        yeni_isim = st.text_input("Yeni İsim:")
+        
+        if st.button("Takımı Güncelle"):
+            st.session_state.skor_tablosu.loc[st.session_state.skor_tablosu['Takım 1'] == eski_isim, 'Takım 1'] = yeni_isim
+            st.session_state.skor_tablosu.loc[st.session_state.skor_tablosu['Takım 2'] == eski_isim, 'Takım 2'] = yeni_isim
+            st.rerun()
+            
+        st.divider()
+        silinecek_grup = st.selectbox("Silinecek Grup:", gruplar)
+        if st.button("❌ Bu Grubu Tamamen Sil"):
+            st.session_state.skor_tablosu = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] != silinecek_grup]
+            st.session_state.skor_tablosu.index = range(1, len(st.session_state.skor_tablosu) + 1)
+            st.rerun()
+    else:
+        st.info("Henüz grup yok.")
+
+    st.divider()
+    if st.button("🚨 TÜM VERİLERİ SIFIRLA"):
+        st.session_state.skor_tablosu = pd.DataFrame(columns=["Grup", "Gün", "Eşleşme", "Branş", "Takım 1", "Takım 2", "1.Set T1", "1.Set T2", "2.Set T1", "2.Set T2", "3.Set T1", "3.Set T2"])
+        st.session_state.mac_programi = pd.DataFrame(columns=["Maç Saati", "Takım 1", "Takım 2", "Kort", "Maç Skoru"]) # Maç programını da sıfırlar
+        st.rerun()
