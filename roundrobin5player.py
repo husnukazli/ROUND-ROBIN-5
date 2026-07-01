@@ -99,7 +99,7 @@ with tab1:
     
     beklenen_sayi = 4 if grup_tipi == "4'lü Grup" else 5
     takim_listesi = st.text_area(f"Takım İsimlerini Alt Alta Yazın (Tam olarak {beklenen_sayi} Takım Olmalı)")
-    takimlar = [t.strip() for t in协同_listesi = takim_listesi.split('\n') if t.strip()]
+  takimlar = [t.strip() for t in takim_listesi.split('\n') if t.strip()]
     
     grup_kadrolari = {}
     kadro_hata = False
