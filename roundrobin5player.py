@@ -1,13 +1,25 @@
 import streamlit as st
 import pandas as pd
-import io
 
 st.set_page_config(page_title="Tenis Turnuva Otomasyonu", layout="wide")
-st.title("🎾 Profesyonel Tenis Turnuva Yönetim Sistemi")
+st.title("🎾 Profesyonel Tenis Turnuva Yönetim Sistemi (Kadro Entegreli)")
+
+# --- 0. HAFIZA BAŞLATMA ---
+if 'skor_tablosu' not in st.session_state:
+    st.session_state.skor_tablosu = pd.DataFrame(columns=[
+        "Grup", "Gün", "Eşleşme", "Branş", "Takım 1", "Takım 2", 
+        "T1_Oyuncu", "T2_Oyuncu", 
+        "1.Set T1", "1.Set T2", "2.Set T1", "2.Set T2", "3.Set T1", "3.Set T2"
+    ])
+
+if 'mac_programi' not in st.session_state:
+    st.session_state.mac_programi = pd.DataFrame(columns=["Maç Saati", "Takım 1", "Takım 2", "Kort", "Maç Skoru"])
+
+if 'takim_kadrolari' not in st.session_state:
+    st.session_state.takim_kadrolari = {}  # Format: {"Grup_Adi": {"Takim_A": ["Oyuncu1", "Oyuncu2"]}}
 
 # --- TENİS KURALLARI VE DOĞRULAMA MOTORU ---
 def set_gecerli_mi(t1, t2, is_set3=False):
-    # Eğer her iki skor da 0 ise henüz maç oynanmamıştır, geçerli kabul edilir.
     if t1 == 0 and t2 == 0:
         return True, ""
     if t1 < 0 or t2 < 0:
@@ -24,14 +36,14 @@ def set_gecerli_mi(t1, t2, is_set3=False):
         elif max_s > 10 and diff == 2:
             return True, ""
         else:
-            return False, "3. Set Süper Tie-Break skoru geçersiz! (En az 10'a ulaşılmalı ve fark tam olarak 2 olmalıdır, örn: 10-8, 11-9, 10-5)"
+            return False, "3. Set Süper Tie-Break skoru geçersiz! (En az 10'a ulaşılmalı ve fark 2 olmalıdır, örn: 10-8, 11-9)"
             
-    # Standart Set Kuralları (1. Set, 2. Set ve normal oynanan 3. Set için)
+    # Standart Set Kuralları
     if max_s < 6:
         return False, "Set henüz bitmemiş (En az 6 oyun olmalı)."
     if max_s == 6 and diff >= 2:
         return True, ""
-    if max_s == 7 and (diff == 2 or diff == 1): # 7-5 veya 7-6 durumları
+    if max_s == 7 and (diff == 2 or diff == 1):
         return True, ""
     if max_s > 7:
         return False, f"Normal set skoru {max_s} olamaz (En fazla 7-5 veya 7-6 olabilir)."
@@ -48,7 +60,7 @@ def eslesmeleri_olustur(grup_adi, takimlar, grup_tipi):
             {"Gün": "2. Gün", "Eşleşme": "1 ve 3", "Takım 1": takimlar[0], "Takım 2": takimlar[2]},
             {"Gün": "2. Gün", "Eşleşme": "2 ve 4", "Takım 1": takimlar[1], "Takım 2": takimlar[3]},
             {"Gün": "3. Gün", "Eşleşme": "1 ve 2", "Takım 1": takimlar[0], "Takım 2": takimlar[1]},
-            {"Gün": "3. Gün", "Eşleşme": "3 ve 4", "Takım 1": takimlar[2], "Takım 3": takimlar[3]}, # Eski yapınız korunmuştur
+            {"Gün": "3. Gün", "Eşleşme": "3 ve 4", "Takım 1": takimlar[2], "Takım 2": takimlar[3]},
         ]
     else:
         base_matches = [
@@ -68,108 +80,190 @@ def eslesmeleri_olustur(grup_adi, takimlar, grup_tipi):
     for m in base_matches:
         for brans in ["1. Tekler", "2. Tekler", "Çiftler"]:
             satir = m.copy()
-            # Olası anahtar uyumu düzeltmesi
-            if "Takım 3" in satir:
-                satir["Takım 2"] = satir.pop("Takım 3")
             satir["Branş"] = brans
             satir["Grup"] = grup_adi
-            satir.update({"1.Set T1": 0, "1.Set T2": 0, "2.Set T1": 0, "2.Set T2": 0, "3.Set T1": 0, "3.Set T2": 0})
+            satir.update({
+                "T1_Oyuncu": "", "T2_Oyuncu": "",
+                "1.Set T1": 0, "1.Set T2": 0, "2.Set T1": 0, "2.Set T2": 0, "3.Set T1": 0, "3.Set T2": 0
+            })
             program.append(satir)
     return program
-
-# --- 2. HAFIZA ---
-if 'skor_tablosu' not in st.session_state:
-    st.session_state.skor_tablosu = pd.DataFrame(columns=["Grup", "Gün", "Eşleşme", "Branş", "Takım 1", "Takım 2", "1.Set T1", "1.Set T2", "2.Set T1", "2.Set T2", "3.Set T1", "3.Set T2"])
-
-if 'mac_programi' not in st.session_state:
-    st.session_state.mac_programi = pd.DataFrame(columns=["Maç Saati", "Takım 1", "Takım 2", "Kort", "Maç Skoru"])
 
 # --- 3. SEKMELER ---
 tab1, tab2, tab3, tab4, tab5 = st.tabs(["👥 1. Grup Ayarları", "✍️ 2. Skor Girişi", "🏆 3. Puan Durumu", "📅 4. Maç Programı", "⚙️ 5. Yönetim"])
 
 with tab1:
-    st.subheader("Grup Takımlarını Seç ve Eşleşmeleri Oluştur")
+    st.subheader("Grup Takımlarını Seç, Kadroları Gir ve Eşleşmeleri Oluştur")
     grup_tipi = st.radio("Kurulacak Grup Tipini Seçin:", ["4'lü Grup", "5'li Grup"], horizontal=True)
-    grup_adi = st.text_input("Grup Adı")
+    grup_adi = st.text_input("Grup Adı", placeholder="Örn: A Grubu")
     
     beklenen_sayi = 4 if grup_tipi == "4'lü Grup" else 5
-    takim_listesi = st.text_area(f"Takımları Alt Alta Yaz (Tam olarak {beklenen_sayi} Takım Olmalı)")
+    takim_listesi = st.text_area(f"Takım İsimlerini Alt Alta Yazın (Tam olarak {beklenen_sayi} Takım Olmalı)")
     
-    if st.button("🚀 Eşleşmeleri Oluştur"):
-        takimlar = [t.strip() for t in takim_listesi.split('\n') if t.strip()]
-        
-        # 1. GÜVENLİK DUVARI: Aynı isimde mükerrer grup kontrolü
-        if not st.session_state.skor_tablosu.empty and grup_adi in st.session_state.skor_tablosu['Grup'].unique():
-            st.error(f"❌ Hata: '{grup_adi}' isminde bir grup zaten mevcut! Çift kayıt olmaması için lütfen farklı bir grup adı girin veya yönetim panelinden eski grubu silin.")
-        elif len(takimlar) == beklenen_sayi:
+    takimlar = [t.strip() for t in takim_listesi.split('\n') if t.strip()]
+    
+    # Kadro Giriş Alanı (Dinamik)
+    grup_kadrolari = {}
+    kadro_hata = False
+    
+    if len(takimlar) == beklenen_sayi:
+        st.markdown("---")
+        st.markdown("### 👥 Oyuncu Kadrolarını Girin (En Fazla 10 Oyuncu, Her Satıra Bir İsim)")
+        cols = st.columns(beklenen_sayi)
+        for i, t in enumerate(takimlar):
+            with cols[i]:
+                oyuncular_raw = st.text_area(f"✍️ {t} Kadrosu", key=f"input_kadro_{t}", height=150, placeholder="Oyuncu 1\nOyuncu 2")
+                oyuncu_listesi = [o.strip() for o in oyuncular_raw.split('\n') if o.strip()]
+                if len(oyuncu_listesi) > 10:
+                    st.error(f"❌ {t} takımı 10 oyuncuyu aşamaz! ({len(oyuncu_listesi)} girildi)")
+                    kadro_hata = True
+                grup_kadrolari[t] = oyuncu_listesi if oyuncu_listesi else ["Belirtilmedi"]
+
+    if st.button("🚀 Eşleşmeleri ve Kadroları Oluştur"):
+        if not grup_adi:
+            st.error("Lütfen bir grup adı girin.")
+        elif not st.session_state.skor_tablosu.empty and grup_adi in st.session_state.skor_tablosu['Grup'].unique():
+            st.error(f"❌ Hata: '{grup_adi}' isminde bir grup zaten mevcut!")
+        elif len(takimlar) != beklenen_sayi:
+            st.error(f"Hata: {beklenen_sayi} takım girmelisiniz. (Şu an: {len(takimlar)})")
+        elif kadro_hata:
+            st.error("Lütfen 10 oyuncu sınırını aşan takımları düzeltin.")
+        else:
+            # Kadroları Kaydet
+            if grup_adi not in st.session_state.takim_kadrolari:
+                st.session_state.takim_kadrolari[grup_adi] = grup_kadrolari
+            
             yeni_maclar = eslesmeleri_olustur(grup_adi, takimlar, grup_tipi)
             yeni_df = pd.DataFrame(yeni_maclar)
             st.session_state.skor_tablosu = pd.concat([st.session_state.skor_tablosu, yeni_df], ignore_index=True)
             st.session_state.skor_tablosu.index = range(1, len(st.session_state.skor_tablosu) + 1)
-            st.success(f"Eşleşmeler {grup_tipi} modeline göre başarıyla oluşturuldu!")
+            st.success(f"{grup_adi} ve oyuncu kadroları başarıyla oluşturuldu!")
             st.rerun()
-        else:
-            st.error(f"Hata: Seçtiğiniz grup tipi için {beklenen_sayi} takım girmelisiniz. (Şu an girilen: {len(takimlar)})")
 
 with tab2:
-    st.subheader("Maç Skorlarını Girin")
+    st.subheader("Maç Skorları ve Oyuncu Esame Girişi")
     if not st.session_state.skor_tablosu.empty:
         gruplar = st.session_state.skor_tablosu['Grup'].unique()
-        secilen_grup = st.selectbox("Düzenlemek İçin Grup Seç:", gruplar)
+        secilen_grup = st.selectbox("Düzenlemek İçin Grup Seç:", gruplar, key="skor_grup_sec")
         
         df_grup = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] == secilen_grup].copy()
-        edited_dfs = {}
         
         def gun_sirala(gun_adi):
             try: return int(gun_adi.split('.')[0])
             except: return 99
             
         aktif_gunler = sorted(df_grup['Gün'].unique(), key=gun_sirala)
-        for gun in aktif_gunler:
-            st.markdown(f"### {gun}")
-            df_gun = df_grup[df_grup['Gün'] == gun]
-            if not df_gun.empty:
-                edited_dfs[gun] = st.data_editor(df_gun, use_container_width=True, key=f"editor_{secilen_grup}_{gun}")
+        secilen_gun = st.selectbox("Gün Seçin:", aktif_gunler)
         
-        if st.button("✅ Tüm Skorları Kaydet"):
-            all_edited = pd.concat(edited_dfs.values())
+        df_gun = df_grup[df_grup['Gün'] == secilen_gun]
+        
+        st.markdown(f"### 🗓️ {secilen_grup} - {secilen_gun} Maçları")
+        
+        # SÜTUN BAŞLIKLARI
+        h_cols = st.columns([1.5, 2.0, 1.5, 2.0, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7])
+        h_cols[0].markdown("**Takım 1**")
+        h_cols[1].markdown("**Takım 1 Oyuncu(lar)**")
+        h_cols[2].markdown("**Takım 2**")
+        h_cols[3].markdown("**Takım 2 Oyuncu(lar)**")
+        h_cols[4].markdown("**S1 T1**")
+        h_cols[5].markdown("**S1 T2**")
+        h_cols[6].markdown("**S2 T1**")
+        h_cols[7].markdown("**S2 T2**")
+        h_cols[8].markdown("**S3 T1**")
+        h_cols[9].markdown("**S3 T2**")
+        
+        form_verileri = {}
+        
+        # Her maçı satır satır sütunlar halinde çiziyoruz
+        for idx, row in df_gun.iterrows():
+            st.markdown(f"**🔹 {row['Branş']} ({row['Eşleşme']})**")
+            r_cols = st.columns([1.5, 2.0, 1.5, 2.0, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7])
             
+            t1_isim = row['Takım 1']
+            t2_isim = row['Takım 2']
+            
+            # Kadro listelerini çek, yoksa varsayılan yap
+            grup_kadro_dict = st.session_state.takim_kadrolari.get(secilen_grup, {})
+            t1_havuz = grup_kadro_dict.get(t1_isim, ["Belirtilmedi"])
+            t2_havuz = grup_kadro_dict.get(t2_isim, ["Belirtilmedi"])
+            
+            r_cols[0].write(f"**{t1_isim}**")
+            
+            # TAKIM 1 OYUNCU SEÇİMİ (Tekler/Çiftler Ayrımı)
+            if row['Branş'] == "Çiftler":
+                eski_oyuncular = [o.strip() for o in str(row['T1_Oyuncu']).split(',') if o.strip() and o in t1_havuz]
+                t1_oyuncu = r_cols[1].multiselect("T1 Oyuncular", options=t1_havuz, default=eski_oyuncular, max_selections=2, key=f"t1_o_{idx}", label_visibility="collapsed")
+                t1_oyuncu_str = ", ".join(t1_oyuncu)
+            else:
+                eski_oyuncu = str(row['T1_Oyuncu']) if str(row['T1_Oyuncu']) in t1_havuz else t1_havuz[0]
+                idx_default = t1_havuz.index(eski_oyuncu) if eski_oyuncu in t1_havuz else 0
+                t1_oyuncu_str = r_cols[1].selectbox("T1 Oyuncu", options=t1_havuz, index=idx_default, key=f"t1_o_{idx}", label_visibility="collapsed")
+            
+            r_cols[2].write(f"**{t2_isim}**")
+            
+            # TAKIM 2 OYUNCU SEÇİMİ (Tekler/Çiftler Ayrımı)
+            if row['Branş'] == "Çiftler":
+                eski_oyuncular2 = [o.strip() for o in str(row['T2_Oyuncu']).split(',') if o.strip() and o in t2_havuz]
+                t2_oyuncu = r_cols[3].multiselect("T2 Oyuncular", options=t2_havuz, default=eski_oyuncular2, max_selections=2, key=f"t2_o_{idx}", label_visibility="collapsed")
+                t2_oyuncu_str = ", ".join(t2_oyuncu)
+            else:
+                eski_oyuncu2 = str(row['T2_Oyuncu']) if str(row['T2_Oyuncu']) in t2_havuz else t2_havuz[0]
+                idx_default2 = t2_havuz.index(eski_oyuncu2) if eski_oyuncu2 in t2_havuz else 0
+                t2_oyuncu_str = r_cols[3].selectbox("T2 Oyuncu", options=t2_havuz, index=idx_default2, key=f"t2_o_{idx}", label_visibility="collapsed")
+            
+            # SET SKOR GİRİŞLERİ (Kutular Daraltıldı)
+            s1t1 = r_cols[4].number_input("S1T1", min_value=0, value=int(row['1.Set T1']), step=1, key=f"s1t1_{idx}", label_visibility="collapsed")
+            s1t2 = r_cols[5].number_input("S1T2", min_value=0, value=int(row['1.Set T2']), step=1, key=f"s1t2_{idx}", label_visibility="collapsed")
+            s2t1 = r_cols[6].number_input("S2T1", min_value=0, value=int(row['2.Set T1']), step=1, key=f"s2t1_{idx}", label_visibility="collapsed")
+            s2t2 = r_cols[7].number_input("S2T2", min_value=0, value=int(row['2.Set T2']), step=1, key=f"s2t2_{idx}", label_visibility="collapsed")
+            s3t1 = r_cols[8].number_input("S3T1", min_value=0, value=int(row['3.Set T1']), step=1, key=f"s3t1_{idx}", label_visibility="collapsed")
+            s3t2 = r_cols[9].number_input("S3T2", min_value=0, value=int(row['3.Set T2']), step=1, key=f"s3t2_{idx}", label_visibility="collapsed")
+            
+            form_verileri[idx] = {
+                "T1_Oyuncu": t1_oyuncu_str, "T2_Oyuncu": t2_oyuncu_str,
+                "1.Set T1": s1t1, "1.Set T2": s1t2,
+                "2.Set T1": s2t1, "2.Set T2": s2t2,
+                "3.Set T1": s3t1, "3.Set T2": s3t2
+            }
+            st.divider()
+
+        if st.button("✅ Tüm Skorları ve Kadroları Kaydet"):
             hata_mesajlari = []
             uzerine_yazilanlar = []
             
-            # Veri işleme ve Tenis Kuralları Kontrolü
-            for idx, row in all_edited.iterrows():
+            for idx, guncel_row in form_verileri.items():
                 eski_row = st.session_state.skor_tablosu.loc[idx]
-                mac_tanimi = f"{row['Gün']} - {row['Branş']} ({row['Takım 1']} vs {row['Takım 2']})"
+                mac_tanimi = f"{eski_row['Gün']} - {eski_row['Branş']} ({eski_row['Takım 1']} vs {eski_row['Takım 2']})"
                 
-                # Tenis kurallarına uygunluk doğrulaması
-                ok1, msg1 = set_gecerli_mi(int(row['1.Set T1']), int(row['1.Set T2']), is_set3=False)
-                ok2, msg2 = set_gecerli_mi(int(row['2.Set T1']), int(row['2.Set T2']), is_set3=False)
-                ok3, msg3 = set_gecerli_mi(int(row['3.Set T1']), int(row['3.Set T2']), is_set3=True) # 3. Set için Süper Tie-break devrede
+                # Tenis Kuralları Doğrulaması
+                ok1, msg1 = set_gecerli_mi(guncel_row["1.Set T1"], guncel_row["1.Set T2"], is_set3=False)
+                ok2, msg2 = set_gecerli_mi(guncel_row["2.Set T1"], guncel_row["2.Set T2"], is_set3=False)
+                ok3, msg3 = set_gecerli_mi(guncel_row["3.Set T1"], guncel_row["3.Set T2"], is_set3=True) # 3. Set Maç Tie-Break Duyarlı!
                 
                 if not ok1: hata_mesajlari.append(f"❌ {mac_tanimi} -> 1. Set: {msg1}")
                 if not ok2: hata_mesajlari.append(f"❌ {mac_tanimi} -> 2. Set: {msg2}")
                 if not ok3: hata_mesajlari.append(f"❌ {mac_tanimi} -> 3. Set: {msg3}")
                 
-                # 2. GÜVENLİK DUVARI: Üzerine iki kez yanlışlıkla skor yazma uyarısı
-                eski_dolu = (eski_row['1.Set T1'] != 0 or eski_row['1.Set T2'] != 0 or eski_row['2.Set T1'] != 0 or eski_row['2.Set T2'] != 0 or eski_row['3.Set T1'] != 0 or eski_row['3.Set T2'] != 0)
-                yeni_farkli = (eski_row['1.Set T1'] != row['1.Set T1'] or eski_row['1.Set T2'] != row['1.Set T2'] or eski_row['2.Set T1'] != row['2.Set T1'] or eski_row['2.Set T2'] != row['2.Set T2'] or eski_row['3.Set T1'] != row['3.Set T1'] or eski_row['3.Set T2'] != row['3.Set T2'])
-                
+                # Çift kayıt/Üzerine Yazma Kontrolü
+                eski_dolu = (eski_row['1.Set T1'] != 0 or eski_row['1.Set T2'] != 0 or eski_row['2.Set T1'] != 0 or eski_row['2.Set T2'] != 0)
+                yeni_farkli = (eski_row['1.Set T1'] != guncel_row['1.Set T1'] or eski_row['1.Set T2'] != guncel_row['1.Set T2'])
                 if eski_dolu and yeni_farkli:
                     uzerine_yazilanlar.append(mac_tanimi)
             
-            # Hata varsa kaydetmeyi bloke et
             if hata_mesajlari:
                 for h in hata_mesajlari:
                     st.error(h)
-                st.error("Lütfen hatalı skorları düzelterek tekrar deneyin. Kayıt yapılmadı.")
+                st.error("Kayıt bloke edildi. Lütfen tenis kurallarına uymayan skorları düzeltin.")
             else:
-                # Eğer üzerine yazılan eski veri varsa sarı uyarı göster ama kaydet
                 if uzerine_yazilanlar:
-                    st.warning("⚠️ Bilgi: Aşağıdaki maçların önceden girilmiş skorları güncellendi:\n" + "\n".join([f"- {m}" for m in uzerine_yazilanlar]))
+                    st.warning("⚠️ Güncelleme: Şu maçların skorları yenilendi:\n" + "\n".join([f"- {m}" for m in uzerine_yazilanlar]))
                 
-                st.session_state.skor_tablosu.update(all_edited)
-                st.success("Tüm skorlar tenis kurallarına göre başarıyla kontrol edildi ve kaydedildi!")
+                # Hafızayı Güncelle
+                for idx, guncel_row in form_verileri.items():
+                    for k, v in guncel_row.items():
+                        st.session_state.skor_tablosu.at[idx, k] = v
+                        
+                st.success("Tüm oyuncu listeleri ve skorlar başarıyla kaydedildi!")
                 st.rerun()
     else:
         st.info("Henüz grup oluşturmadınız.")
@@ -185,21 +279,18 @@ with tab3:
             s2_t1, s2_t2 = int(row['2.Set T1']), int(row['2.Set T2'])
             s3_t1, s3_t2 = int(row['3.Set T1']), int(row['3.Set T2'])
             
-            # Maç hiç oynanmamışsa sıfır dön
             if s1_t1 == 0 and s1_t2 == 0 and s2_t1 == 0 and s2_t2 == 0 and s3_t1 == 0 and s3_t2 == 0:
                 return pd.Series([0, 0, 0, 0])
                 
-            # İlk 2 setin verileri normal eklenir
             t1_set = int(s1_t1 > s1_t2) + int(s2_t1 > s2_t2)
             t2_set = int(s1_t2 > s1_t1) + int(s2_t2 > s2_t1)
             t1_oyun = s1_t1 + s2_t1
             t2_oyun = s1_t2 + s2_t2
             
-            # 3. Set Değerlendirmesi
             if s3_t1 > 0 or s3_t2 > 0:
                 if s3_t1 >= 10 or s3_t2 >= 10:
                     # KRİTİK İSTEK: Maç Tie-break (10'lu sistem) algılandı!
-                    # Kazanan takıma tam olarak +1 set ve +1 oyun averajı (+1 e 0 yazarak) verilir.
+                    # Kazanan takıma tam olarak +1 set ve +1 oyun averajı (+1 e 0 olarak) eklenir.
                     if s3_t1 > s3_t2:
                         t1_set += 1
                         t1_oyun += 1
@@ -209,7 +300,7 @@ with tab3:
                         t2_oyun += 1
                         t1_oyun += 0
                 else:
-                    # Normal 3. Set (6 veya 7 de biten normal set) algılandı! Tüm oyunlar normal eklenir.
+                    # Normal 3. Set
                     t1_set += int(s3_t1 > s3_t2)
                     t2_set += int(s3_t2 > s3_t1)
                     t1_oyun += s3_t1
@@ -218,7 +309,6 @@ with tab3:
             return pd.Series([t1_oyun, t2_oyun, t1_set, t2_set])
 
         df[['T1_Oyun', 'T2_Oyun', 'T1_Set_Skor', 'T2_Set_Skor']] = df.apply(satir_istatistiklerini_hesapla, axis=1)
-        
         df['T1_Match_Win'] = (df['T1_Set_Skor'] > df['T2_Set_Skor']).astype(int)
         df['T2_Match_Win'] = (df['T2_Set_Skor'] > df['T1_Set_Skor']).astype(int)
         
@@ -245,18 +335,12 @@ with tab3:
 with tab4:
     st.subheader("📅 Maç Programı Oluşturucu")
     if not st.session_state.skor_tablosu.empty:
-        st.markdown("**1. Listeden Maç Seç ve Programa Ekle**")
         c1, c2, c3 = st.columns(3)
-        
         gruplar_prog = st.session_state.skor_tablosu['Grup'].unique()
         sec_grup_prog = c1.selectbox("Grup Seç:", gruplar_prog, key="prog_grup")
         df_g_prog = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] == sec_grup_prog]
         
-        def gun_sirala_prog(gun_adi):
-            try: return int(gun_adi.split('.')[0])
-            except: return 99
-            
-        gunler_prog = sorted(df_g_prog['Gün'].unique(), key=gun_sirala_prog)
+        gunler_prog = sorted(df_g_prog['Gün'].unique(), key=lambda x: int(x.split('.')[0]) if '.' in x else 99)
         sec_gun_prog = c2.selectbox("Gün Seç:", gunler_prog, key="prog_gun")
         df_m_prog = df_g_prog[df_g_prog['Gün'] == sec_gun_prog]
         
@@ -265,78 +349,45 @@ with tab4:
         
         if st.button("➕ Programa Ekle"):
             secilen_row = df_m_prog.iloc[mac_listesi.index(sec_mac_adi)]
+            t1_oyuncu_bilgi = f" [{secilen_row['T1_Oyuncu']}]" if secilen_row['T1_Oyuncu'] else ""
+            t2_oyuncu_bilgi = f" [{secilen_row['T2_Oyuncu']}]" if secilen_row['T2_Oyuncu'] else ""
+            
             yeni_kayit = pd.DataFrame([{
                 "Maç Saati": "",
-                "Takım 1": f"{secilen_row['Takım 1']} ({secilen_row['Branş']})",
-                "Takım 2": secilen_row['Takım 2'],
+                "Takım 1": f"{secilen_row['Takım 1']}{t1_oyuncu_bilgi} ({secilen_row['Branş']})",
+                "Takım 2": f"{secilen_row['Takım 2']}{t2_oyuncu_bilgi}",
                 "Kort": "",
                 "Maç Skoru": ""
             }])
             st.session_state.mac_programi = pd.concat([st.session_state.mac_programi, yeni_kayit], ignore_index=True)
-            st.success("Maç programa eklendi!")
+            st.success("Maç ve atanan oyuncular programa eklendi!")
             st.rerun()
             
         st.divider()
-        st.markdown("**2. Oluşturulan Maç Programı**")
         if not st.session_state.mac_programi.empty:
-            st.info("💡 Tablo üzerinde Saat, Kort ve Skor kısımlarına **çift tıklayarak** elle giriş yapabilirsiniz.")
-            guncel_program = st.data_editor(
-                st.session_state.mac_programi,
-                column_config={"Takım 1": st.column_config.TextColumn(disabled=True), "Takım 2": st.column_config.TextColumn(disabled=True)},
-                use_container_width=True, num_rows="dynamic", key="program_editor"
-            )
-            col_k, col_t = st.columns(2)
-            if col_k.button("💾 Değişiklikleri Kaydet"):
+            guncel_program = st.data_editor(st.session_state.mac_programi, use_container_width=True, num_rows="dynamic", key="program_editor")
+            if st.button("💾 Programı Kaydet"):
                 st.session_state.mac_programi = guncel_program
                 st.success("Program güncellendi!")
                 st.rerun()
-            if col_t.button("🗑️ Tüm Programı Temizle"):
-                st.session_state.mac_programi = pd.DataFrame(columns=["Maç Saati", "Takım 1", "Takım 2", "Kort", "Maç Skoru"])
-                st.rerun()
-        else:
-            st.warning("Henüz programa maç eklemediniz.")
-    else:
-        st.info("Önce 1. Sekmeden grup ve eşleşmeleri oluşturmalısınız.")
 
 with tab5:
     st.subheader("⚙️ Yönetim Paneli")
-    st.markdown("### 📁 Veri Dosyası İşlemleri")
-    col1, col2 = st.columns(2)
-    with col1:
-        csv = st.session_state.skor_tablosu.to_csv(index=False).encode('utf-8')
-        st.download_button("💾 Verileri İndir (Yedekle)", data=csv, file_name='turnuva_verisi.csv', mime='text/csv')
-    with col2:
-        yuklenen_dosya = st.file_uploader("📂 Veri Dosyası Yükle (Geri Yükle)", type=['csv'])
-        if yuklenen_dosya is not None:
-            if st.button("🔄 Dosyayı Yükle ve Uygula"):
-                st.session_state.skor_tablosu = pd.read_csv(yuklenen_dosya)
-                st.success("Veri başarıyla geri yüklendi!")
-                st.rerun()
-
-    st.divider()
     if not st.session_state.skor_tablosu.empty:
         gruplar = st.session_state.skor_tablosu['Grup'].unique()
-        grup_sec = st.selectbox("Düzenlenecek Grubu Seç:", gruplar)
-        df_grup = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] == group_sec if 'group_sec' in locals() else st.session_state.skor_tablosu['Grup'] == grup_sec]
-        tum_takimlar = sorted(list(set(df_grup['Takım 1'].unique().tolist() + df_grup['Takım 2'].unique().tolist())))
-        eski_isim = st.selectbox("Değiştirilecek Takım:", tum_takimlar)
-        yeni_isim = st.text_input("Yeni İsim:")
-        if st.button("Takımı Güncelle"):
-            st.session_state.skor_tablosu.loc[st.session_state.skor_tablosu['Takım 1'] == eski_isim, 'Takım 1'] = yeni_isim
-            st.session_state.skor_tablosu.loc[st.session_state.skor_tablosu['Takım 2'] == eski_isim, 'Takım 2'] = yeni_isim
-            st.rerun()
-            
-        st.divider()
         silinecek_grup = st.selectbox("Silinecek Grup:", gruplar)
-        if st.button("❌ Bu Grubu Tamamen Sil"):
+        if st.button("❌ Bu Grubu ve Kadrolarını Tamamen Sil"):
             st.session_state.skor_tablosu = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] != silinecek_grup]
+            if silinecek_grup in st.session_state.takim_kadrolari:
+                del st.session_state.takim_kadrolari[silinecek_grup]
             st.session_state.skor_tablosu.index = range(1, len(st.session_state.skor_tablosu) + 1)
             st.rerun()
-    else:
-        st.info("Henüz grup yok.")
-
-    st.divider()
-    if st.button("🚨 TÜM VERİLERİ SIFIRLA"):
-        st.session_state.skor_tablosu = pd.DataFrame(columns=["Grup", "Gün", "Eşleşme", "Branş", "Takım 1", "Takım 2", "1.Set T1", "1.Set T2", "2.Set T1", "2.Set T2", "3.Set T1", "3.Set T2"])
+            
+    if st.button("🚨 TÜM SİSTEMİ SIFIRLA"):
+        st.session_state.skor_tablosu = pd.DataFrame(columns=[
+            "Grup", "Gün", "Eşleşme", "Branş", "Takım 1", "Takım 2", "T1_Oyuncu", "T2_Oyuncu",
+            "1.Set T1", "1.Set T2", "2.Set T1", "2.Set T2", "3.Set T1", "3.Set T2"
+        ])
         st.session_state.mac_programi = pd.DataFrame(columns=["Maç Saati", "Takım 1", "Takım 2", "Kort", "Maç Skoru"])
+        st.session_state.takim_kadrolari = {}
         st.rerun()
