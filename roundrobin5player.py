@@ -99,7 +99,9 @@ with tab1:
     
     beklenen_sayi = 4 if grup_tipi == "4'lü Grup" else 5
     takim_listesi = st.text_area(f"Takım İsimlerini Alt Alta Yazın (Tam olarak {beklenen_sayi} Takım Olmalı)")
-  takimlar = [t.strip() for t in takim_listesi.split('\n') if t.strip()]
+    
+    # Hizalaması milimetrik olarak düzeltilen 102. satır burasıdır:
+    takimlar = [t.strip() for t in takim_listesi.split('\n') if t.strip()]
     
     grup_kadrolari = {}
     kadro_hata = False
@@ -136,7 +138,6 @@ with tab1:
             st.session_state.skor_tablosu.index = range(1, len(st.session_state.skor_tablosu) + 1)
             st.success(f"{grup_adi} ve oyuncu kadroları başarıyla oluşturuldu!")
             st.rerun()
-
 # --- TAB 2: SKOR GİRİŞİ ---
 with tab2:
     st.subheader("Maç Skorları ve Oyuncu Esame Girişi")
