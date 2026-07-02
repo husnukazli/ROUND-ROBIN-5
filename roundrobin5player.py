@@ -61,7 +61,6 @@ if 'skor_tablosu' not in st.session_state:
         ])
         st.session_state.takim_kadrolari = {} 
 
-# Yeni eklenen kolonların çalışma anında güvenliğini sağlama
 if 'mac_programi' in st.session_state and "T1 Oyuncu" not in st.session_state.mac_programi.columns:
     st.session_state.mac_programi["T1 Oyuncu"] = ""
     st.session_state.mac_programi["T2 Oyuncu"] = ""
@@ -269,28 +268,42 @@ with tab2:
                 
                 r_cols[0].write(f"**{t1_isim}**")
                 
-                # --- T1 Oyuncu Seçimi (Seçiniz Opsiyonu Eklendi) ---
+                # --- T1 OYUNCU SEÇİMİ (Zırhlı ve Güvenli Mantık) ---
                 if row['Branş'] == "Çiftler":
-                    eski_oyuncular = [o.strip() for o in str(row['T1_Oyuncu']).split(',') if o.strip() and o in t1_havuz and o != "Seçiniz"]
-                    t1_oyuncu = r_cols[1].multiselect("T1 Oyuncular", options=t1_havuz, default=eski_oyuncular, max_selections=2, key=f"t1_o_{idx}", label_visibility="collapsed")
-                    t1_oyuncu_str = ", ".join(t1_oyuncu)
+                    eski_kayit1 = str(row['T1_Oyuncu'])
+                    for char in ["[", "]", "'", '"']: eski_kayit1 = eski_kayit1.replace(char, "")
+                    ayirici1 = ' - ' if ' - ' in eski_kayit1 else ','
+                    eski_oyuncular1 = [o.strip() for o in eski_kayit1.split(ayirici1) if o.strip() and o.strip() in t1_havuz and o.strip() != "Seçiniz"]
+                    
+                    t1_oyuncu = r_cols[1].multiselect("T1 Oyuncular", options=t1_havuz, default=eski_oyuncular1, max_selections=2, key=f"t1_o_{idx}", label_visibility="collapsed")
+                    t1_oyuncu_str = " - ".join(t1_oyuncu)
                 else:
                     opts1 = ["Seçiniz"] + [o for o in t1_havuz if o != "Belirtilmedi"]
-                    eski_o1 = str(row['T1_Oyuncu']) if str(row['T1_Oyuncu']) not in ["", "nan", "None"] else "Seçiniz"
+                    eski_veri1 = str(row['T1_Oyuncu']).strip()
+                    for char in ["[", "]", "'", '"']: eski_veri1 = eski_veri1.replace(char, "")
+                    eski_o1 = eski_veri1 if eski_veri1 and eski_veri1 not in ["nan", "None", ""] else "Seçiniz"
+                    
                     idx1 = opts1.index(eski_o1) if eski_o1 in opts1 else 0
                     t1_secim_raw = r_cols[1].selectbox("T1 Oyuncu", options=opts1, index=idx1, key=f"t1_o_{idx}", label_visibility="collapsed")
                     t1_oyuncu_str = t1_secim_raw if t1_secim_raw != "Seçiniz" else ""
                 
                 r_cols[2].write(f"**{t2_isim}**")
                 
-                # --- T2 Oyuncu Seçimi (Seçiniz Opsiyonu Eklendi) ---
+                # --- T2 OYUNCU SEÇİMİ (Zırhlı ve Güvenli Mantık) ---
                 if row['Branş'] == "Çiftler":
-                    eski_oyuncular2 = [o.strip() for o in str(row['T2_Oyuncu']).split(',') if o.strip() and o in t2_havuz and o != "Seçiniz"]
+                    eski_kayit2 = str(row['T2_Oyuncu'])
+                    for char in ["[", "]", "'", '"']: eski_kayit2 = eski_kayit2.replace(char, "")
+                    ayirici2 = ' - ' if ' - ' in eski_kayit2 else ','
+                    eski_oyuncular2 = [o.strip() for o in eski_kayit2.split(ayirici2) if o.strip() and o.strip() in t2_havuz and o.strip() != "Seçiniz"]
+                    
                     t2_oyuncu = r_cols[3].multiselect("T2 Oyuncular", options=t2_havuz, default=eski_oyuncular2, max_selections=2, key=f"t2_o_{idx}", label_visibility="collapsed")
-                    t2_oyuncu_str = ", ".join(t2_oyuncu)
+                    t2_oyuncu_str = " - ".join(t2_oyuncu)
                 else:
                     opts2 = ["Seçiniz"] + [o for o in t2_havuz if o != "Belirtilmedi"]
-                    eski_o2 = str(row['T2_Oyuncu']) if str(row['T2_Oyuncu']) not in ["", "nan", "None"] else "Seçiniz"
+                    eski_veri2 = str(row['T2_Oyuncu']).strip()
+                    for char in ["[", "]", "'", '"']: eski_veri2 = eski_veri2.replace(char, "")
+                    eski_o2 = eski_veri2 if eski_veri2 and eski_veri2 not in ["nan", "None", ""] else "Seçiniz"
+                    
                     idx2 = opts2.index(eski_o2) if eski_o2 in opts2 else 0
                     t2_secim_raw = r_cols[3].selectbox("T2 Oyuncu", options=opts2, index=idx2, key=f"t2_o_{idx}", label_visibility="collapsed")
                     t2_oyuncu_str = t2_secim_raw if t2_secim_raw != "Seçiniz" else ""
@@ -404,13 +417,12 @@ with tab3:
             grup_df.index = range(1, len(grup_df) + 1)
             st.dataframe(grup_df, use_container_width=True)
 
-# --- TAB 4: MAÇ PROGRAMI (YENİLENMİŞ TAKVİM VE FİLTRE YAPISI) ---
+# --- TAB 4: MAÇ PROGRAMI ---
 with tab4:
     st.subheader("📅 Canlı Maç Programı ve Fikstür")
     if not st.session_state.skor_tablosu.empty:
         turkce_gunler = {0: "Pazartesi", 1: "Salı", 2: "Çarşamba", 3: "Perşembe", 4: "Cuma", 5: "Cumartesi", 6: "Pazar"}
         
-        # Takvim: Üst Kısımda Tarih Seçimi
         c_tarih, _ = st.columns([1, 3])
         secilen_tarih = c_tarih.date_input("🗓️ Program Yapılacak / Görüntülenecek Tarih:", value=datetime.date.today())
         formatted_tarih = secilen_tarih.strftime("%d.%m.%Y")
@@ -427,7 +439,6 @@ with tab4:
             sec_gun_prog = c2.selectbox("Gün Seç:", gunler_prog, key="prog_gun")
             df_m_prog = df_g_prog[df_g_prog['Gün'] == sec_gun_prog]
             
-            # Daha önce programa eklenmiş maçları tespit et (Çifte kaydı önler)
             mevcut_mask = df_m_prog.apply(lambda r: not st.session_state.mac_programi[
                 (st.session_state.mac_programi['Grup'] == r['Grup']) &
                 (st.session_state.mac_programi['Gün'] == r['Gün']) &
@@ -469,7 +480,6 @@ with tab4:
         if not st.session_state.mac_programi.empty:
             st.markdown(f"### 📋 {formatted_tarih} ({gun_adi}) - Günlük Maç Akışı")
             
-            # Dinamik olarak Oyuncu isimlerini ve Canlı skorları (herkes için) hesapla
             for idx in st.session_state.mac_programi.index:
                 row = st.session_state.mac_programi.loc[idx]
                 eslesen_mac = st.session_state.skor_tablosu[
@@ -481,13 +491,11 @@ with tab4:
                 if not eslesen_mac.empty:
                     m = eslesen_mac.iloc[0]
                     
-                    # Skor Girişi Sekmesinde atanan oyuncuları programa yansıt (Seçilmemişse boş kalır)
                     t1_o = str(m['T1_Oyuncu']) if pd.notna(m['T1_Oyuncu']) and str(m['T1_Oyuncu']).strip() not in ["", "nan", "Seçiniz", "None"] else ""
                     t2_o = str(m['T2_Oyuncu']) if pd.notna(m['T2_Oyuncu']) and str(m['T2_Oyuncu']).strip() not in ["", "nan", "Seçiniz", "None"] else ""
                     st.session_state.mac_programi.at[idx, "T1 Oyuncu"] = t1_o
                     st.session_state.mac_programi.at[idx, "T2 Oyuncu"] = t2_o
 
-                    # Skor Hesaplama
                     if int(m['1.Set T1']) != 0 or int(m['1.Set T2']) != 0:
                         skor_str = f"{int(m['1.Set T1'])}-{int(m['1.Set T2'])} | {int(m['2.Set T1'])}-{int(m['2.Set T2'])}"
                         if int(m['3.Set T1']) != 0 or int(m['3.Set T2']) != 0:
@@ -496,7 +504,6 @@ with tab4:
                     else:
                         st.session_state.mac_programi.at[idx, "Canlı Skor"] = "Oynanmadı"
 
-            # Tabloyu sadece yukarıdaki takvimde seçilen tarihe göre filtrele
             df_gunluk = st.session_state.mac_programi[st.session_state.mac_programi['Tarih'] == formatted_tarih].copy()
             
             if df_gunluk.empty:
@@ -512,7 +519,6 @@ with tab4:
                     )
                     if st.button("💾 Günlük Değişiklikleri / Silinenleri Kaydet"):
                         eski_indexler = df_gunluk.index
-                        # Eski tabloyu temizle, editörden gelen güncel hallerini güvenle ekle
                         st.session_state.mac_programi.drop(index=eski_indexler, inplace=True)
                         st.session_state.mac_programi = pd.concat([st.session_state.mac_programi, guncel_program]).reset_index(drop=True)
                         
