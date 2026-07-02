@@ -212,7 +212,6 @@ with tab2:
                 
                 r_cols[0].write(f"**{t1_isim}**")
                 
-                # Sabit "Seçiniz" mantığı ile Tekler/Çiftler ayrımı (T1)
                 if row['Branş'] == "Çiftler":
                     eski_kayit1 = str(row['T1_Oyuncu'])
                     for char in ["[", "]", "'", '"']: eski_kayit1 = eski_kayit1.replace(char, "")
@@ -231,7 +230,6 @@ with tab2:
                 
                 r_cols[2].write(f"**{t2_isim}**")
                 
-                # Sabit "Seçiniz" mantığı ile Tekler/Çiftler ayrımı (T2)
                 if row['Branş'] == "Çiftler":
                     eski_kayit2 = str(row['T2_Oyuncu'])
                     for char in ["[", "]", "'", '"']: eski_kayit2 = eski_kayit2.replace(char, "")
@@ -334,7 +332,7 @@ with tab3:
             grup_df.index = range(1, len(grup_df) + 1)
             st.dataframe(grup_df, use_container_width=True)
 
-# --- TAB 4: MAÇ PROGRAMI (HTML HATASI KESİNLİKLE ÇÖZÜLDÜ) ---
+# --- TAB 4: MAÇ PROGRAMI (GELİŞMİŞ GÖRÜNÜM VE GERİ ALMA) ---
 with tab4:
     st.subheader("📅 Canlı Maç Programı ve Fikstür")
     if not st.session_state.skor_tablosu.empty:
@@ -407,6 +405,16 @@ with tab4:
 
             if not df_gunluk.empty:
                 st.markdown("### 📋 Günlük Akış Editörü")
+                
+                # YENİ: Geri Alma Butonu
+                if st.button("↩️ Son Eklenen Maçı Geri Al"):
+                    last_idx = df_gunluk.index[-1]
+                    st.session_state.mac_programi.drop(index=last_idx, inplace=True)
+                    st.session_state.mac_programi.reset_index(drop=True, inplace=True)
+                    ortak_veriyi_kaydet()
+                    st.warning("Son eklenen maç programdan başarıyla geri alındı.")
+                    st.rerun()
+
                 guncel_program = st.data_editor(
                     df_gunluk, use_container_width=True, num_rows="dynamic",
                     disabled=["Grup", "Gün", "Branş", "Eşleşme", "Takım 1", "Takım 2", "T1 Oyuncu", "T2 Oyuncu", "Canlı Skor"],
@@ -422,37 +430,23 @@ with tab4:
                     st.success("Güncellendi!")
                     st.rerun()
 
-                st.markdown("---")
-                silme_havuzu = []
-                for idx, row in df_gunluk.iterrows():
-                    silme_havuzu.append((idx, f"{row['Maç Saati']} | {row['Kort']} | {row['Takım 1']} vs {row['Takım 2']} ({row['Branş']})"))
-                
-                secilen_silme_tanimi = st.selectbox("Silmek istediğiniz maçı seçin:", ["Seçiniz..."] + [m[1] for m in silme_havuzu])
-                if secilen_silme_tanimi != "Seçiniz...":
-                    if st.button("❌ Kaldır"):
-                        hedef_idx = [m[0] for m in silme_havuzu if m[1] == secilen_silme_tanimi][0]
-                        st.session_state.mac_programi.drop(index=hedef_idx, inplace=True)
-                        st.session_state.mac_programi.reset_index(drop=True, inplace=True)
-                        ortak_veriyi_kaydet()
-                        st.success("Kaldırıldı!")
-                        st.rerun()
-
-       # --- MİSAFİR MODU (GÜNCEL & SABİT TASARIM) ---
+        # --- MİSAFİR MODU (GÜNCEL & SABİT TASARIM) ---
         else:
             st.markdown(f"### 📋 {formatted_tarih} Tarihli Maç Akışı")
             if df_gunluk.empty:
                 st.info("Bu tarihte planlanmış maç bulunmamaktadır.")
             else:
-                # CSS'i daha kararlı hale getirdik
+                # Kolon görünürlüğü kilitli sabit HTML ve oyuncular takım altında
                 html_css = """
                 <style>
                     .ref-table { width: 100%; border-collapse: collapse; font-family: sans-serif; }
                     .ref-table th { background: #334155; color: white; padding: 10px; text-align: left; }
                     .ref-table td { padding: 12px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
-                    .team-cell { font-weight: bold; font-size: 1.1rem; }
-                    .player-cell { font-style: italic; color: #475569; font-size: 0.9rem; display: block; margin-top: 4px; }
+                    .team-cell { font-weight: bold; font-size: 1.05rem; color: #1e293b; }
+                    .player-cell { font-style: italic; color: #475569; font-size: 0.9rem; display: block; margin-top: 4px; padding-left: 8px; border-left: 2px solid #cbd5e1; }
                     .score-cell { font-weight: bold; color: #be123c; }
                     .waiting-cell { color: #059669; font-weight: bold; }
+                    .ref-table tr:hover { background-color: #f8fafc; }
                 </style>
                 """
                 
@@ -461,7 +455,6 @@ with tab4:
                     skor = str(row.get('Canlı Skor', 'Oynanmadı'))
                     skor_html = f"<span class='waiting-cell'>Bekleniyor</span>" if skor in ["Oynanmadı", ""] else f"<span class='score-cell'>{skor}</span>"
                     
-                    # Oyuncu isimlerini çek
                     t1_o = str(row.get('T1 Oyuncu', '')).strip()
                     t2_o = str(row.get('T2 Oyuncu', '')).strip()
                     
@@ -473,6 +466,7 @@ with tab4:
                 st.markdown(html_css + f"<table class='ref-table'><thead><tr><th>Saat</th><th>Kort</th><th>Branş</th><th>Takım 1</th><th>Takım 2</th><th>Skor</th></tr></thead><tbody>{html_rows}</tbody></table>", unsafe_allow_html=True)
     else:
         st.info("Gruplar oluşturulmadan maç programı aktif edilemez.")
+
 # --- TAB 5: YÖNETİM & DOSYA İŞLEMLERİ ---
 with tab5:
     st.subheader("⚙️ Gelişmiş Yönetim Paneli")
@@ -526,13 +520,12 @@ with tab5:
                     st.rerun()
                 except Exception as ex: st.error(f"Hata: {ex}")
 
-        st.markdown("### 🚨 Turnuva Sıfırlama")
-        if st.checkbox("🚨 TÜM VERİLERİ KALICI OLARAK SİLMEK İSTİYORUM"):
-            if st.button("⚠️ VERİTABANINI TAMAMEN SIFIRLA"):
-                st.session_state.skor_tablosu = pd.DataFrame(columns=["Grup", "Gün", "Eşleşme", "Branş", "Takım 1", "Takım 2", "T1_Oyuncu", "T2_Oyuncu", "1.Set T1", "1.Set T2", "2.Set T1", "2.Set T2", "3.Set T1", "3.Set T2"])
-                st.session_state.mac_programi = pd.DataFrame(columns=["Maç Saati", "Tarih", "Gün Adı", "Kort", "Grup", "Gün", "Branş", "Eşleşme", "Takım 1", "Takım 2", "T1 Oyuncu", "T2 Oyuncu", "Canlı Skor"])
-                st.session_state.takim_kadrolari = {}
-                ortak_veriyi_kaydet()
-                st.rerun()
-    else:
-        st.warning("🔒 Yönetim sekmesi yetkisiz erişime kapalıdır.")
+        # YARIM KALAN KISMIN TAMAMLANMASI (Tehlikeli İşlemler)
+        st.markdown("---")
+        st.markdown("### ⚠️ Sistem Sıfırlama (Tehlikeli İşlem)")
+        if st.button("🗑️ Tüm Turnuva Verilerini Kalıcı Olarak Sıfırla"):
+            if os.path.exists(VERI_DOSYASI):
+                os.remove(VERI_DOSYASI)
+            st.session_state.clear()
+            st.success("Tüm veritabanı başarıyla temizlendi!")
+            st.rerun()
