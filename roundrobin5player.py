@@ -492,7 +492,7 @@ with tab4:
                             <td>{skor_html}</td>
                         </tr>
                     """
-               html_tablo += "</tbody></table>"
+                html_tablo += "</tbody></table>"
                 st.markdown(html_tablo, unsafe_allow_html=True)
     else:
         st.info("Gruplar oluşturulmadan maç programı aktif edilemez.")
