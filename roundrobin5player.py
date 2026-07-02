@@ -437,33 +437,42 @@ with tab4:
                         st.success("Kaldırıldı!")
                         st.rerun()
 
-        # --- MİSAFİR MODU (GİRİNTİLER TEMİZLENDİ) ---
+       # --- MİSAFİR MODU (GÜNCEL & SABİT TASARIM) ---
         else:
-            st.markdown(f"### 📋 {formatted_tarih} ({gun_adi}) Maç Akışı")
+            st.markdown(f"### 📋 {formatted_tarih} Tarihli Maç Akışı")
             if df_gunluk.empty:
-                st.info("Bu tarihe ait planlanmış bir müsabaka bulunmamaktadır.")
+                st.info("Bu tarihte planlanmış maç bulunmamaktadır.")
             else:
-                # Boşluklardan dolayı "kod bloğu" gibi görünmesini engellemek için string tek satırda birleştirildi
-                html_css = "<style>.referee-table { width: 100%; border-collapse: collapse; margin: 15px 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; } .referee-table th { background-color: #1e293b; color: white; text-align: left; padding: 12px; font-weight: 600; border: 1px solid #e2e8f0; } .referee-table td { padding: 12px; border: 1px solid #e2e8f0; vertical-align: top; background-color: white; } .referee-table tr:nth-child(even) td { background-color: #f8fafc; } .player-subname { color: #64748b; font-size: 0.85rem; font-style: italic; display: block; margin-top: 6px; padding-top: 4px; border-top: 1px dashed #e2e8f0; } .skor-box { font-weight: bold; color: #e11d48; font-size: 1.05rem; } .waiting-box { color: #059669; font-style: italic; font-weight: 500; }</style>"
-                html_body = "<table class='referee-table'><thead><tr><th style='width: 10%;'>Saat</th><th style='width: 12%;'>Kort</th><th style='width: 20%;'>Kategori / Branş</th><th style='width: 24%;'>Takım 1 / Oyuncu</th><th style='width: 24%;'>Takım 2 / Oyuncu</th><th style='width: 10%;'>Skor</th></tr></thead><tbody>"
+                # CSS'i daha kararlı hale getirdik
+                html_css = """
+                <style>
+                    .ref-table { width: 100%; border-collapse: collapse; font-family: sans-serif; }
+                    .ref-table th { background: #334155; color: white; padding: 10px; text-align: left; }
+                    .ref-table td { padding: 12px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+                    .team-cell { font-weight: bold; font-size: 1.1rem; }
+                    .player-cell { font-style: italic; color: #475569; font-size: 0.9rem; display: block; margin-top: 4px; }
+                    .score-cell { font-weight: bold; color: #be123c; }
+                    .waiting-cell { color: #059669; font-weight: bold; }
+                </style>
+                """
                 
+                html_rows = ""
                 for _, row in df_gunluk.iterrows():
-                    skor_raw = str(row.get('Canlı Skor', 'Oynanmadı')).strip()
-                    skor_html = f"<span class='waiting-box'>Bekleniyor</span>" if skor_raw in ["Oynanmadı", "", "nan", "None"] else f"<span class='skor-box'>{skor_raw}</span>"
+                    skor = str(row.get('Canlı Skor', 'Oynanmadı'))
+                    skor_html = f"<span class='waiting-cell'>Bekleniyor</span>" if skor in ["Oynanmadı", ""] else f"<span class='score-cell'>{skor}</span>"
                     
-                    t1_o, t2_o = str(row.get('T1 Oyuncu', '')).strip(), str(row.get('T2 Oyuncu', '')).strip()
-                    t1_html = f"<span class='player-subname'>👤 {t1_o}</span>" if t1_o and t1_o.lower() != "nan" else ""
-                    t2_html = f"<span class='player-subname'>👤 {t2_o}</span>" if t2_o and t2_o.lower() != "nan" else ""
-                    cat_info = f"{row.get('Grup','')} - {row.get('Branş','')}"
+                    # Oyuncu isimlerini çek
+                    t1_o = str(row.get('T1 Oyuncu', '')).strip()
+                    t2_o = str(row.get('T2 Oyuncu', '')).strip()
                     
-                    html_body += f"<tr><td><b>{row.get('Maç Saati', '')}</b></td><td>{row.get('Kort', '')}</td><td>{cat_info}</td><td><b>{row.get('Takım 1', '')}</b>{t1_html}</td><td><b>{row.get('Takım 2', '')}</b>{t2_html}</td><td>{skor_html}</td></tr>"
+                    t1_display = f"<div class='team-cell'>{row.get('Takım 1', '')}</div>" + (f"<div class='player-cell'>👤 {t1_o}</div>" if t1_o and t1_o != "nan" else "")
+                    t2_display = f"<div class='team-cell'>{row.get('Takım 2', '')}</div>" + (f"<div class='player-cell'>👤 {t2_o}</div>" if t2_o and t2_o != "nan" else "")
+                    
+                    html_rows += f"<tr><td>{row.get('Maç Saati', '')}</td><td>{row.get('Kort', '')}</td><td>{row.get('Branş', '')}</td><td>{t1_display}</td><td>{t2_display}</td><td>{skor_html}</td></tr>"
                 
-                html_body += "</tbody></table>"
-                
-                st.markdown(html_css + html_body, unsafe_allow_html=True)
+                st.markdown(html_css + f"<table class='ref-table'><thead><tr><th>Saat</th><th>Kort</th><th>Branş</th><th>Takım 1</th><th>Takım 2</th><th>Skor</th></tr></thead><tbody>{html_rows}</tbody></table>", unsafe_allow_html=True)
     else:
         st.info("Gruplar oluşturulmadan maç programı aktif edilemez.")
-
 # --- TAB 5: YÖNETİM & DOSYA İŞLEMLERİ ---
 with tab5:
     st.subheader("⚙️ Gelişmiş Yönetim Paneli")
