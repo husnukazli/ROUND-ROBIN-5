@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import json
 import os
+import datetime
 
 st.set_page_config(page_title="Tenis Turnuva Otomasyonu", layout="wide")
 st.title("🎾 Profesyonel Tenis Turnuva Yönetim Sistemi")
@@ -28,7 +29,14 @@ def ortak_veriyi_yukle():
             with open(VERI_DOSYASI, "r", encoding="utf-8") as f:
                 data = json.load(f)
             st.session_state.skor_tablosu = pd.DataFrame(data["skor_tablosu"])
-            st.session_state.mac_programi = pd.DataFrame(data["mac_programi"])
+            
+            # Geriye dönük uyumluluk: Eski json dosyasında yeni eklenen T1/T2 Oyuncu kolonları yoksa oluştur
+            mp_df = pd.DataFrame(data["mac_programi"])
+            if "T1 Oyuncu" not in mp_df.columns:
+                mp_df["T1 Oyuncu"] = ""
+                mp_df["T2 Oyuncu"] = ""
+            st.session_state.mac_programi = mp_df
+            
             st.session_state.takim_kadrolari = data["takim_kadrolari"]
         except Exception as e:
             pass 
@@ -49,9 +57,14 @@ if 'skor_tablosu' not in st.session_state:
             "1.Set T1", "1.Set T2", "2.Set T1", "2.Set T2", "3.Set T1", "3.Set T2"
         ])
         st.session_state.mac_programi = pd.DataFrame(columns=[
-            "Maç Saati", "Tarih", "Gün Adı", "Kort", "Grup", "Gün", "Branş", "Eşleşme", "Takım 1", "Takım 2", "Canlı Skor"
+            "Maç Saati", "Tarih", "Gün Adı", "Kort", "Grup", "Gün", "Branş", "Eşleşme", "Takım 1", "Takım 2", "T1 Oyuncu", "T2 Oyuncu", "Canlı Skor"
         ])
         st.session_state.takim_kadrolari = {} 
+
+# Yeni eklenen kolonların çalışma anında güvenliğini sağlama
+if 'mac_programi' in st.session_state and "T1 Oyuncu" not in st.session_state.mac_programi.columns:
+    st.session_state.mac_programi["T1 Oyuncu"] = ""
+    st.session_state.mac_programi["T2 Oyuncu"] = ""
 
 # ==============================================================================
 # GÜVENLİ BAŞHAKEM GİRİŞ PANELİ (SOL MENÜ)
@@ -186,21 +199,19 @@ with tab1:
             elif kadro_hata:
                 st.error("Lütfen 10 oyuncu sınırını aşan takımları düzeltin.")
             else:
-                # Oyuncu kadrolarını her koşulda güncelle/kaydet
                 st.session_state.takim_kadrolari[grup_adi] = grup_kadrolari
                 
-                # Grubun sistemde zaten olup olmadığını kontrol et
                 grup_mevcut_mu = not st.session_state.skor_tablosu.empty and grup_adi in st.session_state.skor_tablosu['Grup'].unique()
                 
                 if grup_mevcut_mu:
-                    ortak_veriyi_kaydet() # Değişikliği ortak dosyaya yaz
+                    ortak_veriyi_kaydet() 
                     st.success(f"ℹ️ '{grup_adi}' zaten mevcut olduğu için fikstür bozulmadı, sadece **Oyuncu Kadroları başarıyla güncellendi!**")
                 else:
                     yeni_maclar = eslesmeleri_olustur(grup_adi, takimlar, grup_tipi)
                     yeni_df = pd.DataFrame(yeni_maclar)
                     st.session_state.skor_tablosu = pd.concat([st.session_state.skor_tablosu, yeni_df], ignore_index=True)
                     st.session_state.skor_tablosu.index = range(1, len(st.session_state.skor_tablosu) + 1)
-                    ortak_veriyi_kaydet() # Yeni grubu ortak dosyaya yaz
+                    ortak_veriyi_kaydet() 
                     st.success(f"🚀 {grup_adi} ve oyuncu kadroları başarıyla sıfırdan oluşturuldu!")
                     
                 st.rerun()
@@ -258,25 +269,31 @@ with tab2:
                 
                 r_cols[0].write(f"**{t1_isim}**")
                 
+                # --- T1 Oyuncu Seçimi (Seçiniz Opsiyonu Eklendi) ---
                 if row['Branş'] == "Çiftler":
-                    eski_oyuncular = [o.strip() for o in str(row['T1_Oyuncu']).split(',') if o.strip() and o in t1_havuz]
+                    eski_oyuncular = [o.strip() for o in str(row['T1_Oyuncu']).split(',') if o.strip() and o in t1_havuz and o != "Seçiniz"]
                     t1_oyuncu = r_cols[1].multiselect("T1 Oyuncular", options=t1_havuz, default=eski_oyuncular, max_selections=2, key=f"t1_o_{idx}", label_visibility="collapsed")
                     t1_oyuncu_str = ", ".join(t1_oyuncu)
                 else:
-                    eski_oyuncu = str(row['T1_Oyuncu']) if str(row['T1_Oyuncu']) in t1_havuz else t1_havuz[0]
-                    idx_default = t1_havuz.index(eski_oyuncu) if eski_oyuncu in t1_havuz else 0
-                    t1_oyuncu_str = r_cols[1].selectbox("T1 Oyuncu", options=t1_havuz, index=idx_default, key=f"t1_o_{idx}", label_visibility="collapsed")
+                    opts1 = ["Seçiniz"] + [o for o in t1_havuz if o != "Belirtilmedi"]
+                    eski_o1 = str(row['T1_Oyuncu']) if str(row['T1_Oyuncu']) not in ["", "nan", "None"] else "Seçiniz"
+                    idx1 = opts1.index(eski_o1) if eski_o1 in opts1 else 0
+                    t1_secim_raw = r_cols[1].selectbox("T1 Oyuncu", options=opts1, index=idx1, key=f"t1_o_{idx}", label_visibility="collapsed")
+                    t1_oyuncu_str = t1_secim_raw if t1_secim_raw != "Seçiniz" else ""
                 
                 r_cols[2].write(f"**{t2_isim}**")
                 
+                # --- T2 Oyuncu Seçimi (Seçiniz Opsiyonu Eklendi) ---
                 if row['Branş'] == "Çiftler":
-                    eski_oyuncular2 = [o.strip() for o in str(row['T2_Oyuncu']).split(',') if o.strip() and o in t2_havuz]
+                    eski_oyuncular2 = [o.strip() for o in str(row['T2_Oyuncu']).split(',') if o.strip() and o in t2_havuz and o != "Seçiniz"]
                     t2_oyuncu = r_cols[3].multiselect("T2 Oyuncular", options=t2_havuz, default=eski_oyuncular2, max_selections=2, key=f"t2_o_{idx}", label_visibility="collapsed")
                     t2_oyuncu_str = ", ".join(t2_oyuncu)
                 else:
-                    eski_oyuncu2 = str(row['T2_Oyuncu']) if str(row['T2_Oyuncu']) in t2_havuz else t2_havuz[0]
-                    idx_default2 = t2_havuz.index(eski_oyuncu2) if eski_oyuncu2 in t2_havuz else 0
-                    t2_oyuncu_str = r_cols[3].selectbox("T2 Oyuncu", options=t2_havuz, index=idx_default2, key=f"t2_o_{idx}", label_visibility="collapsed")
+                    opts2 = ["Seçiniz"] + [o for o in t2_havuz if o != "Belirtilmedi"]
+                    eski_o2 = str(row['T2_Oyuncu']) if str(row['T2_Oyuncu']) not in ["", "nan", "None"] else "Seçiniz"
+                    idx2 = opts2.index(eski_o2) if eski_o2 in opts2 else 0
+                    t2_secim_raw = r_cols[3].selectbox("T2 Oyuncu", options=opts2, index=idx2, key=f"t2_o_{idx}", label_visibility="collapsed")
+                    t2_oyuncu_str = t2_secim_raw if t2_secim_raw != "Seçiniz" else ""
                 
                 s1t1 = r_cols[4].number_input("S1T1", min_value=0, value=int(row['1.Set T1']), step=1, key=f"s1t1_{idx}", label_visibility="collapsed")
                 s1t2 = r_cols[5].number_input("S1T2", min_value=0, value=int(row['1.Set T2']), step=1, key=f"s1t2_{idx}", label_visibility="collapsed")
@@ -324,7 +341,7 @@ with tab2:
                         for k, v in guncel_row.items():
                             st.session_state.skor_tablosu.at[idx, k] = v
                     
-                    ortak_veriyi_kaydet() # Skorları sunucuya göm (Herkes anında görsün)
+                    ortak_veriyi_kaydet() 
                     st.success("Tüm oyuncu listeleri ve skorlar başarıyla kaydedildi!")
                     st.rerun()
         else:
@@ -387,13 +404,20 @@ with tab3:
             grup_df.index = range(1, len(grup_df) + 1)
             st.dataframe(grup_df, use_container_width=True)
 
-# --- TAB 4: MAÇ PROGRAMI ---
+# --- TAB 4: MAÇ PROGRAMI (YENİLENMİŞ TAKVİM VE FİLTRE YAPISI) ---
 with tab4:
     st.subheader("📅 Canlı Maç Programı ve Fikstür")
     if not st.session_state.skor_tablosu.empty:
+        turkce_gunler = {0: "Pazartesi", 1: "Salı", 2: "Çarşamba", 3: "Perşembe", 4: "Cuma", 5: "Cumartesi", 6: "Pazar"}
         
-        # Sadece admin yeni maç programı ekleyebilir
+        # Takvim: Üst Kısımda Tarih Seçimi
+        c_tarih, _ = st.columns([1, 3])
+        secilen_tarih = c_tarih.date_input("🗓️ Program Yapılacak / Görüntülenecek Tarih:", value=datetime.date.today())
+        formatted_tarih = secilen_tarih.strftime("%d.%m.%Y")
+        gun_adi = turkce_gunler[secilen_tarih.weekday()]
+
         if st.session_state.admin_mi:
+            st.markdown(f"### ➕ {formatted_tarih} Tarihine Maç Ekle")
             c1, c2, c3 = st.columns(3)
             gruplar_prog = st.session_state.skor_tablosu['Grup'].unique()
             sec_grup_prog = c1.selectbox("Grup Seç:", gruplar_prog, key="prog_grup")
@@ -403,36 +427,51 @@ with tab4:
             sec_gun_prog = c2.selectbox("Gün Seç:", gunler_prog, key="prog_gun")
             df_m_prog = df_g_prog[df_g_prog['Gün'] == sec_gun_prog]
             
-            mac_listesi = [f"{row['Takım 1']} vs {row['Takım 2']} ({row['Branş']})" for idx, row in df_m_prog.iterrows()]
-            sec_mac_adi = c3.selectbox("Maç Seç:", mac_listesi, key="prog_mac")
+            # Daha önce programa eklenmiş maçları tespit et (Çifte kaydı önler)
+            mevcut_mask = df_m_prog.apply(lambda r: not st.session_state.mac_programi[
+                (st.session_state.mac_programi['Grup'] == r['Grup']) &
+                (st.session_state.mac_programi['Gün'] == r['Gün']) &
+                (st.session_state.mac_programi['Branş'] == r['Branş']) &
+                (st.session_state.mac_programi['Eşleşme'] == r['Eşleşme'])
+            ].empty, axis=1)
             
-            if st.button("➕ Günlük Programa Ekle"):
-                secilen_row = df_m_prog.iloc[mac_listesi.index(sec_mac_adi)]
-                yeni_kayit = pd.DataFrame([{
-                    "Maç Saati": "10:00",
-                    "Tarih": "01.01.2026", 
-                    "Gün Adı": "Pazartesi", 
-                    "Kort": "Kort 1",
-                    "Grup": secilen_row['Grup'],
-                    "Gün": secilen_row['Gün'],
-                    "Branş": secilen_row['Branş'],
-                    "Eşleşme": secilen_row['Eşleşme'],
-                    "Takım 1": secilen_row['Takım 1'],
-                    "Takım 2": secilen_row['Takım 2'],
-                    "Canlı Skor": "Oynanmadı"
-                }])
-                st.session_state.mac_programi = pd.concat([st.session_state.mac_programi, yeni_kayit], ignore_index=True)
-                ortak_veriyi_kaydet() # Programı ortak dosyaya yaz
-                st.success("Maç programa eklendi! Saat, Tarih, Gün ve Kort bilgisini tablodan güncelleyebilirsiniz.")
-                st.rerun()
+            df_m_prog_eklenebilir = df_m_prog[~mevcut_mask]
+            
+            if df_m_prog_eklenebilir.empty:
+                c3.info("✅ Bu güne ait tüm maçlar programa eklenmiş durumda.")
+            else:
+                mac_listesi = [f"{row['Takım 1']} vs {row['Takım 2']} ({row['Branş']})" for idx, row in df_m_prog_eklenebilir.iterrows()]
+                sec_mac_adi = c3.selectbox("Maç Seç:", mac_listesi, key="prog_mac")
                 
+                if st.button("➕ Seçili Maçı Programa Ekle"):
+                    secilen_row = df_m_prog_eklenebilir.iloc[mac_listesi.index(sec_mac_adi)]
+                    yeni_kayit = pd.DataFrame([{
+                        "Maç Saati": "10:00",
+                        "Tarih": formatted_tarih, 
+                        "Gün Adı": gun_adi, 
+                        "Kort": "Kort 1",
+                        "Grup": secilen_row['Grup'],
+                        "Gün": secilen_row['Gün'],
+                        "Branş": secilen_row['Branş'],
+                        "Eşleşme": secilen_row['Eşleşme'],
+                        "Takım 1": secilen_row['Takım 1'],
+                        "Takım 2": secilen_row['Takım 2'],
+                        "T1 Oyuncu": "",
+                        "T2 Oyuncu": "",
+                        "Canlı Skor": "Oynanmadı"
+                    }])
+                    st.session_state.mac_programi = pd.concat([st.session_state.mac_programi, yeni_kayit], ignore_index=True)
+                    ortak_veriyi_kaydet()
+                    st.success("Maç programa eklendi!")
+                    st.rerun()
             st.divider()
         
         if not st.session_state.mac_programi.empty:
-            st.markdown("### 📋 Güncel Maç Akışı")
+            st.markdown(f"### 📋 {formatted_tarih} ({gun_adi}) - Günlük Maç Akışı")
             
-            # Canlı skorları (herkes için) hesapla
-            for idx, row in st.session_state.mac_programi.iterrows():
+            # Dinamik olarak Oyuncu isimlerini ve Canlı skorları (herkes için) hesapla
+            for idx in st.session_state.mac_programi.index:
+                row = st.session_state.mac_programi.loc[idx]
                 eslesen_mac = st.session_state.skor_tablosu[
                     (st.session_state.skor_tablosu['Grup'] == row['Grup']) &
                     (st.session_state.skor_tablosu['Gün'] == row['Gün']) &
@@ -441,6 +480,14 @@ with tab4:
                 ]
                 if not eslesen_mac.empty:
                     m = eslesen_mac.iloc[0]
+                    
+                    # Skor Girişi Sekmesinde atanan oyuncuları programa yansıt (Seçilmemişse boş kalır)
+                    t1_o = str(m['T1_Oyuncu']) if pd.notna(m['T1_Oyuncu']) and str(m['T1_Oyuncu']).strip() not in ["", "nan", "Seçiniz", "None"] else ""
+                    t2_o = str(m['T2_Oyuncu']) if pd.notna(m['T2_Oyuncu']) and str(m['T2_Oyuncu']).strip() not in ["", "nan", "Seçiniz", "None"] else ""
+                    st.session_state.mac_programi.at[idx, "T1 Oyuncu"] = t1_o
+                    st.session_state.mac_programi.at[idx, "T2 Oyuncu"] = t2_o
+
+                    # Skor Hesaplama
                     if int(m['1.Set T1']) != 0 or int(m['1.Set T2']) != 0:
                         skor_str = f"{int(m['1.Set T1'])}-{int(m['1.Set T2'])} | {int(m['2.Set T1'])}-{int(m['2.Set T2'])}"
                         if int(m['3.Set T1']) != 0 or int(m['3.Set T2']) != 0:
@@ -448,24 +495,32 @@ with tab4:
                         st.session_state.mac_programi.at[idx, "Canlı Skor"] = skor_str
                     else:
                         st.session_state.mac_programi.at[idx, "Canlı Skor"] = "Oynanmadı"
+
+            # Tabloyu sadece yukarıdaki takvimde seçilen tarihe göre filtrele
+            df_gunluk = st.session_state.mac_programi[st.session_state.mac_programi['Tarih'] == formatted_tarih].copy()
             
-            # Admin için düzenlenebilir (saat/tarih), izleyici için sadece okunabilir tablo
-            if st.session_state.admin_mi:
-                guncel_program = st.data_editor(
-                    st.session_state.mac_programi, 
-                    use_container_width=True, 
-                    num_rows="dynamic",
-                    disabled=["Grup", "Gün", "Branş", "Eşleşme", "Takım 1", "Takım 2", "Canlı Skor"],
-                    key="program_editor_v3"
-                )
-                if st.button("💾 Program Değişikliklerini Kaydet"):
-                    st.session_state.mac_programi = guncel_program
-                    ortak_veriyi_kaydet() # Tarih ve saatleri ortak dosyaya yaz
-                    st.success("Maç saatleri, tarihleri ve kortları başarıyla güncellendi!")
-                    st.rerun()
+            if df_gunluk.empty:
+                st.info(f"ℹ️ {formatted_tarih} tarihi için planlanmış bir maç bulunmamaktadır.")
             else:
-                st.dataframe(st.session_state.mac_programi, use_container_width=True)
-                
+                if st.session_state.admin_mi:
+                    guncel_program = st.data_editor(
+                        df_gunluk, 
+                        use_container_width=True, 
+                        num_rows="dynamic",
+                        disabled=["Grup", "Gün", "Branş", "Eşleşme", "Takım 1", "Takım 2", "T1 Oyuncu", "T2 Oyuncu", "Canlı Skor"],
+                        key=f"program_editor_{formatted_tarih}"
+                    )
+                    if st.button("💾 Günlük Değişiklikleri / Silinenleri Kaydet"):
+                        eski_indexler = df_gunluk.index
+                        # Eski tabloyu temizle, editörden gelen güncel hallerini güvenle ekle
+                        st.session_state.mac_programi.drop(index=eski_indexler, inplace=True)
+                        st.session_state.mac_programi = pd.concat([st.session_state.mac_programi, guncel_program]).reset_index(drop=True)
+                        
+                        ortak_veriyi_kaydet() 
+                        st.success(f"{formatted_tarih} maç programı başarıyla güncellendi!")
+                        st.rerun()
+                else:
+                    st.dataframe(df_gunluk, use_container_width=True)
     else:
         st.info("Henüz grup oluşturulmadığı için program yapılamaz.")
 
@@ -474,7 +529,6 @@ with tab5:
     st.subheader("⚙️ Yönetim Paneli")
 
     if st.session_state.admin_mi:
-        # 1. BÖLÜM: TAKIM VE OYUNCU DÜZENLEME (Esnek Modül)
         with st.expander("✍️ Takım İsmi ve Kadro Düzenle (Gelişmiş)"):
             if not st.session_state.skor_tablosu.empty:
                 tum_gruplar = st.session_state.skor_tablosu['Grup'].unique()
@@ -504,7 +558,7 @@ with tab5:
                             st.session_state.skor_tablosu.replace({eski: yeni}, inplace=True)
                             st.session_state.mac_programi.replace({eski: yeni}, inplace=True)
                             
-                    ortak_veriyi_kaydet() # Takım/İsim değişimini sunucuya yaz
+                    ortak_veriyi_kaydet() 
                     st.success("✅ Güncellemeler başarıyla kaydedildi!")
                     st.rerun()
             else:
@@ -512,7 +566,6 @@ with tab5:
 
         st.markdown("---")
 
-        # 2. BÖLÜM: DOSYA YEDEKLEME VE YÜKLEME
         st.markdown("### 💾 Dosya İşlemleri")
         c_save, c_load = st.columns(2)
         
@@ -538,9 +591,15 @@ with tab5:
                     try:
                         data = json.load(uploaded_file)
                         st.session_state.skor_tablosu = pd.DataFrame(data["skor_tablosu"])
-                        st.session_state.mac_programi = pd.DataFrame(data["mac_programi"])
+                        
+                        mp_df = pd.DataFrame(data["mac_programi"])
+                        if "T1 Oyuncu" not in mp_df.columns:
+                            mp_df["T1 Oyuncu"] = ""
+                            mp_df["T2 Oyuncu"] = ""
+                        st.session_state.mac_programi = mp_df
+                        
                         st.session_state.takim_kadrolari = data["takim_kadrolari"]
-                        ortak_veriyi_kaydet() # Yüklenen yedeği sunucuya göm
+                        ortak_veriyi_kaydet() 
                         st.success("✅ Veriler yüklendi! Sayfa yenileniyor...")
                         st.rerun()
                     except Exception as e:
@@ -548,7 +607,6 @@ with tab5:
 
         st.markdown("---")
         
-        # 3. BÖLÜM: GÜVENLİ SIFIRLAMA
         st.markdown("### 🚨 Tehlikeli Bölge (Sistem Sıfırlama)")
         onay_kutususu = st.checkbox("🚨 TÜM TURNUVAYI (Skorlar, Kadrolar, Program) SİLMEK İSTİYORUM.")
         
@@ -559,10 +617,10 @@ with tab5:
                     "1.Set T1", "1.Set T2", "2.Set T1", "2.Set T2", "3.Set T1", "3.Set T2"
                 ])
                 st.session_state.mac_programi = pd.DataFrame(columns=[
-                    "Maç Saati", "Tarih", "Gün Adı", "Kort", "Grup", "Gün", "Branş", "Eşleşme", "Takım 1", "Takım 2", "Canlı Skor"
+                    "Maç Saati", "Tarih", "Gün Adı", "Kort", "Grup", "Gün", "Branş", "Eşleşme", "Takım 1", "Takım 2", "T1 Oyuncu", "T2 Oyuncu", "Canlı Skor"
                 ])
                 st.session_state.takim_kadrolari = {}
-                ortak_veriyi_kaydet() # Sunucudaki dosyayı da tamamen temizle
+                ortak_veriyi_kaydet() 
                 st.rerun()
         else:
             st.warning("Sistemi tamamen sıfırlamak için yukarıdaki onay kutusunu işaretleyin.")
