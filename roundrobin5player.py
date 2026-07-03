@@ -476,16 +476,14 @@ pdf_bytes = generate_pdf(pdf_df, f"{gp} Puan Durumu")
 
 # Download butonunu bu şekilde çağırın
 st.download_button(
-            label=f"📥 {gp} Puan Durumunu PDF İndir",
-            data=pdf_bytes,
-            file_name=f"{gp}_puan_durumu.pdf",
-            mime="application/pdf",
-            key=f"pdf_puan_{gp}"
-        )
-                )
-                
-                st.dataframe(grup_df, use_container_width=True)
+    label=f"📥 {gp} Puan Durumunu PDF İndir",
+    data=pdf_bytes,
+    file_name=f"{gp}_puan_durumu.pdf",
+    mime="application/pdf",
+    key=f"pdf_puan_{gp}"
+)
 
+st.dataframe(grup_df, use_container_width=True)
 # --- TAB 4: MAÇ PROGRAMI ---
 with tab4:
     st.subheader("📅 Canlı Maç Programı ve Fikstür")
