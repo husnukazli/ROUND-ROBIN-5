@@ -22,6 +22,30 @@ FORMAT_SECENEKLERI = {
     "5'li Takım Serisi (1. Tek, 2. Tek, 3. Tek, 1. Çift, 2. Çift)": ["1. Tekler", "2. Tekler", "3. Tekler", "1. Çiftler", "2. Çiftler"]
 }
 
+def tablo_eksiklerini_tamamla(df, tur):
+    """Eski JSON dosyalarından gelen eksik sütunları onarır."""
+    if df.empty:
+        return df
+        
+    if "Alt Maç" not in df.columns:
+        df.insert(3, "Alt Maç", "Genel")
+        
+    if tur == "skor":
+        if "Oynandı" not in df.columns:
+            df["Oynandı"] = False
+        if "Skor 1" not in df.columns:
+            df["Skor 1"] = 0
+        if "Skor 2" not in df.columns:
+            df["Skor 2"] = 0
+            
+    elif tur == "mac":
+        if "Tarih/Saat" not in df.columns:
+            df["Tarih/Saat"] = ""
+        if "Kort" not in df.columns:
+            df["Kort"] = ""
+            
+    return df
+
 def ortak_veriyi_yukle():
     if os.path.exists(VERI_DOSYASI):
         with open(VERI_DOSYASI, "r", encoding="utf-8") as f:
@@ -30,16 +54,11 @@ def ortak_veriyi_yukle():
                 
                 if "skor_tablosu" in data:
                     df_skor = pd.DataFrame(data["skor_tablosu"])
-                    # Eski verilerde Alt Maç kolonu yoksa ekle
-                    if not df_skor.empty and "Alt Maç" not in df_skor.columns:
-                        df_skor.insert(3, "Alt Maç", "Genel")
-                    st.session_state.skor_tablosu = df_skor
+                    st.session_state.skor_tablosu = tablo_eksiklerini_tamamla(df_skor, "skor")
                     
                 if "mac_programi" in data:
                     df_mac = pd.DataFrame(data["mac_programi"])
-                    if not df_mac.empty and "Alt Maç" not in df_mac.columns:
-                        df_mac.insert(3, "Alt Maç", "Genel")
-                    st.session_state.mac_programi = df_mac
+                    st.session_state.mac_programi = tablo_eksiklerini_tamamla(df_mac, "mac")
                     
                 if "takim_kadrolari" in data:
                     st.session_state.takim_kadrolari = data["takim_kadrolari"]
@@ -277,10 +296,8 @@ with t4:
     for g in st.session_state.takim_kadrolari.keys():
         grup_maclari = st.session_state.skor_tablosu[(st.session_state.skor_tablosu["Grup"] == g) & (st.session_state.skor_tablosu["Oynandı"] == True)]
         
-        # O: Oynanan Seri, G: Kazanılan Seri, M: Kaybedilen Seri, Alt Maç Av.: Alt maç kazanma farkı
         puan_tablosu = {t: {"O": 0, "G": 0, "M": 0, "Alt Maç Av.": 0, "Puan": 0} for t in st.session_state.takim_kadrolari[g].keys()}
         
-        # Takım serilerini hesaplamak için alt maçları eşleşme bazında grupla
         seriler = {}
         for _, mac in grup_maclari.iterrows():
             t1, t2 = mac["Takım 1"], mac["Takım 2"]
@@ -297,7 +314,6 @@ with t4:
             if skorA > skorB: seriler[key]["A_Wins"] += 1
             elif skorB > skorA: seriler[key]["B_Wins"] += 1
 
-        # Serileri Puan Tablosuna İşle
         for key, data in seriler.items():
             tA, tB = data["TeamA"], data["TeamB"]
             a_w, b_w = data["A_Wins"], data["B_Wins"]
@@ -305,7 +321,6 @@ with t4:
             if tA in puan_tablosu: puan_tablosu[tA]["Alt Maç Av."] += (a_w - b_w)
             if tB in puan_tablosu: puan_tablosu[tB]["Alt Maç Av."] += (b_w - a_w)
             
-            # Seriyi kazanan 2 puan, kaybeden 1 puan alır.
             if a_w > b_w:
                 if tA in puan_tablosu:
                     puan_tablosu[tA]["O"] += 1; puan_tablosu[tA]["G"] += 1; puan_tablosu[tA]["Puan"] += 2
@@ -423,15 +438,11 @@ with t5:
                         
                         if "skor_tablosu" in data:
                             df_skor = pd.DataFrame(data["skor_tablosu"])
-                            if not df_skor.empty and "Alt Maç" not in df_skor.columns:
-                                df_skor.insert(3, "Alt Maç", "Genel")
-                            st.session_state.skor_tablosu = df_skor
+                            st.session_state.skor_tablosu = tablo_eksiklerini_tamamla(df_skor, "skor")
                             
                         if "mac_programi" in data:
                             df_mac = pd.DataFrame(data["mac_programi"])
-                            if not df_mac.empty and "Alt Maç" not in df_mac.columns:
-                                df_mac.insert(3, "Alt Maç", "Genel")
-                            st.session_state.mac_programi = df_mac
+                            st.session_state.mac_programi = tablo_eksiklerini_tamamla(df_mac, "mac")
                             
                         if "takim_kadrolari" in data:
                             st.session_state.takim_kadrolari = data["takim_kadrolari"]
@@ -442,7 +453,7 @@ with t5:
                             st.session_state.grup_formatlari = {g: "Tekli Maç Formatı" for g in st.session_state.takim_kadrolari.keys()}
                             
                         ortak_veriyi_kaydet()
-                        st.success("Veriler başarıyla geri yüklendi!")
+                        st.success("Veriler başarıyla geri yüklendi ve eksik kolonlar onarıldı!")
                         st.rerun()
                     except Exception as e:
                         st.error("Dosya yüklenirken hata oluştu. Geçerli bir JSON dosyası olduğundan emin olun.")
