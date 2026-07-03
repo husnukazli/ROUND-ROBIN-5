@@ -3,6 +3,7 @@ import pandas as pd
 import json
 import os
 import datetime
+from fpdf import FPDF
 
 # --- GENEL SAYFA AYARLARI ---
 st.set_page_config(page_title="Tenis Turnuva Otomasyonu", page_icon="🎾", layout="wide")
@@ -11,8 +12,33 @@ st.title("🎾 Tenis Turnuva Yönetim Sistemi")
 VERI_DOSYASI = "turnuva_veri.json"
 
 # ==============================================================================
-# SİSTEM FONKSİYONLARI (ORTAK VERİ YAZMA VE OKUMA MOTORU)
+# SİSTEM FONKSİYONLARI (ORTAK VERİ YAZMA, OKUMA VE PDF)
 # ==============================================================================
+def to_latin(text):
+    return str(text).encode('latin-1', 'replace').decode('latin-1')
+
+def generate_pdf(df, baslik):
+    pdf = FPDF(orientation='L', unit='mm', format='A4')
+    pdf.add_page()
+    pdf.set_font("Arial", 'B', 14)
+    pdf.cell(0, 10, to_latin(baslik), ln=True, align='C')
+    pdf.ln(5)
+    
+    pdf.set_font("Arial", 'B', 10)
+    if len(df.columns) > 0:
+        col_width = 270 / len(df.columns)
+        for col in df.columns:
+            pdf.cell(col_width, 10, to_latin(col), border=1)
+        pdf.ln()
+        
+        pdf.set_font("Arial", '', 9)
+        for _, row in df.iterrows():
+            for item in row:
+                pdf.cell(col_width, 8, to_latin(item), border=1)
+            pdf.ln()
+    
+    return pdf.output(dest='S').encode('latin-1')
+
 def ortak_veriyi_kaydet():
     data = {
         "skor_tablosu": st.session_state.skor_tablosu.to_dict(orient="records"),
@@ -105,7 +131,6 @@ with st.sidebar:
         unique_dates = sorted(st.session_state.mac_programi['Tarih'].unique())
         for d_str in unique_dates:
             match_count = len(st.session_state.mac_programi[st.session_state.mac_programi['Tarih'] == d_str])
-            # Tarih stringini objeye çevirip filtre butonu olarak ekliyoruz
             d_obj = datetime.datetime.strptime(d_str, "%d.%m.%Y").date()
             if st.button(f"🗓️ {d_str} ({match_count} Maç)"):
                 st.session_state.selected_date_filter = d_obj
@@ -256,7 +281,6 @@ with tab1:
                 st.session_state.takim_kadrolari[grup_adi_temiz] = grup_kadrolari
                 st.session_state.grup_formatlari[grup_adi_temiz] = format_secimi
                 
-                # SİNİR BOZUCU DÖNGÜYÜ KIRAN GÜNCELLEME:
                 if not st.session_state.skor_tablosu.empty and grup_adi_temiz in st.session_state.skor_tablosu['Grup'].unique():
                     ortak_veriyi_kaydet()
                     st.success("Mevcut grup bulundu! Kadrolar başarıyla güncellendi, eski fikstür korundu.")
@@ -442,17 +466,27 @@ with tab3:
                 st.markdown(f"### 🏆 {gp} Puan Durumu")
                 grup_df = tum_stats[tum_stats['Grup'] == gp].drop(columns=['Grup']).sort_values(by=['Galibiyet', 'Maç Av.', 'Oyun Av.'], ascending=False)
                 grup_df.index = range(1, len(grup_df) + 1)
+                
+                # --- PUAN DURUMU İÇİN PDF İNDİRME BUTONU ---
+                pdf_df = grup_df.reset_index().rename(columns={"index": "Sıra"})
+                pdf_bytes_puan = generate_pdf(pdf_df, f"{gp} Puan Durumu")
+                st.download_button(
+                    label=f"📥 {gp} Puan Durumunu PDF İndir",
+                    data=pdf_bytes_puan,
+                    file_name=f"{gp}_puan_durumu.pdf",
+                    mime="application/pdf",
+                    key=f"pdf_puan_{gp}"
+                )
+                
                 st.dataframe(grup_df, use_container_width=True)
 
 # --- TAB 4: MAÇ PROGRAMI ---
 with tab4:
     st.subheader("📅 Canlı Maç Programı ve Fikstür")
     
-    # 1. State Kontrolü (Hata almamak için)
     if 'expand_all' not in st.session_state:
         st.session_state.expand_all = False
 
-    # 2. Global Kontrol Butonu
     if st.button("🔄 Tümünü Aç / Kapat"):
         st.session_state.expand_all = not st.session_state.expand_all
         st.rerun()
@@ -466,7 +500,6 @@ with tab4:
         formatted_tarih = secilen_tarih.strftime("%d.%m.%Y")
         gun_adi = turkce_gunler[secilen_tarih.weekday()]
 
-        # Skor Güncelleme Mantığı (Aynı kalıyor)
         for idx in st.session_state.mac_programi.index:
             row = st.session_state.mac_programi.loc[idx]
             eslesen_mac = st.session_state.skor_tablosu[
@@ -497,7 +530,6 @@ with tab4:
 
         df_gunluk = st.session_state.mac_programi[st.session_state.mac_programi['Tarih'] == formatted_tarih].copy()
 
-        # Admin Yetkileri
         if st.session_state.admin_mi:
             st.markdown(f"### ➕ {formatted_tarih} Tarihine Maç Ekle")
             c1, c2, c3 = st.columns(3)
@@ -531,7 +563,6 @@ with tab4:
 
             if not df_gunluk.empty:
                 st.markdown("### 📋 Günlük Akış Editörü")
-                # ... (Admin editör kodlarınız aynı kalıyor, kısalttım) ...
                 mac_sil_secenekler = ["Seçiniz"] + [f"{r['Maç Saati']} - {r['Kort']} | {r['Grup']} | {r['Takım 1']} vs {r['Takım 2']} ({r['Branş']})" for idx, r in df_gunluk.iterrows()]
                 secilen_program_mac = st.selectbox("⛔ Programdan Kaldırılacak Maçı Seçin:", mac_sil_secenekler, key="program_mac_sil_selectbox")
                 if secilen_program_mac != "Seçiniz":
@@ -539,19 +570,27 @@ with tab4:
                     actual_match_idx = df_gunluk.index[secilen_idx_in_df]
                     if st.button("❌ Seçilen Maçı Programdan Kaldır"):
                         st.session_state.mac_programi.drop(index=actual_match_idx, inplace=True); st.session_state.mac_programi.reset_index(drop=True, inplace=True); ortak_veriyi_kaydet(); st.rerun()
+                st.divider()
+                
+                # --- MAÇ PROGRAMI (ADMİN) İÇİN PDF İNDİRME BUTONU ---
+                pdf_bytes_admin = generate_pdf(df_gunluk, f"Mac Programi - {formatted_tarih}")
+                st.download_button("📥 Programı PDF Olarak İndir", data=pdf_bytes_admin, file_name=f"mac_programi_{formatted_tarih}.pdf", mime="application/pdf", key="pdf_admin")
+                
                 guncel_program = st.data_editor(df_gunluk, use_container_width=True, num_rows="dynamic", disabled=["Grup", "Gün", "Branş", "Eşleşme", "Takım 1", "Takım 2", "T1 Oyuncu", "T2 Oyuncu", "Canlı Skor", "Kazanan"], key=f"program_editor_{formatted_tarih}")
                 if st.button("💾 Değişiklikleri Kaydet"):
                     st.session_state.mac_programi.drop(index=df_gunluk.index, inplace=True); guncel_program['Tarih'] = guncel_program['Tarih'].fillna(formatted_tarih); st.session_state.mac_programi = pd.concat([st.session_state.mac_programi, guncel_program]).reset_index(drop=True); ortak_veriyi_kaydet(); st.success("Güncellendi!"); st.rerun()
 
-        # ZİYARETÇİ GÖRÜNÜMÜ (Burayı değiştirdik)
         else:
             st.markdown(f"### 📋 {formatted_tarih} Tarihli Maç Akışı")
             if df_gunluk.empty:
                 st.info("Bu tarihte planlanmış maç bulunmamaktadır.")
             else:
-                # Eşleşme bazlı gruplama ve Expander mantığı
+                # --- MAÇ PROGRAMI (ZİYARETÇİ) İÇİN PDF İNDİRME BUTONU ---
+                pdf_bytes_user = generate_pdf(df_gunluk, f"Mac Programi - {formatted_tarih}")
+                st.download_button("📥 Programı PDF Olarak İndir", data=pdf_bytes_user, file_name=f"mac_programi_{formatted_tarih}.pdf", mime="application/pdf", key="pdf_ziyaretci")
+                st.divider()
+                
                 for eslesme, grup_df in df_gunluk.groupby('Eşleşme'):
-                    # Expander başlığı
                     takim1 = grup_df.iloc[0]['Takım 1']
                     takim2 = grup_df.iloc[0]['Takım 2']
                     
@@ -562,7 +601,6 @@ with tab4:
                             skor_html = f"<span style='color:green; font-weight:bold;'>{skor}</span>" if skor not in ["Oynanmadı", ""] else "<i>Bekleniyor</i>"
                             t1_o = str(row.get('T1 Oyuncu', '')).strip()
                             t2_o = str(row.get('T2 Oyuncu', '')).strip()
-                            # Basit satır gösterimi
                             html_rows += f"<tr><td>{row['Branş']}</td><td>{t1_o} / {t2_o}</td><td>{skor_html}</td></tr>"
                         
                         st.markdown(f"""
@@ -588,7 +626,6 @@ with tab5:
                     
                     st.markdown("---")
                     
-                    # --- YENİ EKLENEN KISIM: GRUP TİPİ VE FORMAT SEÇİMİ ---
                     m_kadrolar = st.session_state.takim_kadrolari.get(sec_g, {})
                     mevcut_takim_sayisi = len(m_kadrolar)
                     tip_liste = ["3'lü Grup", "4'lü Grup", "5'li Grup", "6'lı Grup"]
@@ -621,7 +658,6 @@ with tab5:
                     yeni_k_yapisi = {}
                     isim_degisiklikleri = {}
                     
-                    # Dinamik Takım Kutuları (Artarsa yeni kutu açar, azalırsa keser)
                     for i in range(beklenen_yeni_sayi):
                         esk_ad = mevcut_takim_isimleri[i] if i < len(mevcut_takim_isimleri) else f"Yeni Takım {i+1}"
                         oyuncular = m_kadrolar.get(esk_ad, ["Belirtilmedi"])
@@ -639,11 +675,9 @@ with tab5:
                         g_hedef = yeni_grup_adi if yeni_grup_adi.strip() != "" else sec_g
                         
                         if fikstur_sifirlanacak_mi:
-                            # 1. Eski maçları skor tablosu ve programdan sil
                             st.session_state.skor_tablosu = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] != sec_g]
                             st.session_state.mac_programi = st.session_state.mac_programi[st.session_state.mac_programi['Grup'] != sec_g]
                             
-                            # 2. Kadro ve Format verisini güncelle
                             st.session_state.takim_kadrolari[g_hedef] = yeni_k_yapisi
                             st.session_state.grup_formatlari[g_hedef] = yeni_format
                             
@@ -651,7 +685,6 @@ with tab5:
                                 if sec_g in st.session_state.takim_kadrolari: del st.session_state.takim_kadrolari[sec_g]
                                 if sec_g in st.session_state.grup_formatlari: del st.session_state.grup_formatlari[sec_g]
                                 
-                            # 3. Yeni ayarlarla yepyeni bir fikstür üret
                             yeni_takim_listesi = list(yeni_k_yapisi.keys())
                             yeni_df = pd.DataFrame(eslesmeleri_olustur(g_hedef, yeni_takim_listesi, yeni_grup_tipi, yeni_format))
                             if st.session_state.skor_tablosu.empty:
@@ -663,7 +696,6 @@ with tab5:
                             st.success("Grup ayarları güncellendi ve yeni fikstür başarıyla oluşturuldu!")
                             
                         else:
-                            # Sadece İsim veya Kadro Güncellemesi (Fikstür Bozulmaz)
                             st.session_state.takim_kadrolari[sec_g] = yeni_k_yapisi
                             if isim_degisiklikleri:
                                 for e_a, y_a in isim_degisiklikleri.items():
