@@ -86,7 +86,6 @@ with t1:
     else:
         st.header("Grup ve Takım İşlemleri")
         
-        # Ekranı ikiye böldük: Sol taraf form, Sağ taraf ağaç listesi
         col_form, col_liste = st.columns([5, 5], gap="large")
         
         with col_form:
@@ -118,7 +117,6 @@ with t1:
             if not st.session_state.takim_kadrolari:
                 st.info("Henüz sisteme eklenmiş bir grup bulunmuyor.")
             else:
-                # Tıklayınca açılan Grup > Takım > Oyuncu yapısı
                 for g_adi, takimlar in st.session_state.takim_kadrolari.items():
                     with st.expander(f"📁 {g_adi}"):
                         if not takimlar:
@@ -171,13 +169,11 @@ with t2:
         st.subheader("📅 Mevcut Maç Programı")
         st.dataframe(st.session_state.mac_programi, use_container_width=True)
         
-        # İSTENİLEN MAÇI SEÇEREK SİLME BÖLÜMÜ
         if not st.session_state.mac_programi.empty:
             st.divider()
             st.markdown("### 🗑️ Programdan Maç Sil")
             st.info("Aşağıdaki listeden hatalı girdiğiniz veya iptal edilen bir maçı seçerek silebilirsiniz.")
             
-            # Kullanıcıya göstermek için anlaşılır bir liste oluştur (arka planda DataFrame indeksini tutuyoruz)
             maclar_listesi = []
             for idx, row in st.session_state.mac_programi.iterrows():
                 maclar_listesi.append(f"{idx}:: {row['Grup']} | {row['Takım 1']} vs {row['Takım 2']} ({row['Tarih/Saat']})")
@@ -185,15 +181,12 @@ with t2:
             secilen_silinecek = st.selectbox("Silinecek maçı seçin:", maclar_listesi)
             
             if st.button("🗑️ Seçili Maçı Sil", type="primary"):
-                # Seçilen formatın başındaki indeksi yakala
                 gercek_idx = int(secilen_silinecek.split("::")[0])
                 satir = st.session_state.mac_programi.loc[gercek_idx]
                 g_adi, t1_adi, t2_adi = satir["Grup"], satir["Takım 1"], satir["Takım 2"]
                 
-                # 1. Maç programından sil ve indeksi sıfırla
                 st.session_state.mac_programi = st.session_state.mac_programi.drop(gercek_idx).reset_index(drop=True)
                 
-                # 2. Skor tablosundan sil (Aynı eşleşmeye sahip ilk maçı bulup siler)
                 skor_sil_idx = st.session_state.skor_tablosu[
                     (st.session_state.skor_tablosu['Grup'] == g_adi) & 
                     (st.session_state.skor_tablosu['Takım 1'] == t1_adi) & 
@@ -335,20 +328,47 @@ with t5:
                 st.rerun()
 
         st.divider()
-        st.markdown("### 🗑️ Yedekleme ve Sıfırlama")
-        c_yedek, c_sil = st.columns(2)
+        st.markdown("### 💾 Yedekleme, Geri Yükleme ve Sıfırlama")
+        
+        # Ekranı 3 kolona böldük: İndir, Yükle, Sıfırla
+        c_yedek, c_yukle, c_sil = st.columns(3)
+        
         with c_yedek:
+            st.markdown("#### 📥 Dışa Aktar")
             if os.path.exists(VERI_DOSYASI):
                 with open(VERI_DOSYASI, "rb") as f:
                     st.download_button(
-                        label="📥 Turnuva Verisini Yedekle (JSON)", 
+                        label="💾 Turnuva Verisini İndir", 
                         data=f, 
                         file_name=f"turnuva_yedek_{datetime.date.today().strftime('%Y%m%d')}.json", 
                         mime="application/json"
                     )
+            else:
+                st.info("Henüz yedeklenecek veri yok.")
+                
+        with c_yukle:
+            st.markdown("#### 📤 İçe Aktar (Geri Yükle)")
+            yuklenen_dosya = st.file_uploader("Yedek JSON Dosyası Seç:", type=['json'], label_visibility="collapsed")
+            if yuklenen_dosya is not None:
+                if st.button("📂 Yükle ve Uygula"):
+                    try:
+                        data = json.load(yuklenen_dosya)
+                        if "skor_tablosu" in data:
+                            st.session_state.skor_tablosu = pd.DataFrame(data["skor_tablosu"])
+                        if "mac_programi" in data:
+                            st.session_state.mac_programi = pd.DataFrame(data["mac_programi"])
+                        if "takim_kadrolari" in data:
+                            st.session_state.takim_kadrolari = data["takim_kadrolari"]
+                        ortak_veriyi_kaydet()
+                        st.success("Veriler başarıyla geri yüklendi!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error("Dosya yüklenirken hata oluştu. Geçerli bir JSON dosyası olduğundan emin olun.")
+                        
         with c_sil:
-            onayi_ver = st.checkbox("Turnuvayı tamamen sıfırlamayı onaylıyorum.")
-            if st.button("🚨 Tüm Sistemi Sıfırla", type="primary", disabled=not onayi_ver):
+            st.markdown("#### 🚨 Sistemi Sıfırla")
+            onayi_ver = st.checkbox("Turnuvayı sıfırlamayı onaylıyorum.")
+            if st.button("🗑️ Tüm Sistemi Sıfırla", type="primary", disabled=not onayi_ver):
                 st.session_state.clear()
                 if os.path.exists(VERI_DOSYASI):
                     os.remove(VERI_DOSYASI)
