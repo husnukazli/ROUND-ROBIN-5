@@ -476,12 +476,12 @@ pdf_bytes = generate_pdf(pdf_df, f"{gp} Puan Durumu")
 
 # Download butonunu bu şekilde çağırın
 st.download_button(
-    label=f"📥 {gp} Puan Durumunu PDF İndir",
-    data=pdf_bytes,  # generate_pdf fonksiyonu artık garanti bytes döner
-    file_name=f"{gp}_puan_durumu.pdf",
-    mime="application/pdf",
-    key=f"pdf_puan_{gp}"
-)
+            label=f"📥 {gp} Puan Durumunu PDF İndir",
+            data=pdf_bytes,
+            file_name=f"{gp}_puan_durumu.pdf",
+            mime="application/pdf",
+            key=f"pdf_puan_{gp}"
+        )
                 )
                 
                 st.dataframe(grup_df, use_container_width=True)
