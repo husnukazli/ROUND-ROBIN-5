@@ -37,11 +37,8 @@ def generate_pdf(df, baslik):
                 pdf.cell(col_width, 8, to_latin(item), border=1)
             pdf.ln()
     
-    # KÖK ÇÖZÜM: Çıktıyı al ve garanti olması için bytes formatına zorla
-    result = pdf.output()
-    if isinstance(result, str):
-        return result.encode('latin-1')
-    return result
+    # HATA ÇÖZÜMÜ: Çıktıyı doğrudan 'bytes' tipine zorluyoruz
+    return bytes(pdf.output())
 
 def ortak_veriyi_kaydet():
     data = {
