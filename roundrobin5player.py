@@ -18,6 +18,7 @@ def to_latin(text):
     return str(text).encode('latin-1', 'replace').decode('latin-1')
 
 def generate_pdf(df, baslik):
+    """ Mevcut PDF fonksiyonunuzu bununla değiştirin """
     pdf = FPDF(orientation='L', unit='mm', format='A4')
     pdf.add_page()
     pdf.set_font("Arial", 'B', 14)
@@ -34,10 +35,10 @@ def generate_pdf(df, baslik):
         pdf.set_font("Arial", '', 9)
         for _, row in df.iterrows():
             for item in row:
-                pdf.cell(col_width, 8, to_latin(item), border=1)
+                pdf.cell(col_width, 8, to_latin(str(item)), border=1)
             pdf.ln()
     
-    # HATA ÇÖZÜMÜ: Çıktıyı doğrudan 'bytes' tipine zorluyoruz
+    # HATA ÇÖZÜMÜ: Çıktıyı zorunlu olarak 'bytes' tipine çeviriyoruz.
     return bytes(pdf.output())
 
 def ortak_veriyi_kaydet():
