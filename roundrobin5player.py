@@ -18,7 +18,6 @@ def to_latin(text):
     return str(text).encode('latin-1', 'replace').decode('latin-1')
 
 def generate_pdf(df, baslik):
-    """ Mevcut PDF fonksiyonunuzu bununla değiştirin """
     pdf = FPDF(orientation='L', unit='mm', format='A4')
     pdf.add_page()
     pdf.set_font("Arial", 'B', 14)
@@ -35,11 +34,10 @@ def generate_pdf(df, baslik):
         pdf.set_font("Arial", '', 9)
         for _, row in df.iterrows():
             for item in row:
-                pdf.cell(col_width, 8, to_latin(str(item)), border=1)
+                pdf.cell(col_width, 8, to_latin(item), border=1)
             pdf.ln()
     
-    # HATA ÇÖZÜMÜ: Çıktıyı zorunlu olarak 'bytes' tipine çeviriyoruz.
-    return bytes(pdf.output())
+    return pdf.output()
 
 def ortak_veriyi_kaydet():
     data = {
@@ -471,19 +469,17 @@ with tab3:
                 
                 # --- PUAN DURUMU İÇİN PDF İNDİRME BUTONU ---
                 pdf_df = grup_df.reset_index().rename(columns={"index": "Sıra"})
-# PDF'i oluştur
-pdf_bytes = generate_pdf(pdf_df, f"{gp} Puan Durumu")
+                pdf_bytes_puan = generate_pdf(pdf_df, f"{gp} Puan Durumu")
+                st.download_button(
+                    label=f"📥 {gp} Puan Durumunu PDF İndir",
+                    data=pdf_bytes_puan,
+                    file_name=f"{gp}_puan_durumu.pdf",
+                    mime="application/pdf",
+                    key=f"pdf_puan_{gp}"
+                )
+                
+                st.dataframe(grup_df, use_container_width=True)
 
-# Download butonunu bu şekilde çağırın
-st.download_button(
-    label=f"📥 {gp} Puan Durumunu PDF İndir",
-    data=pdf_bytes,
-    file_name=f"{gp}_puan_durumu.pdf",
-    mime="application/pdf",
-    key=f"pdf_puan_{gp}"
-)
-
-st.dataframe(grup_df, use_container_width=True)
 # --- TAB 4: MAÇ PROGRAMI ---
 with tab4:
     st.subheader("📅 Canlı Maç Programı ve Fikstür")
