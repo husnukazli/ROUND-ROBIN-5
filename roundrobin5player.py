@@ -138,7 +138,6 @@ def eslesmeleri_olustur(grup_adi, takimlar, grup_tipi, format_secimi):
             {"Gün": "5. Gün", "Eşleşme": "4 ve 5", "Takım 1": takimlar[3], "Takım 2": takimlar[4]},
         ]
     
-    # 3'lü veya 5'li maç formatına göre branş listesini dinamikleştiriyoruz
     if format_secimi == "5 Maçlık (3 Tek, 2 Çift)":
         branslar = ["1. Tekler", "2. Tekler", "3. Tekler", "1. Çiftler", "2. Çiftler"]
     else:
@@ -174,7 +173,6 @@ with tab1:
             
         grup_adi = st.text_input("Grup Adı:", placeholder="Örn: 65+ Erkekler A Grubu")
         
-        # YENİ: Mükerrer grup ismi kontrolü ve canlı uyarı mesajı
         if grup_adi.strip() in st.session_state.takim_kadrolari:
             st.error("⚠️ Bu isimde bir grup zaten tanımlanmış! Lütfen benzersiz bir grup adı giriniz.")
             
@@ -216,7 +214,6 @@ with tab1:
                     st.success("Grup ve fikstür başarıyla oluşturuldu!")
                 st.rerun()
         
-        # Admin kullanıcısının da mevcut yapıyı takip edebilmesi için alfabetik akordeon görünümü ekliyoruz
         if st.session_state.takim_kadrolari:
             st.markdown("---")
             st.markdown("### 📁 Mevcut Kayıtlı Gruplar ve Kadrolar")
@@ -229,7 +226,6 @@ with tab1:
                         st.write(", ".join(g_kadro[t_isim]) if g_kadro[t_isim] else "Oyuncu yok")
     else:
         st.info("ℹ️ Kadro ve grup tanımlama işlemleri sadece Başhakem yetkisindedir.")
-        # YENİ: İzleyici modunda st.json yerine Alfabetik Akordeon (Expander) Listeleme yapısı
         if st.session_state.takim_kadrolari:
             st.markdown("### 📁 Mevcut Kayıtlı Gruplar ve Kadrolar")
             for g_isim in sorted(st.session_state.takim_kadrolari.keys()):
@@ -264,7 +260,6 @@ with tab2:
                 
                 r_cols[0].write(f"**{t1_isim}**")
                 
-                # Format 5 maçlık seçildiğinde branş adı "Çiftler", "1. Çiftler" veya "2. Çiftler" olabileceğinden metin kontrolü yapıyoruz
                 if "Çiftler" in str(row['Branş']):
                     eski_kayit1 = str(row['T1_Oyuncu'])
                     for char in ["[", "]", "'", '"']: eski_kayit1 = eski_kayit1.replace(char, "")
@@ -367,7 +362,6 @@ with tab3:
         
         seriler = df.groupby(['Grup', 'Gün', 'Eşleşme', 'Takım 1', 'Takım 2']).agg({'T1_Match_Win': 'sum', 'T2_Match_Win': 'sum', 'T1_Set_Skor': 'sum', 'T2_Set_Skor': 'sum', 'T1_Oyun': 'sum', 'T2_Oyun': 'sum'}).reset_index()
         
-        # YENİ: Hem 3'lü hem de 5'li formatta bağımsız ve kusursuz çalışması için bağıl galibiyet (çoğunluğu alan kazanır) mantığına geçildi
         seriler['T1_Win'] = (seriler['T1_Match_Win'] > seriler['T2_Match_Win']).astype(int)
         seriler['T2_Win'] = (seriler['T2_Match_Win'] > seriler['T1_Match_Win']).astype(int)
         
@@ -381,7 +375,6 @@ with tab3:
         tum_stats['Set Av.'] = tum_stats['Aldığı Set'] - tum_stats['Verdiği Set']
         tum_stats['Oyun Av.'] = tum_stats['Aldığı Oyun'] - tum_stats['Verdiği Oyun']
         
-        # --- YENİ: GRUP SEÇİMİ ---
         mevcut_gruplar = list(tum_stats['Grup'].unique())
         secim_opsiyonlari = ["Tümünü Göster"] + mevcut_gruplar
         secilen_gruplar = st.multiselect("🔍 Görüntülenecek Grupları Seçin (Karşılaştırmak istediklerinizi ekleyebilirsiniz):", options=secim_opsiyonlari, default=["Tümünü Göster"])
@@ -419,7 +412,6 @@ with tab4:
                 st.session_state.mac_programi.at[idx, "T1 Oyuncu"] = t1_o
                 st.session_state.mac_programi.at[idx, "T2 Oyuncu"] = t2_o
 
-                # Skor Formatı (TB kaldırıldı) ve Kazanan Belirleme
                 s1t1, s1t2 = int(m['1.Set T1']), int(m['1.Set T2'])
                 s2t1, s2t2 = int(m['2.Set T1']), int(m['2.Set T2'])
                 s3t1, s3t2 = int(m['3.Set T1']), int(m['3.Set T2'])
@@ -430,7 +422,6 @@ with tab4:
                         skor_str += f" | {s3t1}-{s3t2}" 
                     st.session_state.mac_programi.at[idx, "Canlı Skor"] = skor_str
                     
-                    # Kazananı hesapla (2 set alan maçı kazanır)
                     t1_set_sayisi = (s1t1 > s1t2) + (s2t1 > s2t2) + (s3t1 > s3t2)
                     t2_set_sayisi = (s1t2 > s1t1) + (s2t2 > s2t1) + (s3t2 > s3t1)
                     if t1_set_sayisi >= 2:
@@ -445,7 +436,6 @@ with tab4:
 
         df_gunluk = st.session_state.mac_programi[st.session_state.mac_programi['Tarih'] == formatted_tarih].copy()
 
-        # --- YÖNETİCİ MODU ---
         if st.session_state.admin_mi:
             st.markdown(f"### ➕ {formatted_tarih} Tarihine Maç Ekle")
             c1, c2, c3 = st.columns(3)
@@ -508,7 +498,6 @@ with tab4:
                     st.success("Güncellendi!")
                     st.rerun()
 
-        # --- MİSAFİR MODU (KOMPAKT & KAZANAN RENK) ---
         else:
             st.markdown(f"### 📋 {formatted_tarih} Tarihli Maç Akışı")
             if df_gunluk.empty:
@@ -519,15 +508,10 @@ with tab4:
                     .ref-table { width: 100%; border-collapse: collapse; font-family: sans-serif; }
                     .ref-table th { background: #334155; color: white; padding: 6px 10px; text-align: left; font-size: 0.95rem; }
                     .ref-table td { padding: 6px 10px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
-                    
-                    /* Standart Takım ve Oyuncu */
                     .team-cell { font-weight: 600; font-size: 0.95rem; color: #1e293b; }
                     .player-cell { font-style: italic; color: #64748b; font-size: 0.82rem; display: block; margin-top: 2px; }
-                    
-                    /* Kazanan Takım ve Oyuncu (Koyu Yeşil ve Kalın) */
                     .winner-team { font-weight: 900; font-size: 1rem; color: #065f46; }
                     .winner-player { font-style: italic; font-weight: 700; color: #065f46; font-size: 0.85rem; display: block; margin-top: 2px; }
-
                     .score-cell { font-weight: bold; color: #be123c; }
                     .waiting-cell { color: #059669; font-weight: bold; font-size: 0.9rem; }
                     .ref-table tr:hover { background-color: #f8fafc; }
@@ -543,7 +527,6 @@ with tab4:
                     t2_o = str(row.get('T2 Oyuncu', '')).strip()
                     kazanan = str(row.get('Kazanan', ''))
 
-                    # CSS Sınıf Atamaları
                     t1_tc = "winner-team" if kazanan == "T1" else "team-cell"
                     t1_pc = "winner-player" if kazanan == "T1" else "player-cell"
                     t2_tc = "winner-team" if kazanan == "T2" else "team-cell"
@@ -567,7 +550,6 @@ with tab5:
                 t_gruplar = st.session_state.skor_tablosu['Grup'].unique()
                 sec_g = st.selectbox("Düzenlenecek Grup Seç:", t_gruplar, key="admin_edit_grup")
                 
-                # GRUP ADI DEĞİŞTİRME
                 yeni_grup_adi = st.text_input("Grup Adını Güncelle:", value=sec_g, key="yeni_g_adi")
                 
                 st.markdown("---")
@@ -585,14 +567,12 @@ with tab5:
                         yeni_k_yapisi[y_ad if y_ad else esk_ad] = [o.strip() for o in y_o_text.split('\n') if o.strip()]
                 
                 if st.button("💾 Yapılan Değişiklikleri Veritabanına Yaz"):
-                    # Önce Takım isimleri ve kadro güncellemesi
                     st.session_state.takim_kadrolari[sec_g] = yeni_k_yapisi
                     if isim_degisiklikleri:
                         for e_a, y_a in isim_degisiklikleri.items():
                             st.session_state.skor_tablosu.replace({e_a: y_a}, inplace=True)
                             st.session_state.mac_programi.replace({e_a: y_a}, inplace=True)
                     
-                    # Sonra Grup Adı güncellemesi (eğer değiştiyse)
                     if yeni_grup_adi != sec_g and yeni_grup_adi.strip() != "":
                         st.session_state.skor_tablosu.loc[st.session_state.skor_tablosu['Grup'] == sec_g, 'Grup'] = yeni_grup_adi
                         st.session_state.mac_programi.loc[st.session_state.mac_programi['Grup'] == sec_g, 'Grup'] = yeni_grup_adi
@@ -603,6 +583,33 @@ with tab5:
                     ortak_veriyi_kaydet()
                     st.success("Tüm grup ve takım bilgileri başarıyla güncellendi!")
                     st.rerun()
+
+        # --- YENİ EKLENEN GRUP SİLME BÖLÜMÜ ---
+        st.markdown("### 🗑️ Grup Silme İşlemleri")
+        if not st.session_state.skor_tablosu.empty:
+            silinecek_gruplar = st.session_state.skor_tablosu['Grup'].unique()
+            secilen_sil_grup = st.selectbox("Silinecek Grubu Seçin:", silinecek_gruplar, key="grup_sil_secim")
+            st.warning(f"⚠️ DİKKAT: '{secilen_sil_grup}' grubunu ve bu gruba ait tüm fikstür/kadro kayıtlarını kalıcı olarak sileceksiniz!")
+            
+            if st.button(f"🚨 '{secilen_sil_grup}' Grubunu Tamamen Sil"):
+                # DataFrame'lerden ilgili grubun satırlarını temizle
+                st.session_state.skor_tablosu = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] != secilen_sil_grup]
+                st.session_state.mac_programi = st.session_state.mac_programi[st.session_state.mac_programi['Grup'] != secilen_sil_grup]
+                
+                # Sözlüklerden grubu temizle
+                if secilen_sil_grup in st.session_state.takim_kadrolari:
+                    del st.session_state.takim_kadrolari[secilen_sil_grup]
+                if secilen_sil_grup in st.session_state.grup_formatlari:
+                    del st.session_state.grup_formatlari[secilen_sil_grup]
+                
+                # Değişiklikleri JSON'a kaydet ve arayüzü yenile
+                ortak_veriyi_kaydet()
+                st.success(f"'{secilen_sil_grup}' grubu sistemden başarıyla silindi!")
+                st.rerun()
+        else:
+            st.info("Sistemde silinecek herhangi bir grup bulunmuyor.")
+
+        st.markdown("---")
 
         st.markdown("### 💾 Yedekleme Paneli")
         c_sv, c_ld = st.columns(2)
