@@ -186,6 +186,7 @@ def eslesmeleri_olustur(grup_adi, takimlar, grup_tipi, format_secimi):
 tab1, tab2, tab3, tab4, tab5 = st.tabs(["👥 1. Grup Ayarları", "✍️ 2. Skor Girişi", "🏆 3. Puan Durumu", "📅 4. Maç Programı", "⚙️ 5. Yönetim & Dosya"])
 
 # --- TAB 1: GRUP AYARLARI ---
+# --- TAB 1: GRUP AYARLARI ---
 with tab1:
     st.subheader("Turnuva Grupları ve Kadrolar")
     if st.session_state.admin_mi:
@@ -194,24 +195,24 @@ with tab1:
             grup_tipi = st.radio("Grup Tipi:", ["3'lü Grup", "4'lü Grup", "5'li Grup", "6'lı Grup"], horizontal=True)
         with col_t2:
             format_secimi = st.radio("Müsabaka Maç Formatı:", ["3 Maçlık (2 Tek, 1 Çift)", "5 Maçlık (3 Tek, 2 Çift)"], horizontal=True)
-            
-grup_adi = st.text_input("Grup Adı:", placeholder="Örn: 65+ Erkekler A Grubu")
-            
-            # --- Buradaki bloğu komple kopyalayıp mevcut olanın yerine yapıştır ---
-            if grup_tipi == "3'lü Grup": 
-                beklenen_sayi = 3
-            elif grup_tipi == "4'lü Grup": 
-                beklenen_sayi = 4
-            elif grup_tipi == "5'li Grup": 
-                beklenen_sayi = 5
-            else: 
-                beklenen_sayi = 6
-            # ---------------------------------------------------------------------
-            
-            if grup_adi.strip() in st.session_state.takim_kadrolari:
-                st.error("⚠️ Bu isimde bir grup zaten tanımlanmış! Lütfen benzersiz bir grup adı giriniz.")
-                
-            takim_listesi = st.text_area(f"Takım İsimlerini Satır Satır Yazın (Tam olarak {beklenen_sayi} Takım):")
+        
+        grup_adi = st.text_input("Grup Adı:", placeholder="Örn: 65+ Erkekler A Grubu")
+        
+        # Beklenen sayı hesaplaması - Doğru girinti ile
+        if grup_tipi == "3'lü Grup": 
+            beklenen_sayi = 3
+        elif grup_tipi == "4'lü Grup": 
+            beklenen_sayi = 4
+        elif grup_tipi == "5'li Grup": 
+            beklenen_sayi = 5
+        else: 
+            beklenen_sayi = 6
+        
+        if grup_adi.strip() in st.session_state.takim_kadrolari:
+            st.error("⚠️ Bu isimde bir grup zaten tanımlanmış! Lütfen benzersiz bir grup adı giriniz.")
+        
+        takim_listesi = st.text_area(f"Takım İsimlerini Satır Satır Yazın (Tam olarak {beklenen_sayi} Takım):")
+        takimlar = [t.strip() for t in takim_listesi.split('\n') if t.strip()]
         
         grup_kadrolari = {}
         kadro_hata = False
