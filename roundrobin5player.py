@@ -101,19 +101,28 @@ def set_gecerli_mi(t1, t2, is_set3=False):
         return True, ""
     if t1 < 0 or t2 < 0:
         return False, "Skorlar negatif olamaz."
+    
     max_s, min_s = max(t1, t2), min(t1, t2)
     diff = max_s - min_s
     
-    # 3. Set Süper Tie-Break Düzeltmesi buraya güvenle uygulandı
     if is_set3:
-        if max_s == 10 and min_s <= 8: return True, ""
-        elif max_s > 10 and diff == 2: return True, ""
-        else: return False, "3. Set Süper Tie-Break kurallarına uymuyor!"
-            
-    if max_s < 6: return False, "Set en az 6 oyun olmalıdır."
-    if max_s == 6 and diff >= 2: return True, ""
-    if max_s == 7 and (diff == 2 or diff == 1): return True, ""
-    return False, "Geçersiz set skoru (Örn: 6-5 olamaz, uzamalıdır)."
+        # Akıllı Algılama: Skor 10 veya üzerindeyse Match Tie-Break olarak değerlendir
+        if max_s >= 10:
+            if max_s == 10 and min_s <= 8: return True, ""
+            elif max_s > 10 and diff == 2: return True, ""
+            else: return False, "Süper Tie-Break kurallarına uymuyor (Örn: 10-8 veya 12-10 olmalıdır)."
+        # Değilse Normal Set kurallarını işlet (Tekler maçları için)
+        else:
+            if max_s < 6: return False, "Set en az 6 oyun olmalıdır."
+            if max_s == 6 and diff >= 2: return True, ""
+            if max_s == 7 and (diff == 2 or diff == 1): return True, ""
+            return False, "Geçersiz normal set skoru (Örn: 6-5 olamaz, uzamalıdır)."
+    else:
+        # 1. ve 2. Set için klasik kurallar
+        if max_s < 6: return False, "Set en az 6 oyun olmalıdır."
+        if max_s == 6 and diff >= 2: return True, ""
+        if max_s == 7 and (diff == 2 or diff == 1): return True, ""
+        return False, "Geçersiz set skoru (Örn: 6-5 olamaz, uzamalıdır)."
 
 def eslesmeleri_olustur(grup_adi, takimlar, grup_tipi, format_secimi):
     if grup_tipi == "3'lü Grup":
@@ -144,23 +153,23 @@ def eslesmeleri_olustur(grup_adi, takimlar, grup_tipi, format_secimi):
             {"Gün": "5. Gün", "Eşleşme": "1 ve 2", "Takım 1": takimlar[0], "Takım 2": takimlar[1]},
             {"Gün": "5. Gün", "Eşleşme": "4 ve 5", "Takım 1": takimlar[3], "Takım 2": takimlar[4]},
         ]
-    else: # 6'lı Grup
+    else: # 6'lı Grup Güncellemesi (Harfler rakamlara dönüştürüldü)
         base_matches = [
-            {"Gün": "1. Gün", "Eşleşme": "A ve F", "Takım 1": takimlar[0], "Takım 2": takimlar[5]},
-            {"Gün": "1. Gün", "Eşleşme": "B ve E", "Takım 1": takimlar[1], "Takım 2": takimlar[4]},
-            {"Gün": "1. Gün", "Eşleşme": "C ve D", "Takım 1": takimlar[2], "Takım 2": takimlar[3]},
-            {"Gün": "2. Gün", "Eşleşme": "A ve E", "Takım 1": takimlar[0], "Takım 2": takimlar[4]},
-            {"Gün": "2. Gün", "Eşleşme": "B ve C", "Takım 1": takimlar[1], "Takım 2": takimlar[2]},
-            {"Gün": "2. Gün", "Eşleşme": "D ve F", "Takım 1": takimlar[3], "Takım 2": takimlar[5]},
-            {"Gün": "3. Gün", "Eşleşme": "A ve D", "Takım 1": takimlar[0], "Takım 2": takimlar[3]},
-            {"Gün": "3. Gün", "Eşleşme": "E ve C", "Takım 1": takimlar[4], "Takım 2": takimlar[2]},
-            {"Gün": "3. Gün", "Eşleşme": "B ve F", "Takım 1": takimlar[1], "Takım 2": takimlar[5]},
-            {"Gün": "4. Gün", "Eşleşme": "A ve C", "Takım 1": takimlar[0], "Takım 2": takimlar[2]},
-            {"Gün": "4. Gün", "Eşleşme": "D ve B", "Takım 1": takimlar[3], "Takım 2": takimlar[1]},
-            {"Gün": "4. Gün", "Eşleşme": "E ve F", "Takım 1": takimlar[4], "Takım 2": takim tropics[5]},
-            {"Gün": "5. Gün", "Eşleşme": "A ve B", "Takım 1": takimlar[0], "Takım 2": takimlar[1]},
-            {"Gün": "5. Gün", "Eşleşme": "D ve E", "Takım 1": takimlar[3], "Takım 2": takimlar[4]},
-            {"Gün": "5. Gün", "Eşleşme": "C ve F", "Takım 1": takimlar[2], "Takım 2": takimlar[5]},
+            {"Gün": "1. Gün", "Eşleşme": "1 ve 6", "Takım 1": takimlar[0], "Takım 2": takimlar[5]},
+            {"Gün": "1. Gün", "Eşleşme": "2 ve 5", "Takım 1": takimlar[1], "Takım 2": takimlar[4]},
+            {"Gün": "1. Gün", "Eşleşme": "3 ve 4", "Takım 1": takimlar[2], "Takım 2": takimlar[3]},
+            {"Gün": "2. Gün", "Eşleşme": "1 ve 5", "Takım 1": takimlar[0], "Takım 2": takimlar[4]},
+            {"Gün": "2. Gün", "Eşleşme": "2 ve 3", "Takım 1": takimlar[1], "Takım 2": takimlar[2]},
+            {"Gün": "2. Gün", "Eşleşme": "4 ve 6", "Takım 1": takimlar[3], "Takım 2": takimlar[5]},
+            {"Gün": "3. Gün", "Eşleşme": "1 ve 4", "Takım 1": takimlar[0], "Takım 2": takimlar[3]},
+            {"Gün": "3. Gün", "Eşleşme": "5 ve 3", "Takım 1": takimlar[4], "Takım 2": takimlar[2]},
+            {"Gün": "3. Gün", "Eşleşme": "2 ve 6", "Takım 1": takimlar[1], "Takım 2": takimlar[5]},
+            {"Gün": "4. Gün", "Eşleşme": "1 ve 3", "Takım 1": takimlar[0], "Takım 2": takimlar[2]},
+            {"Gün": "4. Gün", "Eşleşme": "4 ve 2", "Takım 1": takimlar[3], "Takım 2": takimlar[1]},
+            {"Gün": "4. Gün", "Eşleşme": "5 ve 6", "Takım 1": takimlar[4], "Takım 2": takimlar[5]},
+            {"Gün": "5. Gün", "Eşleşme": "1 ve 2", "Takım 1": takimlar[0], "Takım 2": takimlar[1]},
+            {"Gün": "5. Gün", "Eşleşme": "4 ve 5", "Takım 1": takimlar[3], "Takım 2": takimlar[4]},
+            {"Gün": "5. Gün", "Eşleşme": "3 ve 6", "Takım 1": takimlar[2], "Takım 2": takimlar[5]},
         ]
     
     if format_secimi == "5 Maçlık (3 Tek, 2 Çift)":
@@ -206,8 +215,6 @@ with tab1:
             beklenen_sayi = 5
         else: 
             beklenen_sayi = 6
-        
-        # Mükerrer hata uyarısı buradan kaldırılarak buton içine entegre edildi.
         
         takim_listesi = st.text_area(f"Takım İsimlerini Satır Satır Yazın (Tam olarak {beklenen_sayi} Takım):")
         takimlar = [t.strip() for t in takim_listesi.split('\n') if t.strip()]
@@ -379,11 +386,12 @@ with tab3:
             t2_set = int(s1_t2 > s1_t1) + int(s2_t2 > s2_t1)
             t1_oyun = s1_t1 + s2_t1
             t2_oyun = s1_t2 + s2_t2
+            
             if s3_t1 > 0 or s3_t2 > 0:
-                if s3_t1 >= 10 or s3_t2 >= 10:
+                if s3_t1 >= 10 or s3_t2 >= 10:  # Match Tie-Break hesabı (Süper Tie-Break averajı)
                     if s3_t1 > s3_t2: t1_set += 1; t1_oyun += 1
                     else: t2_set += 1; t2_oyun += 1
-                else:
+                else:  # Normal set hesabı
                     t1_set += int(s3_t1 > s3_t2); t2_set += int(s3_t2 > s3_t1)
                     t1_oyun += s3_t1; t2_oyun += s3_t2
             return pd.Series([t1_oyun, t2_oyun, t1_set, t2_set])
@@ -588,7 +596,6 @@ with tab5:
         with st.expander("✍️ Grup Adını, Takımları ve Kadroları Revize Et"):
             if not st.session_state.skor_tablosu.empty:
                 t_gruplar = sorted(list(st.session_state.skor_tablosu['Grup'].unique()))
-                # "Seçiniz" varsayılan olarak eklendi
                 sec_g = st.selectbox("Düzenlenecek Grup Seç:", ["Seçiniz"] + t_gruplar, key="admin_edit_grup")
                 
                 if sec_g != "Seçiniz":
@@ -630,7 +637,6 @@ with tab5:
         st.markdown("### 🗑️ Grup Silme İşlemleri")
         if not st.session_state.skor_tablosu.empty:
             silinecek_gruplar = sorted(list(st.session_state.skor_tablosu['Grup'].unique()))
-            # "Seçiniz" varsayılan olarak eklendi
             secilen_sil_grup = st.selectbox("Silinecek Grubu Seçin:", ["Seçiniz"] + silinecek_gruplar, key="grup_sil_secim")
             
             if secilen_sil_grup != "Seçiniz":
