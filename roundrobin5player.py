@@ -37,8 +37,8 @@ def generate_pdf(df, baslik):
                 pdf.cell(col_width, 8, to_latin(item), border=1)
             pdf.ln()
     
-    return pdf.output()
-
+    # HATA ÇÖZÜMÜ: Çıktıyı doğrudan 'bytes' tipine zorluyoruz
+    return bytes(pdf.output())
 def ortak_veriyi_kaydet():
     data = {
         "skor_tablosu": st.session_state.skor_tablosu.to_dict(orient="records"),
