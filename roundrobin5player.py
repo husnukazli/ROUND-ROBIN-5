@@ -512,40 +512,61 @@ with tab5:
                         y_ad = st.text_input(f"Takım Adı", value=esk_ad, key=f"ad_{esk_ad}")
                         if y_ad != esk_ad:
                             isim_degisiklikleri[esk_ad] = y_ad
-                    with c_b:
-                        y_oyuncular = st.text_area("Oyuncular (Satır satır)", value="\n".join(oyuncular), key=f"kadro_{esk_ad}", height=100)
-                        yeni_k_yapisi[y_ad if y_ad != esk_ad else esk_ad] = [o.strip() for o in y_oyuncular.split('\n') if o.strip()]
-
-                if st.button("💾 Değişiklikleri Uygula", key="btn_kaydet_grup"):
-                    st.session_state.takim_kadrolari[yeni_grup_adi] = yeni_k_yapisi
-                    if yeni_grup_adi != sec_g:
-                        del st.session_state.takim_kadrolari[sec_g]
-                    
-                    for eski, yeni in isim_degisiklikleri.items():
-                        st.session_state.skor_tablosu.replace({eski: yeni}, inplace=True)
-                        st.session_state.mac_programi.replace({eski: yeni}, inplace=True)
-                    
+                   with c_b:
+                        y_oyuncular = st.text_area(f"Oyuncu Kadrosu (Satır Satır)", value="\n".join(oyuncular), height=100, key=f"oyun_{esk_ad}")
+                        yeni_k_yapisi[y_ad] = [o.strip() for o in y_oyuncular.split("\n") if o.strip()]
+                
+                if st.button("💾 Değişiklikleri Kaydet (Grup / Takım / Kadro)"):
+                    # 1. Grup Adı Değişikliklerini Uygula
                     if yeni_grup_adi != sec_g:
                         st.session_state.skor_tablosu.loc[st.session_state.skor_tablosu['Grup'] == sec_g, 'Grup'] = yeni_grup_adi
                         st.session_state.mac_programi.loc[st.session_state.mac_programi['Grup'] == sec_g, 'Grup'] = yeni_grup_adi
+                        
+                        # Kadro sözlüğündeki eski grup adını yeni anahtara taşı
+                        st.session_state.takim_kadrolari[yeni_grup_adi] = st.session_state.takim_kadrolari.pop(sec_g)
+                        sec_g = yeni_grup_adi # Döngü içi referansı korumak için güncelledik
                     
+                    # 2. Takım Adı Değişikliklerini Uygula
+                    for e_ad, y_ad in isim_degisiklikleri.items():
+                        st.session_state.skor_tablosu.loc[(st.session_state.skor_tablosu['Grup'] == sec_g) & (st.session_state.skor_tablosu['Takım 1'] == e_ad), 'Takım 1'] = y_ad
+                        st.session_state.skor_tablosu.loc[(st.session_state.skor_tablosu['Grup'] == sec_g) & (st.session_state.skor_tablosu['Takım 2'] == e_ad), 'Takım 2'] = y_ad
+                        
+                        st.session_state.mac_programi.loc[(st.session_state.mac_programi['Grup'] == sec_g) & (st.session_state.mac_programi['Takım 1'] == e_ad), 'Takım 1'] = y_ad
+                        st.session_state.mac_programi.loc[(st.session_state.mac_programi['Grup'] == sec_g) & (st.session_state.mac_programi['Takım 2'] == e_ad), 'Takım 2'] = y_ad
+
+                    # 3. Yeni Kadro Yapısını Kaydet
+                    st.session_state.takim_kadrolari[sec_g] = yeni_k_yapisi
+                    
+                    # 4. Verileri diske yaz ve sistemi yenile
                     ortak_veriyi_kaydet()
-                    st.success("Grup bilgileri ve fikstür başarıyla güncellendi.")
+                    st.success("✅ Grup adı, Takım isimleri ve Kadrolar başarıyla geçmişe dönük olarak güncellendi!")
                     st.rerun()
 
-        st.markdown("---")
-        if st.button("⚠️ TÜM VERİLERİ SIFIRLA"):
-            if "sifirla_onay" not in st.session_state:
-                st.session_state.sifirla_onay = True
-                st.warning("Emin misiniz? Tüm skorlar ve program silinecek. Tekrar tıklayarak onaylayın.")
+        st.divider()
+        st.markdown("### 🗑️ Veri Yedekleme ve Sistemi Sıfırlama")
+        c_yedek, c_sil = st.columns(2)
+        
+        with c_yedek:
+            st.info("Olası aksiliklere karşı turnuva verilerini JSON dosyası olarak cihazınıza indirebilirsiniz.")
+            if os.path.exists(VERI_DOSYASI):
+                with open(VERI_DOSYASI, "rb") as f:
+                    st.download_button(
+                        label="📥 Tüm Turnuva Verisini Yedekle",
+                        data=f,
+                        file_name=f"turnuva_yedek_{datetime.date.today().strftime('%Y%m%d')}.json",
+                        mime="application/json"
+                    )
             else:
+                st.warning("Henüz yedeklenecek bir veri dosyası oluşmamış.")
+        
+        with c_sil:
+            st.error("DİKKAT: Bu işlem geri alınamaz!")
+            onayi_ver = st.checkbox("Tüm turnuva verilerini kalıcı olarak silmeyi ve sistemi sıfırlamayı onaylıyorum.")
+            if st.button("🚨 Tüm Sistemi Sıfırla", type="primary", disabled=not onayi_ver):
+                st.session_state.clear()
                 if os.path.exists(VERI_DOSYASI):
                     os.remove(VERI_DOSYASI)
-                st.session_state.clear()
+                st.success("Sistem tamamen sıfırlandı. Sayfa yenileniyor...")
                 st.rerun()
     else:
-        st.info("🔒 Gelişmiş yönetim ayarları için Başhakem girişi yapınız.")
-
-# --- FOOTER ---
-st.markdown("---")
-st.caption("🎾 Tenis Turnuva Otomasyonu v1.0 | Zonguldak 2026")
+        st.info("🔒 Bu panele yalnızca Başhakem erişebilir. Lütfen sol menüden giriş yapınız.")
