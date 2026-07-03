@@ -104,7 +104,8 @@ def set_gecerli_mi(t1, t2, is_set3=False):
     max_s, min_s = max(t1, t2), min(t1, t2)
     diff = max_s - min_s
     
-    if is_set3 and (t1 >= 10 or t2 >= 10):
+    # 3. Set Süper Tie-Break Düzeltmesi buraya güvenle uygulandı
+    if is_set3:
         if max_s == 10 and min_s <= 8: return True, ""
         elif max_s > 10 and diff == 2: return True, ""
         else: return False, "3. Set Süper Tie-Break kurallarına uymuyor!"
@@ -156,13 +157,12 @@ def eslesmeleri_olustur(grup_adi, takimlar, grup_tipi, format_secimi):
             {"Gün": "3. Gün", "Eşleşme": "B ve F", "Takım 1": takimlar[1], "Takım 2": takimlar[5]},
             {"Gün": "4. Gün", "Eşleşme": "A ve C", "Takım 1": takimlar[0], "Takım 2": takimlar[2]},
             {"Gün": "4. Gün", "Eşleşme": "D ve B", "Takım 1": takimlar[3], "Takım 2": takimlar[1]},
-            {"Gün": "4. Gün", "Eşleşme": "E ve F", "Takım 1": takimlar[4], "Takım 2": takimlar[5]},
+            {"Gün": "4. Gün", "Eşleşme": "E ve F", "Takım 1": takimlar[4], "Takım 2": takim tropics[5]},
             {"Gün": "5. Gün", "Eşleşme": "A ve B", "Takım 1": takimlar[0], "Takım 2": takimlar[1]},
             {"Gün": "5. Gün", "Eşleşme": "D ve E", "Takım 1": takimlar[3], "Takım 2": takimlar[4]},
             {"Gün": "5. Gün", "Eşleşme": "C ve F", "Takım 1": takimlar[2], "Takım 2": takimlar[5]},
         ]
     
-    # ... (kodun geri kalanı yani branslar listesi ve program oluşturma döngüsü aynı kalacak)
     if format_secimi == "5 Maçlık (3 Tek, 2 Çift)":
         branslar = ["1. Tekler", "2. Tekler", "3. Tekler", "1. Çiftler", "2. Çiftler"]
     else:
@@ -180,12 +180,12 @@ def eslesmeleri_olustur(grup_adi, takimlar, grup_tipi, format_secimi):
             })
             program.append(satir)
     return program
+
 # ==============================================================================
 # SEKME STRÜKTÜRÜ
 # ==============================================================================
 tab1, tab2, tab3, tab4, tab5 = st.tabs(["👥 1. Grup Ayarları", "✍️ 2. Skor Girişi", "🏆 3. Puan Durumu", "📅 4. Maç Programı", "⚙️ 5. Yönetim & Dosya"])
 
-# --- TAB 1: GRUP AYARLARI ---
 # --- TAB 1: GRUP AYARLARI ---
 with tab1:
     st.subheader("Turnuva Grupları ve Kadrolar")
@@ -198,7 +198,6 @@ with tab1:
         
         grup_adi = st.text_input("Grup Adı:", placeholder="Örn: 65+ Erkekler A Grubu")
         
-        # Beklenen sayı hesaplaması - Doğru girinti ile
         if grup_tipi == "3'lü Grup": 
             beklenen_sayi = 3
         elif grup_tipi == "4'lü Grup": 
@@ -208,8 +207,7 @@ with tab1:
         else: 
             beklenen_sayi = 6
         
-        if grup_adi.strip() in st.session_state.takim_kadrolari:
-            st.error("⚠️ Bu isimde bir grup zaten tanımlanmış! Lütfen benzersiz bir grup adı giriniz.")
+        # Mükerrer hata uyarısı buradan kaldırılarak buton içine entegre edildi.
         
         takim_listesi = st.text_area(f"Takım İsimlerini Satır Satır Yazın (Tam olarak {beklenen_sayi} Takım):")
         takimlar = [t.strip() for t in takim_listesi.split('\n') if t.strip()]
@@ -232,7 +230,7 @@ with tab1:
             if not grup_adi or len(takimlar) != beklenen_sayi or kadro_hata:
                 st.error("Lütfen tüm parametreleri eksiksiz ve kurallara uygun doldurun.")
             elif grup_adi.strip() in st.session_state.takim_kadrolari:
-                st.error("Hata: Sistemde mükerrer grup ismi mevcut, fikstür oluşturulamaz.")
+                st.error("⚠️ Bu isimde bir grup zaten tanımlanmış! Lütfen benzersiz bir grup adı giriniz.")
             else:
                 grup_adi_temiz = grup_adi.strip()
                 st.session_state.takim_kadrolari[grup_adi_temiz] = grup_kadrolari
@@ -366,7 +364,7 @@ with tab2:
     else:
         st.warning("🔒 Skor ve esame giriş paneli dışarıya kapalıdır. Lütfen giriş yapınız.")
 
-# --- TAB 3: PUAN DURUMU (SEÇİLEBİLİR GÖRÜNÜM) ---
+# --- TAB 3: PUAN DURUMU ---
 with tab3:
     st.subheader("Canlı Puan Durumu")
     if not st.session_state.skor_tablosu.empty:
@@ -422,7 +420,7 @@ with tab3:
                 grup_df.index = range(1, len(grup_df) + 1)
                 st.dataframe(grup_df, use_container_width=True)
 
-# --- TAB 4: MAÇ PROGRAMI (KOMPAKT & KAZANAN VURGUSU) ---
+# --- TAB 4: MAÇ PROGRAMI (KOMPAKT & SEÇİLİ MAÇI SİLME) ---
 with tab4:
     st.subheader("📅 Canlı Maç Programı ve Fikstür")
     if not st.session_state.skor_tablosu.empty:
@@ -509,13 +507,21 @@ with tab4:
             if not df_gunluk.empty:
                 st.markdown("### 📋 Günlük Akış Editörü")
                 
-                if st.button("↩️ Son Eklenen Maçı Geri Al"):
-                    last_idx = df_gunluk.index[-1]
-                    st.session_state.mac_programi.drop(index=last_idx, inplace=True)
-                    st.session_state.mac_programi.reset_index(drop=True, inplace=True)
-                    ortak_veriyi_kaydet()
-                    st.warning("Son eklenen maç programdan başarıyla geri alındı.")
-                    st.rerun()
+                # --- YENİ DİNAMİK SEÇİLEN MAÇI KALDIRMA SİSTEMİ ---
+                mac_sil_secenekler = ["Seçiniz"] + [f"{r['Maç Saati']} - {r['Kort']} | {r['Grup']} | {r['Takım 1']} vs {r['Takım 2']} ({r['Branş']})" for idx, r in df_gunluk.iterrows()]
+                secilen_program_mac = st.selectbox("⛔ Programdan Kaldırılacak Maçı Seçin:", mac_sil_secenekler, key="program_mac_sil_selectbox")
+                
+                if secilen_program_mac != "Seçiniz":
+                    secilen_idx_in_df = mac_sil_secenekler.index(secilen_program_mac) - 1
+                    actual_match_idx = df_gunluk.index[secilen_idx_in_df]
+                    if st.button("❌ Seçilen Maçı Programdan Kaldır"):
+                        st.session_state.mac_programi.drop(index=actual_match_idx, inplace=True)
+                        st.session_state.mac_programi.reset_index(drop=True, inplace=True)
+                        ortak_veriyi_kaydet()
+                        st.warning("Seçilen maç program akışından kaldırıldı.")
+                        st.rerun()
+                
+                st.divider()
 
                 guncel_program = st.data_editor(
                     df_gunluk, use_container_width=True, num_rows="dynamic",
@@ -581,65 +587,67 @@ with tab5:
     if st.session_state.admin_mi:
         with st.expander("✍️ Grup Adını, Takımları ve Kadroları Revize Et"):
             if not st.session_state.skor_tablosu.empty:
-                t_gruplar = st.session_state.skor_tablosu['Grup'].unique()
-                sec_g = st.selectbox("Düzenlenecek Grup Seç:", t_gruplar, key="admin_edit_grup")
+                t_gruplar = sorted(list(st.session_state.skor_tablosu['Grup'].unique()))
+                # "Seçiniz" varsayılan olarak eklendi
+                sec_g = st.selectbox("Düzenlenecek Grup Seç:", ["Seçiniz"] + t_gruplar, key="admin_edit_grup")
                 
-                yeni_grup_adi = st.text_input("Grup Adını Güncelle:", value=sec_g, key="yeni_g_adi")
-                
-                st.markdown("---")
-                m_kadrolar = st.session_state.takim_kadrolari.get(sec_g, {})
-                
-                yeni_k_yapisi = {}
-                isim_degisiklikleri = {}
-                for esk_ad, oyuncular in m_kadrolar.items():
-                    c_a, c_b = st.columns([1, 2])
-                    with c_a:
-                        y_ad = st.text_input(f"Takım Adı", value=esk_ad, key=f"ad_{esk_ad}")
-                        if y_ad != esk_ad: isim_degisiklikleri[esk_ad] = y_ad
-                    with c_b:
-                        y_o_text = st.text_area(f"Oyuncular", value="\n".join(oyuncular), key=f"oyuncu_{esk_ad}", height=100)
-                        yeni_k_yapisi[y_ad if y_ad else esk_ad] = [o.strip() for o in y_o_text.split('\n') if o.strip()]
-                
-                if st.button("💾 Yapılan Değişiklikleri Veritabanına Yaz"):
-                    st.session_state.takim_kadrolari[sec_g] = yeni_k_yapisi
-                    if isim_degisiklikleri:
-                        for e_a, y_a in isim_degisiklikleri.items():
-                            st.session_state.skor_tablosu.replace({e_a: y_a}, inplace=True)
-                            st.session_state.mac_programi.replace({e_a: y_a}, inplace=True)
+                if sec_g != "Seçiniz":
+                    yeni_grup_adi = st.text_input("Grup Adını Güncelle:", value=sec_g, key="yeni_g_adi")
                     
-                    if yeni_grup_adi != sec_g and yeni_grup_adi.strip() != "":
-                        st.session_state.skor_tablosu.loc[st.session_state.skor_tablosu['Grup'] == sec_g, 'Grup'] = yeni_grup_adi
-                        st.session_state.mac_programi.loc[st.session_state.mac_programi['Grup'] == sec_g, 'Grup'] = yeni_grup_adi
-                        st.session_state.takim_kadrolari[yeni_grup_adi] = st.session_state.takim_kadrolari.pop(sec_g)
-                        if sec_g in st.session_state.grup_formatlari:
-                            st.session_state.grup_formatlari[yeni_grup_adi] = st.session_state.grup_formatlari.pop(sec_g)
+                    st.markdown("---")
+                    m_kadrolar = st.session_state.takim_kadrolari.get(sec_g, {})
                     
-                    ortak_veriyi_kaydet()
-                    st.success("Tüm grup ve takım bilgileri başarıyla güncellendi!")
-                    st.rerun()
+                    yeni_k_yapisi = {}
+                    isim_degisiklikleri = {}
+                    for esk_ad, oyuncular in m_kadrolar.items():
+                        c_a, c_b = st.columns([1, 2])
+                        with c_a:
+                            y_ad = st.text_input(f"Takım Adı", value=esk_ad, key=f"ad_{esk_ad}")
+                            if y_ad != esk_ad: isim_degisiklikleri[esk_ad] = y_ad
+                        with c_b:
+                            y_o_text = st.text_area(f"Oyuncular", value="\n".join(oyuncular), key=f"oyuncu_{esk_ad}", height=100)
+                            yeni_k_yapisi[y_ad if y_ad else esk_ad] = [o.strip() for o in y_o_text.split('\n') if o.strip()]
+                    
+                    if st.button("💾 Yapılan Değişiklikleri Veritabanına Yaz"):
+                        st.session_state.takim_kadrolari[sec_g] = yeni_k_yapisi
+                        if isim_degisiklikleri:
+                            for e_a, y_a in isim_degisiklikleri.items():
+                                st.session_state.skor_tablosu.replace({e_a: y_a}, inplace=True)
+                                st.session_state.mac_programi.replace({e_a: y_a}, inplace=True)
+                        
+                        if yeni_grup_adi != sec_g and yeni_grup_adi.strip() != "":
+                            st.session_state.skor_tablosu.loc[st.session_state.skor_tablosu['Grup'] == sec_g, 'Grup'] = yeni_grup_adi
+                            st.session_state.mac_programi.loc[st.session_state.mac_programi['Grup'] == sec_g, 'Grup'] = yeni_grup_adi
+                            st.session_state.takim_kadrolari[yeni_grup_adi] = st.session_state.takim_kadrolari.pop(sec_g)
+                            if sec_g in st.session_state.grup_formatlari:
+                                st.session_state.grup_formatlari[yeni_grup_adi] = st.session_state.grup_formatlari.pop(sec_g)
+                        
+                        ortak_veriyi_kaydet()
+                        st.success("Tüm grup ve takım bilgileri başarıyla güncellendi!")
+                        st.rerun()
 
-        # --- YENİ EKLENEN GRUP SİLME BÖLÜMÜ ---
+        # --- GRUP SİLME BÖLÜMÜ ---
         st.markdown("### 🗑️ Grup Silme İşlemleri")
         if not st.session_state.skor_tablosu.empty:
-            silinecek_gruplar = st.session_state.skor_tablosu['Grup'].unique()
-            secilen_sil_grup = st.selectbox("Silinecek Grubu Seçin:", silinecek_gruplar, key="grup_sil_secim")
-            st.warning(f"⚠️ DİKKAT: '{secilen_sil_grup}' grubunu ve bu gruba ait tüm fikstür/kadro kayıtlarını kalıcı olarak sileceksiniz!")
+            silinecek_gruplar = sorted(list(st.session_state.skor_tablosu['Grup'].unique()))
+            # "Seçiniz" varsayılan olarak eklendi
+            secilen_sil_grup = st.selectbox("Silinecek Grubu Seçin:", ["Seçiniz"] + silinecek_gruplar, key="grup_sil_secim")
             
-            if st.button(f"🚨 '{secilen_sil_grup}' Grubunu Tamamen Sil"):
-                # DataFrame'lerden ilgili grubun satırlarını temizle
-                st.session_state.skor_tablosu = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] != secilen_sil_grup]
-                st.session_state.mac_programi = st.session_state.mac_programi[st.session_state.mac_programi['Grup'] != secilen_sil_grup]
+            if secilen_sil_grup != "Seçiniz":
+                st.warning(f"⚠️ DİKKAT: '{secilen_sil_grup}' grubunu ve bu gruba ait tüm fikstür/kadro kayıtlarını kalıcı olarak sileceksiniz!")
                 
-                # Sözlüklerden grubu temizle
-                if secilen_sil_grup in st.session_state.takim_kadrolari:
-                    del st.session_state.takim_kadrolari[secilen_sil_grup]
-                if secilen_sil_grup in st.session_state.grup_formatlari:
-                    del st.session_state.grup_formatlari[secilen_sil_grup]
-                
-                # Değişiklikleri JSON'a kaydet ve arayüzü yenile
-                ortak_veriyi_kaydet()
-                st.success(f"'{secilen_sil_grup}' grubu sistemden başarıyla silindi!")
-                st.rerun()
+                if st.button(f"🚨 '{secilen_sil_grup}' Grubunu Tamamen Sil"):
+                    st.session_state.skor_tablosu = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] != secilen_sil_grup]
+                    st.session_state.mac_programi = st.session_state.mac_programi[st.session_state.mac_programi['Grup'] != secilen_sil_grup]
+                    
+                    if secilen_sil_grup in st.session_state.takim_kadrolari:
+                        del st.session_state.takim_kadrolari[secilen_sil_grup]
+                    if secilen_sil_grup in st.session_state.grup_formatlari:
+                        del st.session_state.grup_formatlari[secilen_sil_grup]
+                    
+                    ortak_veriyi_kaydet()
+                    st.success(f"'{secilen_sil_grup}' grubu sistemden başarıyla silindi!")
+                    st.rerun()
         else:
             st.info("Sistemde silinecek herhangi bir grup bulunmuyor.")
 
