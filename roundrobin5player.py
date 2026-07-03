@@ -37,7 +37,8 @@ def generate_pdf(df, baslik):
                 pdf.cell(col_width, 8, to_latin(item), border=1)
             pdf.ln()
     
-    return pdf.output()
+    # BU SATIRI DEĞİŞTİRİN:
+    return pdf.output().encode('latin-1')
 
 def ortak_veriyi_kaydet():
     data = {
