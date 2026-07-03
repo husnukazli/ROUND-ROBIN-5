@@ -6,7 +6,7 @@ import datetime
 
 # --- GENEL SAYFA AYARLARI ---
 st.set_page_config(page_title="Tenis Turnuva Otomasyonu", page_icon="🎾", layout="wide")
-st.title("🎾 Profesyonel Tenis Turnuva Yönetim Sistemi")
+st.title("🎾 Tenis Turnuva Yönetim Sistemi")
 
 VERI_DOSYASI = "turnuva_veri.json"
 
