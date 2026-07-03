@@ -200,9 +200,10 @@ with tab1:
         if grup_adi.strip() in st.session_state.takim_kadrolari:
             st.error("⚠️ Bu isimde bir grup zaten tanımlanmış! Lütfen benzersiz bir grup adı giriniz.")
             
-        beklenen_sayi = 4 if grup_tipi == "4'lü Grup" else 5
-        takim_listesi = st.text_area(f"Takım İsimlerini Satır Satır Yazın (Tam olarak {beklenen_sayi} Takım):")
-        takimlar = [t.strip() for t in takim_listesi.split('\n') if t.strip()]
+       if grup_tipi == "3'lü Grup": beklenen_sayi = 3
+        elif grup_tipi == "4'lü Grup": beklenen_sayi = 4
+        elif grup_tipi == "5'li Grup": beklenen_sayi = 5
+        else: beklenen_sayi = 6)]
         
         grup_kadrolari = {}
         kadro_hata = False
