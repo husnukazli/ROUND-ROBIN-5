@@ -191,7 +191,7 @@ with tab1:
     if st.session_state.admin_mi:
         col_t1, col_t2 = st.columns(2)
         with col_t1:
-            grup_tipi = st.radio("Grup Tipi:", ["4'lü Grup", "5'li Grup"], horizontal=True)
+            grup_tipi = st.radio("Grup Tipi:", ["3'lü Grup", "4'lü Grup", "5'li Grup", "6'lı Grup"], horizontal=True)
         with col_t2:
             format_secimi = st.radio("Müsabaka Maç Formatı:", ["3 Maçlık (2 Tek, 1 Çift)", "5 Maçlık (3 Tek, 2 Çift)"], horizontal=True)
             
