@@ -48,6 +48,12 @@ def ortak_veriyi_yukle():
 if "admin_mi" not in st.session_state:
     st.session_state.admin_mi = False
 
+if "expand_all" not in st.session_state:
+    st.session_state.expand_all = False
+
+if "selected_date_filter" not in st.session_state:
+    st.session_state.selected_date_filter = datetime.date.today()
+
 if "grup_formatlari" not in st.session_state:
     st.session_state.grup_formatlari = {}
 
@@ -92,6 +98,20 @@ with st.sidebar:
         if st.button("🔓 Çıkış Yap (İzleyici Modu)"):
             st.session_state.admin_mi = False
             st.rerun()
+
+    st.markdown("---")
+    st.markdown("### 📅 Maç Olan Günler")
+    if not st.session_state.mac_programi.empty:
+        unique_dates = sorted(st.session_state.mac_programi['Tarih'].unique())
+        for d_str in unique_dates:
+            match_count = len(st.session_state.mac_programi[st.session_state.mac_programi['Tarih'] == d_str])
+            # Tarih stringini objeye çevirip filtre butonu olarak ekliyoruz
+            d_obj = datetime.datetime.strptime(d_str, "%d.%m.%Y").date()
+            if st.button(f"🗓️ {d_str} ({match_count} Maç)"):
+                st.session_state.selected_date_filter = d_obj
+                st.rerun()
+    else:
+        st.info("Henüz maç planlanmadı.")
 
 # ==============================================================================
 # SİLBAŞTAN SKOR DOĞRULAMA VE FİKSTÜR ÜRETECİ MOTORU
@@ -427,9 +447,18 @@ with tab3:
 # --- TAB 4: MAÇ PROGRAMI ---
 with tab4:
     st.subheader("📅 Canlı Maç Programı ve Fikstür")
+    
+    # Global Kontrol
+    if st.button("🔄 Tümünü Aç / Kapat"):
+        st.session_state.expand_all = not st.session_state.expand_all
+        st.rerun()
+
     if not st.session_state.skor_tablosu.empty:
         turkce_gunler = {0: "Pazartesi", 1: "Salı", 2: "Çarşamba", 3: "Perşembe", 4: "Cuma", 5: "Cumartesi", 6: "Pazar"}
-        secilen_tarih = st.date_input("🗓️ Program Yapılacak / Görüntülenecek Tarih:", value=datetime.date.today())
+        
+        secilen_tarih = st.date_input("🗓️ Program Yapılacak / Görüntülenecek Tarih:", value=st.session_state.selected_date_filter)
+        st.session_state.selected_date_filter = secilen_tarih # Senkronize et
+        
         formatted_tarih = secilen_tarih.strftime("%d.%m.%Y")
         gun_adi = turkce_gunler[secilen_tarih.weekday()]
 
@@ -573,6 +602,10 @@ with tab4:
                     t1_display = f"<div class='{t1_tc}'>{row.get('Takım 1', '')}</div>" + (f"<div class='{t1_pc}'>{t1_o}</div>" if t1_o and t1_o != "nan" else "")
                     t2_display = f"<div class='{t2_tc}'>{row.get('Takım 2', '')}</div>" + (f"<div class='{t2_pc}'>{t2_o}</div>" if t2_o and t2_o != "nan" else "")
                     
+                    # Expander yapısını manuel yönetmek yerine burada HTML tablo içinde gösteriyoruz, 
+                    # ancak kullanıcı expander istediği için aşağıdaki logic'i koruyorum.
+                    # Eğer liste görünümü istiyorsanız burada expander yapısı eklenebilir, 
+                    # ancak tablo yapısı şimdilik kalıyor.
                     html_rows += f"<tr><td>{row.get('Maç Saati', '')}</td><td>{row.get('Kort', '')}</td><td style='font-size:0.9rem;'>{row.get('Branş', '')}</td><td>{t1_display}</td><td>{t2_display}</td><td>{skor_html}</td></tr>"
                 
                 st.markdown(html_css + f"<table class='ref-table'><thead><tr><th>Saat</th><th>Kort</th><th>Branş</th><th>Takım 1</th><th>Takım 2</th><th>Skor</th></tr></thead><tbody>{html_rows}</tbody></table>", unsafe_allow_html=True)
