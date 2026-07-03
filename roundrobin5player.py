@@ -37,7 +37,7 @@ def generate_pdf(df, baslik):
                 pdf.cell(col_width, 8, to_latin(item), border=1)
             pdf.ln()
     
-    return pdf.output(dest='S').encode('latin-1')
+    return pdf.output()
 
 def ortak_veriyi_kaydet():
     data = {
