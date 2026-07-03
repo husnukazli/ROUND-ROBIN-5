@@ -195,15 +195,23 @@ with tab1:
         with col_t2:
             format_secimi = st.radio("Müsabaka Maç Formatı:", ["3 Maçlık (2 Tek, 1 Çift)", "5 Maçlık (3 Tek, 2 Çift)"], horizontal=True)
             
-        grup_adi = st.text_input("Grup Adı:", placeholder="Örn: 65+ Erkekler A Grubu")
-        
-        if grup_adi.strip() in st.session_state.takim_kadrolari:
-            st.error("⚠️ Bu isimde bir grup zaten tanımlanmış! Lütfen benzersiz bir grup adı giriniz.")
+grup_adi = st.text_input("Grup Adı:", placeholder="Örn: 65+ Erkekler A Grubu")
             
-       if grup_tipi == "3'lü Grup": beklenen_sayi = 3
-        elif grup_tipi == "4'lü Grup": beklenen_sayi = 4
-        elif grup_tipi == "5'li Grup": beklenen_sayi = 5
-        else: beklenen_sayi = 6)]
+            # --- Buradaki bloğu komple kopyalayıp mevcut olanın yerine yapıştır ---
+            if grup_tipi == "3'lü Grup": 
+                beklenen_sayi = 3
+            elif grup_tipi == "4'lü Grup": 
+                beklenen_sayi = 4
+            elif grup_tipi == "5'li Grup": 
+                beklenen_sayi = 5
+            else: 
+                beklenen_sayi = 6
+            # ---------------------------------------------------------------------
+            
+            if grup_adi.strip() in st.session_state.takim_kadrolari:
+                st.error("⚠️ Bu isimde bir grup zaten tanımlanmış! Lütfen benzersiz bir grup adı giriniz.")
+                
+            takim_listesi = st.text_area(f"Takım İsimlerini Satır Satır Yazın (Tam olarak {beklenen_sayi} Takım):")
         
         grup_kadrolari = {}
         kadro_hata = False
