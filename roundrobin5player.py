@@ -34,7 +34,7 @@ def generate_pdf(df, baslik):
         pdf.set_font("Arial", '', 9)
         for _, row in df.iterrows():
             for item in row:
-                pdf.cell(col_width, 8, to_latin(item), border=1)
+                pdf.cell(col_width, 8, to_latin(str(item)), border=1)
             pdf.ln()
     
     return bytes(pdf.output())
@@ -56,7 +56,7 @@ def generate_combined_standings_pdf(gruplar_dict):
             pdf.set_font("Arial", '', 9)
             for _, row in df.iterrows():
                 for item in row:
-                    pdf.cell(col_width, 8, to_latin(item), border=1)
+                    pdf.cell(col_width, 8, to_latin(str(item)), border=1)
                 pdf.ln()
         pdf.ln(5) # Gruplar arası boşluk
     return bytes(pdf.output())
@@ -558,8 +558,10 @@ with tab4:
 
         df_gunluk = st.session_state.mac_programi[st.session_state.mac_programi['Tarih'] == formatted_tarih].copy()
         
-        # PDF İçin İstenen Belirli Sütunlar
-        pdf_columns = ["Maç Saati", "Kort", "Grup", "Branş", "Takım 1", "Takım 2", "Canlı Skor"]
+        # --- PDF DÜZENLEME ALANI (GÜNCELLEME BURAYA YAPILDI) ---
+        st.markdown("### 📥 PDF İndirme Ayarları")
+        tum_kolonlar = ["Maç Saati", "Tarih", "Gün Adı", "Kort", "Grup", "Gün", "Branş", "Eşleşme", "Takım 1", "Takım 2", "Canlı Skor", "Kazanan"]
+        secilen_pdf_cols = st.multiselect("PDF'e eklenecek sütunları seçin:", options=tum_kolonlar, default=["Maç Saati", "Kort", "Grup", "Branş", "Takım 1", "Takım 2", "Canlı Skor"])
 
         if st.session_state.admin_mi:
             st.markdown(f"### ➕ {formatted_tarih} Tarihine Maç Ekle")
@@ -603,9 +605,10 @@ with tab4:
                         st.session_state.mac_programi.drop(index=actual_match_idx, inplace=True); st.session_state.mac_programi.reset_index(drop=True, inplace=True); ortak_veriyi_kaydet(); st.rerun()
                 st.divider()
                 
-                # Sadece İstenen Sütunları PDF'e Basma
-                pdf_bytes_admin = generate_pdf(df_gunluk[pdf_columns], f"Mac Programi - {formatted_tarih}")
-                st.download_button("📥 Programı PDF Olarak İndir", data=pdf_bytes_admin, file_name=f"mac_programi_{formatted_tarih}.pdf", mime="application/pdf", key="pdf_admin")
+                # Dinamik PDF İndirme (Seçili Sütunlarla)
+                if not df_gunluk.empty and secilen_pdf_cols:
+                    pdf_bytes_admin = generate_pdf(df_gunluk[secilen_pdf_cols], f"Mac Programi - {formatted_tarih}")
+                    st.download_button("📥 Programı PDF Olarak İndir", data=pdf_bytes_admin, file_name=f"mac_programi_{formatted_tarih}.pdf", mime="application/pdf", key="pdf_admin")
                 
                 # Yönetici İçin Expander (Açılır/Kapanır) Editör Düzeni
                 edited_dfs = []
@@ -616,7 +619,6 @@ with tab4:
                     takim1 = grup_df.iloc[0]['Takım 1']
                     takim2 = grup_df.iloc[0]['Takım 2']
                     
-                    # Başlık Düzeni: Kort | Tarih | Gün | Grup | Takım 1 - Takım 2
                     expander_title = f"{kort} | {tarih} | {gun_adi_val} | {grup_adi} | {takim1} - {takim2}"
                     
                     with st.expander(expander_title, expanded=st.session_state.expand_all):
@@ -644,12 +646,12 @@ with tab4:
             if df_gunluk.empty:
                 st.info("Bu tarihte planlanmış maç bulunmamaktadır.")
             else:
-                # Sadece İstenen Sütunları PDF'e Basma
-                pdf_bytes_user = generate_pdf(df_gunluk[pdf_columns], f"Mac Programi - {formatted_tarih}")
-                st.download_button("📥 Programı PDF Olarak İndir", data=pdf_bytes_user, file_name=f"mac_programi_{formatted_tarih}.pdf", mime="application/pdf", key="pdf_ziyaretci")
+                # Dinamik PDF İndirme (Seçili Sütunlarla)
+                if secilen_pdf_cols:
+                    pdf_bytes_user = generate_pdf(df_gunluk[secilen_pdf_cols], f"Mac Programi - {formatted_tarih}")
+                    st.download_button("📥 Programı PDF Olarak İndir", data=pdf_bytes_user, file_name=f"mac_programi_{formatted_tarih}.pdf", mime="application/pdf", key="pdf_ziyaretci")
                 st.divider()
                 
-                # Ziyaretçi İçin Expander Düzeni
                 for (grup_adi, eslesme_adi), grup_df in df_gunluk.groupby(['Grup', 'Eşleşme']):
                     kort = grup_df.iloc[0]['Kort']
                     tarih = grup_df.iloc[0]['Tarih']
@@ -657,7 +659,6 @@ with tab4:
                     takim1 = grup_df.iloc[0]['Takım 1']
                     takim2 = grup_df.iloc[0]['Takım 2']
                     
-                    # Başlık Düzeni: Kort | Tarih | Gün | Grup | Takım 1 - Takım 2
                     expander_title = f"{kort} | {tarih} | {gun_adi_val} | {grup_adi} | {takim1} - {takim2}"
                     
                     with st.expander(expander_title, expanded=st.session_state.expand_all):
