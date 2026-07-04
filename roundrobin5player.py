@@ -1,4 +1,14 @@
 import streamlit as st
+import sys
+import subprocess
+
+# Kod çalışırken openpyxl'in yüklü olup olmadığını kontrol eder, yoksa yükler
+try:
+    import openpyxl
+except ImportError:
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "openpyxl"])
+    import openpyxl
+
 import pandas as pd
 import json
 import os
