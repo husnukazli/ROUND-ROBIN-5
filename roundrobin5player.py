@@ -827,11 +827,26 @@ with tab5:
                     st.rerun()
                 except Exception as ex: st.error(f"Hata: {ex}")
 
-        st.markdown("---")
-        st.markdown("### ⚠️ Sistem Sıfırlama (Tehlikeli İşlem)")
-        if st.button("🗑️ Tüm Turnuva Verilerini Kalıcı Olarak Sıfırla"):
-            if os.path.exists(VERI_DOSYASI):
-                os.remove(VERI_DOSYASI)
-            st.session_state.clear()
-            st.success("Tüm veritabanı başarıyla temizlendi!")
-            st.rerun()
+st.markdown("### ⚠️ Sistem Sıfırlama (Tehlikeli İşlem)")
+        
+        # Onay mekanizması için session_state'i başlat
+        if "confirm_reset" not in st.session_state:
+            st.session_state.confirm_reset = False
+
+        if not st.session_state.confirm_reset:
+            if st.button("🗑️ Tüm Turnuva Verilerini Kalıcı Olarak Sıfırla"):
+                st.session_state.confirm_reset = True
+                st.rerun()
+        else:
+            st.warning("⚠️ DİKKAT: Tüm turnuva verileri (maçlar, kadrolar, skorlar) kalıcı olarak silinecektir. Bu işlem geri alınamaz!")
+            col_evet, col_hayir = st.columns(2)
+            if col_evet.button("✅ Evet, Tüm Verileri Sil"):
+                if os.path.exists(VERI_DOSYASI):
+                    os.remove(VERI_DOSYASI)
+                st.session_state.clear()
+                st.session_state.confirm_reset = False
+                st.success("Tüm veritabanı başarıyla temizlendi!")
+                st.rerun()
+            if col_hayir.button("❌ Vazgeç"):
+                st.session_state.confirm_reset = False
+                st.rerun()
