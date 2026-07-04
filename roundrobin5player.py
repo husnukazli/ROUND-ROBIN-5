@@ -3,6 +3,8 @@ import pandas as pd
 import json
 import os
 import datetime
+import base64
+import shutil
 from fpdf import FPDF
 
 # --- GENEL SAYFA AYARLARI ---
@@ -10,7 +12,11 @@ st.set_page_config(page_title="Tenis Turnuva Otomasyonu", page_icon="🎾", layo
 st.title("🎾 Tenis Turnuva Yönetim Sistemi")
 
 VERI_DOSYASI = "turnuva_veri.json"
-PDF_DOSYASI = "turnuva_belgesi.pdf"
+BELGELER_KLASORU = "turnuva_belgeleri"
+
+# Belgeler klasörü yoksa oluştur
+if not os.path.exists(BELGELER_KLASORU):
+    os.makedirs(BELGELER_KLASORU)
 
 # ==============================================================================
 # SİSTEM FONKSİYONLARI (ORTAK VERİ YAZMA, OKUMA VE PDF)
@@ -30,7 +36,6 @@ def generate_pdf(df, baslik):
     pdf.add_page()
     
     if FONT_YUKLENDI:
-        # Fontu unicode desteği ile ekle
         try:
             pdf.add_font("ArialTR", "", "arial.ttf", uni=True)
             pdf.set_font("ArialTR", "", 14)
@@ -100,7 +105,7 @@ def generate_combined_standings_pdf(gruplar_dict):
                 for item in row:
                     pdf.cell(col_width, 8, to_pdf_text(str(item)), border=1)
                 pdf.ln()
-        pdf.ln(5) # Gruplar arası boşluk
+        pdf.ln(5)
     return bytes(pdf.output())
 
 def ortak_veriyi_kaydet():
@@ -133,6 +138,13 @@ def ortak_veriyi_yukle():
             st.session_state.duyuru_metni = data.get("duyuru_metni", "")
         except Exception:
             pass 
+
+def show_pdf(file_path):
+    with open(file_path, "rb") as f:
+        base64_pdf = base64.b64encode(f.read()).decode('utf-8')
+    # PDF'i tarayıcıda göstermek için iframe yapısı
+    pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="600" type="application/pdf"></iframe>'
+    st.markdown(pdf_display, unsafe_allow_html=True)
 
 # ==============================================================================
 # HAFIZA (SESSION STATE) BAŞLATMA
@@ -530,7 +542,6 @@ with tab3:
                 
                 st.dataframe(grup_df, use_container_width=True)
 
-        # --- SEÇİLİ PUAN DURUMLARI İÇİN TEK SAYFADA PDF İNDİRME BUTONU ---
         if pdf_gruplar_data:
             st.divider()
             combined_pdf_bytes = generate_combined_standings_pdf(pdf_gruplar_data)
@@ -608,16 +619,12 @@ with tab4:
 
         df_gunluk = st.session_state.mac_programi[st.session_state.mac_programi['Tarih'] == formatted_tarih].copy()
         
-        # --- PDF DÜZENLEME ALANI ---
         st.markdown("### 📥 PDF İndirme Ayarları")
-        
-        # Bireysel maçları gizleme seçeneği eklendi
         bireysel_pdf_goster = st.checkbox("📄 PDF'te Bireysel Maçları (Tekler/Çiftler vb.) Göster", value=True)
         
         tum_kolonlar = ["Maç Saati", "Tarih", "Gün Adı", "Kort", "Grup", "Gün", "Branş", "Eşleşme", "Takım 1", "Takım 2", "Canlı Skor", "Kazanan"]
         secilen_pdf_cols = st.multiselect("PDF'e eklenecek sütunları seçin:", options=tum_kolonlar, default=["Maç Saati", "Kort", "Grup", "Branş", "Takım 1", "Takım 2", "Canlı Skor"])
 
-        # Checkbox durumuna göre PDF için gönderilecek veriyi filtrele
         df_pdf_export = df_gunluk.copy()
         if not bireysel_pdf_goster and not df_pdf_export.empty:
             df_pdf_export = df_pdf_export.drop_duplicates(subset=["Maç Saati", "Kort", "Grup", "Takım 1", "Takım 2"]).copy()
@@ -672,12 +679,10 @@ with tab4:
                         st.session_state.mac_programi.drop(index=actual_match_idx, inplace=True); st.session_state.mac_programi.reset_index(drop=True, inplace=True); ortak_veriyi_kaydet(); st.rerun()
                 st.divider()
                 
-                # Dinamik PDF İndirme (Filtrelenmiş Veri ile)
                 if not df_pdf_export.empty and secilen_pdf_cols:
                     pdf_bytes_admin = generate_pdf(df_pdf_export[secilen_pdf_cols], f"Mac Programi - {formatted_tarih}")
                     st.download_button("📥 Programı PDF Olarak İndir", data=pdf_bytes_admin, file_name=f"mac_programi_{formatted_tarih}.pdf", mime="application/pdf", key="pdf_admin")
                 
-                # Yönetici İçin Expander (Açılır/Kapanır) Editör Düzeni
                 edited_dfs = []
                 for (grup_adi, eslesme_adi), grup_df in df_gunluk.groupby(['Grup', 'Eşleşme']):
                     kort = grup_df.iloc[0]['Kort']
@@ -713,7 +718,6 @@ with tab4:
             if df_gunluk.empty:
                 st.info("Bu tarihte planlanmış maç bulunmamaktadır.")
             else:
-                # Dinamik PDF İndirme (Filtrelenmiş Veri ile)
                 if secilen_pdf_cols:
                     pdf_bytes_user = generate_pdf(df_pdf_export[secilen_pdf_cols], f"Mac Programi - {formatted_tarih}")
                     st.download_button("📥 Programı PDF Olarak İndir", data=pdf_bytes_user, file_name=f"mac_programi_{formatted_tarih}.pdf", mime="application/pdf", key="pdf_ziyaretci")
@@ -759,22 +763,32 @@ with tab5:
             st.success("Duyuru metni başarıyla güncellendi!")
         
         st.markdown("---")
-        st.markdown("### 📄 Misafirler İçin PDF Belgesi Yükle")
-        st.info("Turnuva kural kitapçığı veya yönetmelik gibi misafirlerin indirmesini istediğiniz PDF dosyasını buraya yükleyebilirsiniz.")
+        st.markdown("### 📄 Turnuva Belgeleri Ekle (Çoklu Yükleme)")
+        st.info("Kural kitapçığı veya yönetmelik gibi PDF dosyalarını sisteme buradan yükleyebilirsiniz.")
         
-        uploaded_pdf = st.file_uploader("PDF Dosyası Seçin:", type=["pdf"])
-        if uploaded_pdf is not None:
-            if st.button("📤 Seçilen PDF'i Sisteme Yükle"):
-                with open(PDF_DOSYASI, "wb") as f:
-                    f.write(uploaded_pdf.getbuffer())
-                st.success("PDF belgesi başarıyla yüklendi! Misafirler bu belgeyi indirebilir.")
+        # Çoklu dosya yükleme özelliği (accept_multiple_files=True)
+        uploaded_pdfs = st.file_uploader("PDF Dosyalarını Seçin:", type=["pdf"], accept_multiple_files=True)
         
-        if os.path.exists(PDF_DOSYASI):
-            st.warning("Sistemde şu an aktif olarak yüklü bir PDF belgesi var. Yeni bir belge yüklerseniz eskisinin üzerine yazılır.")
-            if st.button("🗑️ Mevcut PDF'i Sil"):
-                os.remove(PDF_DOSYASI)
-                st.success("PDF başarıyla silindi!")
+        if uploaded_pdfs:
+            if st.button("📤 Seçilen PDF'leri Sisteme Yükle"):
+                for pdf_file in uploaded_pdfs:
+                    file_path = os.path.join(BELGELER_KLASORU, pdf_file.name)
+                    with open(file_path, "wb") as f:
+                        f.write(pdf_file.getbuffer())
+                st.success("Belgeler başarıyla yüklendi!")
                 st.rerun()
+        
+        # Yüklü PDF'leri listele ve silme imkanı ver
+        pdf_dosyalari = [f for f in os.listdir(BELGELER_KLASORU) if f.endswith('.pdf')]
+        if pdf_dosyalari:
+            st.markdown("### 🗑️ Yüklü Belgeleri Yönet")
+            for pdf in pdf_dosyalari:
+                col1, col2 = st.columns([4, 1])
+                col1.write(f"📄 **{pdf}**")
+                if col2.button("Sil", key=f"del_{pdf}"):
+                    os.remove(os.path.join(BELGELER_KLASORU, pdf))
+                    st.success(f"{pdf} başarıyla silindi!")
+                    st.rerun()
 
     else:
         # Ziyaretçi Ekranı (Salt Okunur)
@@ -786,17 +800,29 @@ with tab5:
             
         st.markdown("---")
         st.markdown("### 📄 Turnuva Belgeleri")
-        if os.path.exists(PDF_DOSYASI):
-            with open(PDF_DOSYASI, "rb") as f:
-                pdf_data = f.read()
-            st.download_button(
-                label="📥 Turnuva Belgesini İndir / Görüntüle (PDF)",
-                data=pdf_data,
-                file_name="Turnuva_Belgesi.pdf",
-                mime="application/pdf"
-            )
+        
+        # Sadece PDF dosyalarını listele
+        pdf_dosyalari = [f for f in os.listdir(BELGELER_KLASORU) if f.endswith('.pdf')]
+        
+        if pdf_dosyalari:
+            st.write("Aşağıdaki belgelere tıklayarak sayfadan ayrılmadan doğrudan okuyabilirsiniz:")
+            for pdf in pdf_dosyalari:
+                dosya_yolu = os.path.join(BELGELER_KLASORU, pdf)
+                
+                with st.expander(f"📖 {pdf} - Görüntülemek İçin Tıklayın"):
+                    show_pdf(dosya_yolu)
+                    
+                    # Sayfa içi okumayı desteklemeyen cihazlar (örneğin bazı mobil tarayıcılar) için alternatif indirme butonu
+                    with open(dosya_yolu, "rb") as f:
+                        st.download_button(
+                            label=f"📥 {pdf} Dosyasını İndir",
+                            data=f.read(),
+                            file_name=pdf,
+                            mime="application/pdf",
+                            key=f"dl_btn_{pdf}"
+                        )
         else:
-            st.write("Sisteme henüz görüntüleyebileceğiniz bir belge yüklenmemiş.")
+            st.write("Sisteme henüz herhangi bir belge yüklenmemiş.")
 
 # --- TAB 6: YÖNETİM & DOSYA İŞLEMLERİ ---
 with tab6:
@@ -951,7 +977,6 @@ with tab6:
         st.markdown("---")
         st.markdown("### ⚠️ Sistem Sıfırlama (Tehlikeli İşlem)")
         
-        # Onay mekanizması için session_state'i başlat
         if "confirm_reset" not in st.session_state:
             st.session_state.confirm_reset = False
 
@@ -960,13 +985,15 @@ with tab6:
                 st.session_state.confirm_reset = True
                 st.rerun()
         else:
-            st.warning("⚠️ DİKKAT: Tüm turnuva verileri (maçlar, kadrolar, skorlar) kalıcı olarak silinecektir. Bu işlem geri alınamaz!")
+            st.warning("⚠️ DİKKAT: Tüm turnuva verileri (maçlar, kadrolar, skorlar, yüklenen belgeler) kalıcı olarak silinecektir. Bu işlem geri alınamaz!")
             col_evet, col_hayir = st.columns(2)
             if col_evet.button("✅ Evet, Tüm Verileri Sil"):
                 if os.path.exists(VERI_DOSYASI):
                     os.remove(VERI_DOSYASI)
-                if os.path.exists(PDF_DOSYASI):
-                    os.remove(PDF_DOSYASI)
+                # Tüm PDF klasörünü temizle
+                if os.path.exists(BELGELER_KLASORU):
+                    shutil.rmtree(BELGELER_KLASORU)
+                
                 st.session_state.clear()
                 st.session_state.confirm_reset = False
                 st.success("Tüm veritabanı başarıyla temizlendi!")
