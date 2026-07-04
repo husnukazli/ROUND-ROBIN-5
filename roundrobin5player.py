@@ -114,7 +114,8 @@ def ortak_veriyi_kaydet():
         "mac_programi": st.session_state.mac_programi.to_dict(orient="records"),
         "takim_kadrolari": st.session_state.takim_kadrolari,
         "grup_formatlari": st.session_state.get("grup_formatlari", {}),
-        "duyuru_metni": st.session_state.get("duyuru_metni", "")
+        "duyuru_metni": st.session_state.get("duyuru_metni", ""),
+        "takim_havuzu": st.session_state.get("takim_havuzu", {})
     }
     with open(VERI_DOSYASI, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
@@ -136,13 +137,13 @@ def ortak_veriyi_yukle():
             st.session_state.takim_kadrolari = data["takim_kadrolari"]
             st.session_state.grup_formatlari = data.get("grup_formatlari", {})
             st.session_state.duyuru_metni = data.get("duyuru_metni", "")
+            st.session_state.takim_havuzu = data.get("takim_havuzu", {})
         except Exception:
             pass 
 
 def show_pdf(file_path):
     with open(file_path, "rb") as f:
         base64_pdf = base64.b64encode(f.read()).decode('utf-8')
-    # PDF'i tarayıcıda göstermek için iframe yapısı
     pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="600" type="application/pdf"></iframe>'
     st.markdown(pdf_display, unsafe_allow_html=True)
 
@@ -163,6 +164,9 @@ if "grup_formatlari" not in st.session_state:
     
 if "duyuru_metni" not in st.session_state:
     st.session_state.duyuru_metni = ""
+
+if "takim_havuzu" not in st.session_state:
+    st.session_state.takim_havuzu = {}
 
 if 'skor_tablosu' not in st.session_state:
     if os.path.exists(VERI_DOSYASI):
@@ -308,9 +312,41 @@ tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["👥 1. Grup Ayarları", "✍️ 
 # --- TAB 1: GRUP Ayarları ---
 with tab1:
     st.subheader("Turnuva Grupları ve Kadrolar")
-    st.info("ℹ️ İpucu: Grup tipini (Örn: 4'lüden 5'liye) veya maç formatını değiştirmek için '6. Yönetim & Dosya' sekmesini kullanınız.")
+    st.info("ℹ️ İpucu: Excel'de sütun başlıklarına 'Takım Adı', altındaki satırlara o takımın oyuncularını yazarak dosya yükleyebilirsiniz.")
     
     if st.session_state.admin_mi:
+        # --- EXCEL/CSV YÜKLEME ALANI ---
+        with st.expander("📥 Excel / CSV'den Takım ve Oyuncu Havuzu Yükle", expanded=False):
+            uploaded_file = st.file_uploader("Takım listesini yükleyin (.xlsx veya .csv)", type=["csv", "xlsx"])
+            if uploaded_file:
+                try:
+                    if uploaded_file.name.endswith('.csv'):
+                        df_havuz = pd.read_csv(uploaded_file)
+                    else:
+                        df_havuz = pd.read_excel(uploaded_file)
+                    
+                    yeni_havuz = {}
+                    for col in df_havuz.columns:
+                        if not "Unnamed" in str(col): # Boş sütunları atla
+                            oyuncular = df_havuz[col].dropna().astype(str).tolist()
+                            yeni_havuz[str(col).strip()] = [o.strip() for o in oyuncular if o.strip()]
+                    
+                    st.session_state.takim_havuzu.update(yeni_havuz)
+                    ortak_veriyi_kaydet()
+                    st.success(f"✅ Başarılı! {len(yeni_havuz)} takım sisteme kaydedildi.")
+                except Exception as e:
+                    st.error(f"Dosya okuma hatası: {e}. Lütfen formatın doğru olduğundan emin olun.")
+            
+            if st.session_state.takim_havuzu:
+                st.write(f"📊 Sistemde şu an **{len(st.session_state.takim_havuzu)}** hazır takım bulunuyor.")
+                if st.button("🗑️ Takım Havuzunu Temizle"):
+                    st.session_state.takim_havuzu = {}
+                    ortak_veriyi_kaydet()
+                    st.rerun()
+
+        st.markdown("---")
+        
+        # --- GRUP OLUŞTURMA ALANI ---
         col_t1, col_t2 = st.columns(2)
         with col_t1:
             grup_tipi = st.radio("Grup Tipi:", ["3'lü Grup", "4'lü Grup", "5'li Grup", "6'lı Grup"], horizontal=True)
@@ -324,26 +360,40 @@ with tab1:
         elif grup_tipi == "5'li Grup": beklenen_sayi = 5
         else: beklenen_sayi = 6
         
-        takim_listesi = st.text_area(f"Takım İsimlerini Satır Satır Yazın (Tam olarak {beklenen_sayi} Takım):")
-        takimlar = [t.strip() for t in takim_listesi.split('\n') if t.strip()]
+        st.markdown(f"### 🛡️ Takım ve Kadro Seçimi ({beklenen_sayi} Takım)")
         
+        takimlar = []
         grup_kadrolari = {}
         kadro_hata = False
-        if len(takimlar) == beklenen_sayi:
-            st.markdown("### 👥 Oyuncu Kadroları (Her Satıra Bir Oyuncu, En Fazla 10)")
-            cols = st.columns(beklenen_sayi)
-            for i, t in enumerate(takimlar):
-                with cols[i]:
-                    oyuncular_raw = st.text_area(f"✍️ {t} Kadrosu", key=f"input_kadro_{t}", height=150)
-                    oyuncu_listesi = [o.strip() for o in oyuncular_raw.split('\n') if o.strip()]
-                    if len(oyuncu_listesi) > 10:
-                        st.error("Maksimum 10 oyuncu sınırı aşıldı!")
-                        kadro_hata = True
-                    grup_kadrolari[t] = oyuncu_listesi if oyuncu_listesi else ["Belirtilmedi"]
+        havuz_isimleri = ["✏️ Yeni / Listede Olmayan Takım (Elle Gir)"] + list(st.session_state.takim_havuzu.keys())
+        
+        cols = st.columns(beklenen_sayi)
+        for i in range(beklenen_sayi):
+            with cols[i]:
+                st.markdown(f"**{i+1}. Takım**")
+                secim = st.selectbox(f"{i+1}. Takım Seçimi", options=havuz_isimleri, key=f"sec_takim_{i}", label_visibility="collapsed")
+                
+                if secim == "✏️ Yeni / Listede Olmayan Takım (Elle Gir)":
+                    t_isim = st.text_input("Takım Adı:", key=f"isim_t_{i}", placeholder="Takım Adı Yazın")
+                    def_kadro = ""
+                else:
+                    t_isim = secim
+                    def_kadro = "\n".join(st.session_state.takim_havuzu[secim])
+                
+                oyuncular_raw = st.text_area(f"✍️ Kadro (Her satıra bir kişi)", value=def_kadro, key=f"input_kadro_{i}", height=150)
+                oyuncu_listesi = [o.strip() for o in oyuncular_raw.split('\n') if o.strip()]
+                
+                if len(oyuncu_listesi) > 10:
+                    st.error("Maksimum 10 oyuncu sınırı aşıldı!")
+                    kadro_hata = True
+                
+                if t_isim:
+                    takimlar.append(t_isim)
+                    grup_kadrolari[t_isim] = oyuncu_listesi if oyuncu_listesi else ["Belirtilmedi"]
 
         if st.button("🚀 Grubu ve Fikstürü Oluştur / Güncelle"):
-            if not grup_adi or len(takimlar) != beklenen_sayi or kadro_hata:
-                st.error("Lütfen tüm parametreleri eksiksiz ve kurallara uygun doldurun.")
+            if not grup_adi or len(takimlar) != beklenen_sayi or kadro_hata or len(set(takimlar)) != beklenen_sayi:
+                st.error("Lütfen grup adını girin, tüm takımları eksiksiz/farklı doldurun ve kurallara uyun.")
             else:
                 grup_adi_temiz = grup_adi.strip()
                 st.session_state.takim_kadrolari[grup_adi_temiz] = grup_kadrolari
@@ -765,7 +815,6 @@ with tab5:
         st.markdown("### 📄 Turnuva Belgeleri Ekle (Çoklu Yükleme)")
         st.info("Kural kitapçığı veya yönetmelik gibi PDF dosyalarını sisteme buradan yükleyebilirsiniz.")
         
-        # Çoklu dosya yükleme özelliği (accept_multiple_files=True)
         uploaded_pdfs = st.file_uploader("PDF Dosyalarını Seçin:", type=["pdf"], accept_multiple_files=True)
         
         if uploaded_pdfs:
@@ -777,7 +826,6 @@ with tab5:
                 st.success("Belgeler başarıyla yüklendi!")
                 st.rerun()
         
-        # Yüklü PDF'leri listele ve silme imkanı ver
         pdf_dosyalari = [f for f in os.listdir(BELGELER_KLASORU) if f.endswith('.pdf')]
         if pdf_dosyalari:
             st.markdown("### 🗑️ Yüklü Belgeleri Yönet")
@@ -790,7 +838,6 @@ with tab5:
                     st.rerun()
 
     else:
-        # Ziyaretçi Ekranı (Salt Okunur)
         st.markdown("### 📝 Güncel Duyurular")
         if st.session_state.duyuru_metni:
             st.info(st.session_state.duyuru_metni)
@@ -800,7 +847,6 @@ with tab5:
         st.markdown("---")
         st.markdown("### 📄 Turnuva Belgeleri")
         
-        # Sadece PDF dosyalarını listele
         pdf_dosyalari = [f for f in os.listdir(BELGELER_KLASORU) if f.endswith('.pdf')]
         
         if pdf_dosyalari:
@@ -811,7 +857,6 @@ with tab5:
                 with st.expander(f"📖 {pdf} - Görüntülemek İçin Tıklayın"):
                     show_pdf(dosya_yolu)
                     
-                    # Sayfa içi okumayı desteklemeyen cihazlar (örneğin bazı mobil tarayıcılar) için alternatif indirme butonu
                     with open(dosya_yolu, "rb") as f:
                         st.download_button(
                             label=f"📥 {pdf} Dosyasını İndir",
@@ -956,7 +1001,8 @@ with tab6:
                 "mac_programi": st.session_state.mac_programi.to_dict(orient="records"),
                 "takim_kadrolari": st.session_state.takim_kadrolari,
                 "grup_formatlari": st.session_state.get("grup_formatlari", {}),
-                "duyuru_metni": st.session_state.duyuru_metni
+                "duyuru_metni": st.session_state.duyuru_metni,
+                "takim_havuzu": st.session_state.get("takim_havuzu", {})
             }
             st.download_button("📥 Turnuva Veritabanını İndir (.json)", data=json.dumps(export_data, ensure_ascii=False, indent=4), file_name="turnuva_yedek.json", mime="application/json")
         with c_ld:
@@ -969,6 +1015,7 @@ with tab6:
                     st.session_state.takim_kadrolari = d["takim_kadrolari"]
                     st.session_state.grup_formatlari = d.get("grup_formatlari", {})
                     st.session_state.duyuru_metni = d.get("duyuru_metni", "")
+                    st.session_state.takim_havuzu = d.get("takim_havuzu", {})
                     ortak_veriyi_kaydet()
                     st.success("Yedek başarıyla yüklendi!")
                     st.rerun()
@@ -989,7 +1036,6 @@ with tab6:
             if col_evet.button("✅ Evet, Tüm Verileri Sil"):
                 if os.path.exists(VERI_DOSYASI):
                     os.remove(VERI_DOSYASI)
-                # Tüm PDF klasörünü temizle
                 if os.path.exists(BELGELER_KLASORU):
                     shutil.rmtree(BELGELER_KLASORU)
                 
