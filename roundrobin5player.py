@@ -14,27 +14,52 @@ VERI_DOSYASI = "turnuva_veri.json"
 # ==============================================================================
 # SİSTEM FONKSİYONLARI (ORTAK VERİ YAZMA, OKUMA VE PDF)
 # ==============================================================================
-def to_latin(text):
+
+# Türkçe karakter font kontrolü
+FONT_YUKLENDI = os.path.exists("arial.ttf")
+
+def to_pdf_text(text):
+    """Eğer ttf fontu varsa metni olduğu gibi bırakır, yoksa latin-1'e çevirip hataları önler."""
+    if FONT_YUKLENDI:
+        return str(text)
     return str(text).encode('latin-1', 'replace').decode('latin-1')
 
 def generate_pdf(df, baslik):
     pdf = FPDF(orientation='L', unit='mm', format='A4')
     pdf.add_page()
-    pdf.set_font("Arial", 'B', 14)
-    pdf.cell(0, 10, to_latin(baslik), ln=True, align='C')
+    
+    if FONT_YUKLENDI:
+        # Fontu unicode desteği ile ekle
+        try:
+            pdf.add_font("ArialTR", "", "arial.ttf", uni=True)
+            pdf.set_font("ArialTR", "", 14)
+        except:
+            pdf.set_font("Arial", 'B', 14)
+    else:
+        pdf.set_font("Arial", 'B', 14)
+        
+    pdf.cell(0, 10, to_pdf_text(baslik), ln=True, align='C')
     pdf.ln(5)
     
-    pdf.set_font("Arial", 'B', 10)
+    if FONT_YUKLENDI:
+        pdf.set_font("ArialTR", "", 10)
+    else:
+        pdf.set_font("Arial", '', 10)
+
     if len(df.columns) > 0:
         col_width = 270 / len(df.columns)
         for col in df.columns:
-            pdf.cell(col_width, 10, to_latin(col), border=1)
+            pdf.cell(col_width, 10, to_pdf_text(col), border=1)
         pdf.ln()
         
-        pdf.set_font("Arial", '', 9)
+        if FONT_YUKLENDI:
+            pdf.set_font("ArialTR", "", 9)
+        else:
+            pdf.set_font("Arial", '', 9)
+            
         for _, row in df.iterrows():
             for item in row:
-                pdf.cell(col_width, 8, to_latin(str(item)), border=1)
+                pdf.cell(col_width, 8, to_pdf_text(str(item)), border=1)
             pdf.ln()
     
     return bytes(pdf.output())
@@ -43,20 +68,36 @@ def generate_combined_standings_pdf(gruplar_dict):
     pdf = FPDF(orientation='L', unit='mm', format='A4')
     pdf.add_page()
     for grup_adi, df in gruplar_dict.items():
-        pdf.set_font("Arial", 'B', 12)
-        pdf.cell(0, 10, to_latin(grup_adi + " Puan Durumu"), ln=True, align='L')
+        if FONT_YUKLENDI:
+            try:
+                pdf.add_font("ArialTR", "", "arial.ttf", uni=True)
+                pdf.set_font("ArialTR", "", 12)
+            except:
+                pdf.set_font("Arial", 'B', 12)
+        else:
+            pdf.set_font("Arial", 'B', 12)
+            
+        pdf.cell(0, 10, to_pdf_text(grup_adi + " Puan Durumu"), ln=True, align='L')
         
         if len(df.columns) > 0:
-            pdf.set_font("Arial", 'B', 10)
+            if FONT_YUKLENDI:
+                pdf.set_font("ArialTR", "", 10)
+            else:
+                pdf.set_font("Arial", 'B', 10)
+                
             col_width = 270 / len(df.columns)
             for col in df.columns:
-                pdf.cell(col_width, 8, to_latin(col), border=1)
+                pdf.cell(col_width, 8, to_pdf_text(col), border=1)
             pdf.ln()
             
-            pdf.set_font("Arial", '', 9)
+            if FONT_YUKLENDI:
+                pdf.set_font("ArialTR", "", 9)
+            else:
+                pdf.set_font("Arial", '', 9)
+                
             for _, row in df.iterrows():
                 for item in row:
-                    pdf.cell(col_width, 8, to_latin(str(item)), border=1)
+                    pdf.cell(col_width, 8, to_pdf_text(str(item)), border=1)
                 pdf.ln()
         pdf.ln(5) # Gruplar arası boşluk
     return bytes(pdf.output())
@@ -515,7 +556,7 @@ with tab4:
     if 'expand_all' not in st.session_state:
         st.session_state.expand_all = False
 
-    if st.button("🔄 Bireysel Maçları Göster/ Gizle"):
+    if st.button("🔄 Arayüzde Bireysel Maçları Göster/ Gizle"):
         st.session_state.expand_all = not st.session_state.expand_all
         st.rerun()
 
@@ -560,8 +601,25 @@ with tab4:
         
         # --- PDF DÜZENLEME ALANI (GÜNCELLEME BURAYA YAPILDI) ---
         st.markdown("### 📥 PDF İndirme Ayarları")
+        
+        # Bireysel maçları gizleme seçeneği eklendi
+        bireysel_pdf_goster = st.checkbox("📄 PDF'te Bireysel Maçları (Tekler/Çiftler vb.) Göster", value=True)
+        
         tum_kolonlar = ["Maç Saati", "Tarih", "Gün Adı", "Kort", "Grup", "Gün", "Branş", "Eşleşme", "Takım 1", "Takım 2", "Canlı Skor", "Kazanan"]
         secilen_pdf_cols = st.multiselect("PDF'e eklenecek sütunları seçin:", options=tum_kolonlar, default=["Maç Saati", "Kort", "Grup", "Branş", "Takım 1", "Takım 2", "Canlı Skor"])
+
+        # Checkbox durumuna göre PDF için gönderilecek veriyi filtrele
+        df_pdf_export = df_gunluk.copy()
+        if not bireysel_pdf_goster and not df_pdf_export.empty:
+            df_pdf_export = df_pdf_export.drop_duplicates(subset=["Maç Saati", "Kort", "Grup", "Takım 1", "Takım 2"]).copy()
+            if "Branş" in df_pdf_export.columns:
+                df_pdf_export["Branş"] = "Takım Karşılaşması"
+            if "Canlı Skor" in df_pdf_export.columns:
+                df_pdf_export["Canlı Skor"] = "-"
+            if "T1 Oyuncu" in df_pdf_export.columns:
+                df_pdf_export["T1 Oyuncu"] = "-"
+            if "T2 Oyuncu" in df_pdf_export.columns:
+                df_pdf_export["T2 Oyuncu"] = "-"
 
         if st.session_state.admin_mi:
             st.markdown(f"### ➕ {formatted_tarih} Tarihine Maç Ekle")
@@ -605,9 +663,9 @@ with tab4:
                         st.session_state.mac_programi.drop(index=actual_match_idx, inplace=True); st.session_state.mac_programi.reset_index(drop=True, inplace=True); ortak_veriyi_kaydet(); st.rerun()
                 st.divider()
                 
-                # Dinamik PDF İndirme (Seçili Sütunlarla)
-                if not df_gunluk.empty and secilen_pdf_cols:
-                    pdf_bytes_admin = generate_pdf(df_gunluk[secilen_pdf_cols], f"Mac Programi - {formatted_tarih}")
+                # Dinamik PDF İndirme (Filtrelenmiş Veri ile)
+                if not df_pdf_export.empty and secilen_pdf_cols:
+                    pdf_bytes_admin = generate_pdf(df_pdf_export[secilen_pdf_cols], f"Mac Programi - {formatted_tarih}")
                     st.download_button("📥 Programı PDF Olarak İndir", data=pdf_bytes_admin, file_name=f"mac_programi_{formatted_tarih}.pdf", mime="application/pdf", key="pdf_admin")
                 
                 # Yönetici İçin Expander (Açılır/Kapanır) Editör Düzeni
@@ -646,9 +704,9 @@ with tab4:
             if df_gunluk.empty:
                 st.info("Bu tarihte planlanmış maç bulunmamaktadır.")
             else:
-                # Dinamik PDF İndirme (Seçili Sütunlarla)
+                # Dinamik PDF İndirme (Filtrelenmiş Veri ile)
                 if secilen_pdf_cols:
-                    pdf_bytes_user = generate_pdf(df_gunluk[secilen_pdf_cols], f"Mac Programi - {formatted_tarih}")
+                    pdf_bytes_user = generate_pdf(df_pdf_export[secilen_pdf_cols], f"Mac Programi - {formatted_tarih}")
                     st.download_button("📥 Programı PDF Olarak İndir", data=pdf_bytes_user, file_name=f"mac_programi_{formatted_tarih}.pdf", mime="application/pdf", key="pdf_ziyaretci")
                 st.divider()
                 
