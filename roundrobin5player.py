@@ -826,8 +826,8 @@ with tab5:
                     st.success("Yedek başarıyla yüklendi!")
                     st.rerun()
                 except Exception as ex: st.error(f"Hata: {ex}")
-
-st.markdown("### ⚠️ Sistem Sıfırlama (Tehlikeli İşlem)")
+        st.markdown("---")
+        st.markdown("### ⚠️ Sistem Sıfırlama (Tehlikeli İşlem)")
         
         # Onay mekanizması için session_state'i başlat
         if "confirm_reset" not in st.session_state:
