@@ -510,12 +510,12 @@ with tab3:
 
 # --- TAB 4: MAÇ PROGRAMI ---
 with tab4:
-    st.subheader("📅 Canlı Maç Programı ve Fikstür")
+    st.subheader("📅 Maç Programı ve Fikstür")
     
     if 'expand_all' not in st.session_state:
         st.session_state.expand_all = False
 
-    if st.button("🔄 Tümünü Aç / Kapat"):
+    if st.button("🔄 Bireysel Maçları Göster/ Gizle"):
         st.session_state.expand_all = not st.session_state.expand_all
         st.rerun()
 
