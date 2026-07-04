@@ -305,7 +305,7 @@ def eslesmeleri_olustur(grup_adi, takimlar, grup_tipi, format_secimi):
 # ==============================================================================
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["👥 1. Grup Ayarları", "✍️ 2. Skor Girişi", "🏆 3. Puan Durumu", "📅 4. Maç Programı", "📢 5. Duyurular", "⚙️ 6. Yönetim & Dosya"])
 
-# --- TAB 1: GRUP AYARLARI ---
+# --- TAB 1: GRUP Ayarları ---
 with tab1:
     st.subheader("Turnuva Grupları ve Kadrolar")
     st.info("ℹ️ İpucu: Grup tipini (Örn: 4'lüden 5'liye) veya maç formatını değiştirmek için '6. Yönetim & Dosya' sekmesini kullanınız.")
@@ -619,25 +619,26 @@ with tab4:
 
         df_gunluk = st.session_state.mac_programi[st.session_state.mac_programi['Tarih'] == formatted_tarih].copy()
         
-        st.markdown("### 📥 PDF İndirme Ayarları")
-        bireysel_pdf_goster = st.checkbox("📄 PDF'te Bireysel Maçları (Tekler/Çiftler vb.) Göster", value=True)
-        
-        tum_kolonlar = ["Maç Saati", "Tarih", "Gün Adı", "Kort", "Grup", "Gün", "Branş", "Eşleşme", "Takım 1", "Takım 2", "Canlı Skor", "Kazanan"]
-        secilen_pdf_cols = st.multiselect("PDF'e eklenecek sütunları seçin:", options=tum_kolonlar, default=["Maç Saati", "Kort", "Grup", "Branş", "Takım 1", "Takım 2", "Canlı Skor"])
-
-        df_pdf_export = df_gunluk.copy()
-        if not bireysel_pdf_goster and not df_pdf_export.empty:
-            df_pdf_export = df_pdf_export.drop_duplicates(subset=["Maç Saati", "Kort", "Grup", "Takım 1", "Takım 2"]).copy()
-            if "Branş" in df_pdf_export.columns:
-                df_pdf_export["Branş"] = "Takım Karşılaşması"
-            if "Canlı Skor" in df_pdf_export.columns:
-                df_pdf_export["Canlı Skor"] = "-"
-            if "T1 Oyuncu" in df_pdf_export.columns:
-                df_pdf_export["T1 Oyuncu"] = "-"
-            if "T2 Oyuncu" in df_pdf_export.columns:
-                df_pdf_export["T2 Oyuncu"] = "-"
-
+        # --- SADECE BAŞHAKEM YÖNETİM MODU ---
         if st.session_state.admin_mi:
+            st.markdown("### 📥 PDF İndirme Ayarları")
+            bireysel_pdf_goster = st.checkbox("📄 PDF'te Bireysel Maçları (Tekler/Çiftler vb.) Göster", value=True)
+            
+            tum_kolonlar = ["Maç Saati", "Tarih", "Gün Adı", "Kort", "Grup", "Gün", "Branş", "Eşleşme", "Takım 1", "Takım 2", "Canlı Skor", "Kazanan"]
+            secilen_pdf_cols = st.multiselect("PDF'e eklenecek sütunları seçin:", options=tum_kolonlar, default=["Maç Saati", "Kort", "Grup", "Branş", "Takım 1", "Takım 2", "Canlı Skor"])
+
+            df_pdf_export = df_gunluk.copy()
+            if not bireysel_pdf_goster and not df_pdf_export.empty:
+                df_pdf_export = df_pdf_export.drop_duplicates(subset=["Maç Saati", "Kort", "Grup", "Takım 1", "Takım 2"]).copy()
+                if "Branş" in df_pdf_export.columns:
+                    df_pdf_export["Branş"] = "Takım Karşılaşması"
+                if "Canlı Skor" in df_pdf_export.columns:
+                    df_pdf_export["Canlı Skor"] = "-"
+                if "T1 Oyuncu" in df_pdf_export.columns:
+                    df_pdf_export["T1 Oyuncu"] = "-"
+                if "T2 Oyuncu" in df_pdf_export.columns:
+                    df_pdf_export["T2 Oyuncu"] = "-"
+
             st.markdown(f"### ➕ {formatted_tarih} Tarihine Maç Ekle")
             c1, c2, c3 = st.columns(3)
             gruplar_prog = st.session_state.skor_tablosu['Grup'].unique()
@@ -713,14 +714,12 @@ with tab4:
                         st.success("Güncellendi!")
                         st.rerun()
 
+        # --- MİSAFİR GÖRÜNÜMÜ ---
         else:
             st.markdown(f"### 📋 {formatted_tarih} Tarihli Maç Akışı")
             if df_gunluk.empty:
                 st.info("Bu tarihte planlanmış maç bulunmamaktadır.")
             else:
-                if secilen_pdf_cols:
-                    pdf_bytes_user = generate_pdf(df_pdf_export[secilen_pdf_cols], f"Mac Programi - {formatted_tarih}")
-                    st.download_button("📥 Programı PDF Olarak İndir", data=pdf_bytes_user, file_name=f"mac_programi_{formatted_tarih}.pdf", mime="application/pdf", key="pdf_ziyaretci")
                 st.divider()
                 
                 for (grup_adi, eslesme_adi), grup_df in df_gunluk.groupby(['Grup', 'Eşleşme']):
