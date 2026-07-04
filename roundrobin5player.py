@@ -10,6 +10,7 @@ st.set_page_config(page_title="Tenis Turnuva Otomasyonu", page_icon="🎾", layo
 st.title("🎾 Tenis Turnuva Yönetim Sistemi")
 
 VERI_DOSYASI = "turnuva_veri.json"
+PDF_DOSYASI = "turnuva_belgesi.pdf"
 
 # ==============================================================================
 # SİSTEM FONKSİYONLARI (ORTAK VERİ YAZMA, OKUMA VE PDF)
@@ -107,7 +108,8 @@ def ortak_veriyi_kaydet():
         "skor_tablosu": st.session_state.skor_tablosu.to_dict(orient="records"),
         "mac_programi": st.session_state.mac_programi.to_dict(orient="records"),
         "takim_kadrolari": st.session_state.takim_kadrolari,
-        "grup_formatlari": st.session_state.get("grup_formatlari", {})
+        "grup_formatlari": st.session_state.get("grup_formatlari", {}),
+        "duyuru_metni": st.session_state.get("duyuru_metni", "")
     }
     with open(VERI_DOSYASI, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
@@ -128,6 +130,7 @@ def ortak_veriyi_yukle():
             st.session_state.mac_programi = mp_df
             st.session_state.takim_kadrolari = data["takim_kadrolari"]
             st.session_state.grup_formatlari = data.get("grup_formatlari", {})
+            st.session_state.duyuru_metni = data.get("duyuru_metni", "")
         except Exception:
             pass 
 
@@ -145,6 +148,9 @@ if "selected_date_filter" not in st.session_state:
 
 if "grup_formatlari" not in st.session_state:
     st.session_state.grup_formatlari = {}
+    
+if "duyuru_metni" not in st.session_state:
+    st.session_state.duyuru_metni = ""
 
 if 'skor_tablosu' not in st.session_state:
     if os.path.exists(VERI_DOSYASI):
@@ -187,19 +193,6 @@ with st.sidebar:
         if st.button("🔓 Çıkış Yap (İzleyici Modu)"):
             st.session_state.admin_mi = False
             st.rerun()
-
-    st.markdown("---")
-    st.markdown("### 📅 Maç Olan Günler")
-    if not st.session_state.mac_programi.empty:
-        unique_dates = sorted(st.session_state.mac_programi['Tarih'].unique())
-        for d_str in unique_dates:
-            match_count = len(st.session_state.mac_programi[st.session_state.mac_programi['Tarih'] == d_str])
-            d_obj = datetime.datetime.strptime(d_str, "%d.%m.%Y").date()
-            if st.button(f"🗓️ {d_str} ({match_count} Maç)"):
-                st.session_state.selected_date_filter = d_obj
-                st.rerun()
-    else:
-        st.info("Henüz maç planlanmadı.")
 
 # ==============================================================================
 # SİLBAŞTAN SKOR DOĞRULAMA VE FİKSTÜR ÜRETECİ MOTORU
@@ -298,12 +291,12 @@ def eslesmeleri_olustur(grup_adi, takimlar, grup_tipi, format_secimi):
 # ==============================================================================
 # SEKME STRÜKTÜRÜ
 # ==============================================================================
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["👥 1. Grup Ayarları", "✍️ 2. Skor Girişi", "🏆 3. Puan Durumu", "📅 4. Maç Programı", "⚙️ 5. Yönetim & Dosya"])
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["👥 1. Grup Ayarları", "✍️ 2. Skor Girişi", "🏆 3. Puan Durumu", "📅 4. Maç Programı", "📢 5. Duyurular", "⚙️ 6. Yönetim & Dosya"])
 
 # --- TAB 1: GRUP AYARLARI ---
 with tab1:
     st.subheader("Turnuva Grupları ve Kadrolar")
-    st.info("ℹ️ İpucu: Grup tipini (Örn: 4'lüden 5'liye) veya maç formatını değiştirmek için '5. Yönetim & Dosya' sekmesini kullanınız.")
+    st.info("ℹ️ İpucu: Grup tipini (Örn: 4'lüden 5'liye) veya maç formatını değiştirmek için '6. Yönetim & Dosya' sekmesini kullanınız.")
     
     if st.session_state.admin_mi:
         col_t1, col_t2 = st.columns(2)
@@ -553,6 +546,22 @@ with tab3:
 with tab4:
     st.subheader("📅 Maç Programı ve Fikstür")
     
+    st.markdown("### 📅 Maç Olan Günler (Filtre)")
+    if not st.session_state.mac_programi.empty:
+        unique_dates = sorted(st.session_state.mac_programi['Tarih'].unique())
+        cols = st.columns(min(len(unique_dates), 5) if len(unique_dates) > 0 else 1)
+        for i, d_str in enumerate(unique_dates):
+            match_count = len(st.session_state.mac_programi[st.session_state.mac_programi['Tarih'] == d_str])
+            d_obj = datetime.datetime.strptime(d_str, "%d.%m.%Y").date()
+            with cols[i % len(cols)]:
+                if st.button(f"🗓️ {d_str} ({match_count})", key=f"btn_date_{d_str}"):
+                    st.session_state.selected_date_filter = d_obj
+                    st.rerun()
+    else:
+        st.info("Henüz maç planlanmadı.")
+
+    st.markdown("---")
+
     if 'expand_all' not in st.session_state:
         st.session_state.expand_all = False
 
@@ -599,7 +608,7 @@ with tab4:
 
         df_gunluk = st.session_state.mac_programi[st.session_state.mac_programi['Tarih'] == formatted_tarih].copy()
         
-        # --- PDF DÜZENLEME ALANI (GÜNCELLEME BURAYA YAPILDI) ---
+        # --- PDF DÜZENLEME ALANI ---
         st.markdown("### 📥 PDF İndirme Ayarları")
         
         # Bireysel maçları gizleme seçeneği eklendi
@@ -737,8 +746,60 @@ with tab4:
     else:
         st.info("Gruplar oluşturulmadan maç programı aktif edilemez.")
 
-# --- TAB 5: YÖNETİM & DOSYA İŞLEMLERİ ---
+# --- TAB 5: DUYURULAR ---
 with tab5:
+    st.subheader("📢 Turnuva Duyuruları ve Belgeler")
+    
+    if st.session_state.admin_mi:
+        st.markdown("### ✍️ Duyuru Düzenleme (Sadece Başhakem)")
+        yeni_duyuru = st.text_area("Duyuru Metni:", value=st.session_state.duyuru_metni, height=150)
+        if st.button("💾 Duyuruyu Kaydet"):
+            st.session_state.duyuru_metni = yeni_duyuru
+            ortak_veriyi_kaydet()
+            st.success("Duyuru metni başarıyla güncellendi!")
+        
+        st.markdown("---")
+        st.markdown("### 📄 Misafirler İçin PDF Belgesi Yükle")
+        st.info("Turnuva kural kitapçığı veya yönetmelik gibi misafirlerin indirmesini istediğiniz PDF dosyasını buraya yükleyebilirsiniz.")
+        
+        uploaded_pdf = st.file_uploader("PDF Dosyası Seçin:", type=["pdf"])
+        if uploaded_pdf is not None:
+            if st.button("📤 Seçilen PDF'i Sisteme Yükle"):
+                with open(PDF_DOSYASI, "wb") as f:
+                    f.write(uploaded_pdf.getbuffer())
+                st.success("PDF belgesi başarıyla yüklendi! Misafirler bu belgeyi indirebilir.")
+        
+        if os.path.exists(PDF_DOSYASI):
+            st.warning("Sistemde şu an aktif olarak yüklü bir PDF belgesi var. Yeni bir belge yüklerseniz eskisinin üzerine yazılır.")
+            if st.button("🗑️ Mevcut PDF'i Sil"):
+                os.remove(PDF_DOSYASI)
+                st.success("PDF başarıyla silindi!")
+                st.rerun()
+
+    else:
+        # Ziyaretçi Ekranı (Salt Okunur)
+        st.markdown("### 📝 Güncel Duyurular")
+        if st.session_state.duyuru_metni:
+            st.info(st.session_state.duyuru_metni)
+        else:
+            st.write("Şu an için aktif bir turnuva duyurusu bulunmamaktadır.")
+            
+        st.markdown("---")
+        st.markdown("### 📄 Turnuva Belgeleri")
+        if os.path.exists(PDF_DOSYASI):
+            with open(PDF_DOSYASI, "rb") as f:
+                pdf_data = f.read()
+            st.download_button(
+                label="📥 Turnuva Belgesini İndir / Görüntüle (PDF)",
+                data=pdf_data,
+                file_name="Turnuva_Belgesi.pdf",
+                mime="application/pdf"
+            )
+        else:
+            st.write("Sisteme henüz görüntüleyebileceğiniz bir belge yüklenmemiş.")
+
+# --- TAB 6: YÖNETİM & DOSYA İŞLEMLERİ ---
+with tab6:
     st.subheader("⚙️ Gelişmiş Yönetim Paneli")
     if st.session_state.admin_mi:
         with st.expander("✍️ Grup Tipi, Format, İsim ve Kadroları Revize Et", expanded=True):
@@ -869,7 +930,8 @@ with tab5:
                 "skor_tablosu": st.session_state.skor_tablosu.to_dict(orient="records"),
                 "mac_programi": st.session_state.mac_programi.to_dict(orient="records"),
                 "takim_kadrolari": st.session_state.takim_kadrolari,
-                "grup_formatlari": st.session_state.get("grup_formatlari", {})
+                "grup_formatlari": st.session_state.get("grup_formatlari", {}),
+                "duyuru_metni": st.session_state.duyuru_metni
             }
             st.download_button("📥 Turnuva Veritabanını İndir (.json)", data=json.dumps(export_data, ensure_ascii=False, indent=4), file_name="turnuva_yedek.json", mime="application/json")
         with c_ld:
@@ -881,6 +943,7 @@ with tab5:
                     st.session_state.mac_programi = pd.DataFrame(d["mac_programi"])
                     st.session_state.takim_kadrolari = d["takim_kadrolari"]
                     st.session_state.grup_formatlari = d.get("grup_formatlari", {})
+                    st.session_state.duyuru_metni = d.get("duyuru_metni", "")
                     ortak_veriyi_kaydet()
                     st.success("Yedek başarıyla yüklendi!")
                     st.rerun()
@@ -902,6 +965,8 @@ with tab5:
             if col_evet.button("✅ Evet, Tüm Verileri Sil"):
                 if os.path.exists(VERI_DOSYASI):
                     os.remove(VERI_DOSYASI)
+                if os.path.exists(PDF_DOSYASI):
+                    os.remove(PDF_DOSYASI)
                 st.session_state.clear()
                 st.session_state.confirm_reset = False
                 st.success("Tüm veritabanı başarıyla temizlendi!")
