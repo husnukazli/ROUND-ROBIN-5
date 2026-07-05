@@ -382,7 +382,8 @@ with tab1:
                     t_isim = secim
                     def_kadro = "\n".join(st.session_state.takim_havuzu[secim])
                 
-                oyuncular_raw = st.text_area(f"✍️ Kadro (Her satıra bir kişi)", value=def_kadro, key=f"input_kadro_{i}", height=150)
+                # ÇÖZÜMÜN UYGULANDIĞI SATIR: key parametresine _{secim} eklendi
+                oyuncular_raw = st.text_area(f"✍️ Kadro (Her satıra bir kişi)", value=def_kadro, key=f"input_kadro_{i}_{secim}", height=150)
                 oyuncu_listesi = [o.strip() for o in oyuncular_raw.split('\n') if o.strip()]
                 
                 if len(oyuncu_listesi) > 10:
