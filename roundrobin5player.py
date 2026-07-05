@@ -7,6 +7,7 @@ import os
 import datetime
 import base64
 import shutil
+import re
 from fpdf import FPDF
 
 # --- GENEL SAYFA AYARLARI ---
@@ -23,6 +24,12 @@ if not os.path.exists(BELGELER_KLASORU):
 # ==============================================================================
 # SİSTEM FONKSİYONLARI (ORTAK VERİ YAZMA, OKUMA VE PDF)
 # ==============================================================================
+
+# Doğal sıralama fonksiyonu (Grup isimlerindeki rakamları doğru sıralamak için)
+def dogal_sirala(liste):
+    def _natural_keys(text):
+        return [int(c) if c.isdigit() else c.lower() for c in re.split(r'(\d+)', str(text))]
+    return sorted(liste, key=_natural_keys)
 
 # Türkçe karakter font kontrolü
 FONT_YUKLENDI = os.path.exists("arial.ttf")
@@ -382,7 +389,6 @@ with tab1:
                     t_isim = secim
                     def_kadro = "\n".join(st.session_state.takim_havuzu[secim])
                 
-                # ÇÖZÜMÜN UYGULANDIĞI SATIR: key parametresine _{secim} eklendi
                 oyuncular_raw = st.text_area(f"✍️ Kadro (Her satıra bir kişi)", value=def_kadro, key=f"input_kadro_{i}_{secim}", height=150)
                 oyuncu_listesi = [o.strip() for o in oyuncular_raw.split('\n') if o.strip()]
                 
@@ -441,7 +447,8 @@ with tab2:
     st.subheader("Maç Skorları ve Oyuncu Seçim Girişleri")
     if st.session_state.admin_mi:
         if not st.session_state.skor_tablosu.empty:
-            gruplar = st.session_state.skor_tablosu['Grup'].unique()
+            # GRUPLAR DOĞAL (ALFANÜMERİK) SIRALANIYOR
+            gruplar = dogal_sirala(st.session_state.skor_tablosu['Grup'].unique())
             secilen_grup = st.selectbox("Grup Seç:", gruplar, key="skor_grup_sec")
             df_grup = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] == secilen_grup].copy()
             aktif_gunler = sorted(df_grup['Gün'].unique(), key=lambda x: int(x.split('.')[0]) if '.' in x else 99)
@@ -506,6 +513,45 @@ with tab2:
                     "1.Set T1": s1t1, "1.Set T2": s1t2, "2.Set T1": s2t1, "2.Set T2": s2t2, "3.Set T1": s3t1, "3.Set T2": s3t2
                 }
                 st.divider()
+
+            # --- ESAME HİYERARŞİSİ UYARI KONTROLÜ (KAYDI ENGELLEMEZ) ---
+            eslesme_dict = {}
+            for idx, g_row in form_verileri.items():
+                row_data = df_gun.loc[idx]
+                eslesme = row_data["Eşleşme"]
+                brans = row_data["Branş"]
+                
+                if eslesme not in eslesme_dict:
+                    eslesme_dict[eslesme] = {
+                        "T1": {"isim": row_data["Takım 1"], "secimler": {}}, 
+                        "T2": {"isim": row_data["Takım 2"], "secimler": {}}
+                    }
+                
+                eslesme_dict[eslesme]["T1"]["secimler"][brans] = g_row["T1_Oyuncu"]
+                eslesme_dict[eslesme]["T2"]["secimler"][brans] = g_row["T2_Oyuncu"]
+            
+            grup_kadro_dict = st.session_state.takim_kadrolari.get(secilen_grup, {})
+            for eslesme, data in eslesme_dict.items():
+                for team_key in ["T1", "T2"]:
+                    takim_ismi = data[team_key]["isim"]
+                    havuz = grup_kadro_dict.get(takim_ismi, [])
+                    secimler = data[team_key]["secimler"]
+                    
+                    r1 = havuz.index(secimler.get("1. Tekler")) if secimler.get("1. Tekler") in havuz else -1
+                    r2 = havuz.index(secimler.get("2. Tekler")) if secimler.get("2. Tekler") in havuz else -1
+                    r3 = havuz.index(secimler.get("3. Tekler")) if secimler.get("3. Tekler") in havuz else -1
+                    
+                    uyarilar = []
+                    if r1 != -1 and r2 != -1 and r1 >= r2:
+                        uyarilar.append("1. Tekler oyuncusu, 2. Tekler oyuncusundan daha üst sırada olmalıdır.")
+                    if r2 != -1 and r3 != -1 and r2 >= r3:
+                        uyarilar.append("2. Tekler oyuncusu, 3. Tekler oyuncusundan daha üst sırada olmalıdır.")
+                    if r1 != -1 and r3 != -1 and r2 == -1 and r1 >= r3:
+                        uyarilar.append("1. Tekler oyuncusu, 3. Tekler oyuncusundan daha üst sırada olmalıdır.")
+                        
+                    if uyarilar:
+                        st.warning(f"⚠️ **Takım İçi Sıralama Uyarısı ({takim_ismi} | Eşleşme: {eslesme}):** " + " ".join(uyarilar) + " *(Kayıt işlemi yapılabilir, bu sadece bilgi uyarısıdır.)*")
+            # --- KONTROL BİTİŞ ---
 
             if st.button("✅ Tüm Skorları ve Esameleri Kaydet"):
                 hata_mesajlari = []
@@ -576,7 +622,8 @@ with tab3:
         tum_stats['Set Av.'] = tum_stats['Aldığı Set'] - tum_stats['Verdiği Set']
         tum_stats['Oyun Av.'] = tum_stats['Aldığı Oyun'] - tum_stats['Verdiği Oyun']
         
-        mevcut_gruplar = list(tum_stats['Grup'].unique())
+        # Puan durumu sekmesindeki grup isimlerini doğal sırala
+        mevcut_gruplar = dogal_sirala(list(tum_stats['Grup'].unique()))
         secim_opsiyonlari = ["Tümünü Göster"] + mevcut_gruplar
         secilen_gruplar = st.multiselect("🔍 Görüntülenecek Grupları Seçin (Karşılaştırmak istediklerinizi ekleyebilirsiniz):", options=secim_opsiyonlari, default=["Tümünü Göster"])
         
@@ -672,7 +719,6 @@ with tab4:
 
         df_gunluk = st.session_state.mac_programi[st.session_state.mac_programi['Tarih'] == formatted_tarih].copy()
         
-        # --- SADECE BAŞHAKEM YÖNETİM MODU ---
         if st.session_state.admin_mi:
             st.markdown("### 📥 PDF İndirme Ayarları")
             bireysel_pdf_goster = st.checkbox("📄 PDF'te Bireysel Maçları (Tekler/Çiftler vb.) Göster", value=True)
@@ -694,7 +740,8 @@ with tab4:
 
             st.markdown(f"### ➕ {formatted_tarih} Tarihine Maç Ekle")
             c1, c2, c3 = st.columns(3)
-            gruplar_prog = st.session_state.skor_tablosu['Grup'].unique()
+            # Maç ekle kısmındaki grupları doğal sırala
+            gruplar_prog = dogal_sirala(st.session_state.skor_tablosu['Grup'].unique())
             sec_grup_prog = c1.selectbox("Grup Seç:", gruplar_prog, key="prog_grup")
             df_g_prog = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] == sec_grup_prog]
             gunler_prog = sorted(df_g_prog['Gün'].unique(), key=lambda x: int(x.split('.')[0]) if '.' in x else 99)
@@ -767,7 +814,6 @@ with tab4:
                         st.success("Güncellendi!")
                         st.rerun()
 
-        # --- MİSAFİR GÖRÜNÜMÜ ---
         else:
             st.markdown(f"### 📋 {formatted_tarih} Tarihli Maç Akışı")
             if df_gunluk.empty:
@@ -877,7 +923,8 @@ with tab6:
     if st.session_state.admin_mi:
         with st.expander("✍️ Grup Tipi, Format, İsim ve Kadroları Revize Et", expanded=True):
             if not st.session_state.skor_tablosu.empty:
-                t_gruplar = sorted(list(st.session_state.skor_tablosu['Grup'].unique()))
+                # Yönetim panelindeki grupları doğal sırala
+                t_gruplar = dogal_sirala(list(st.session_state.skor_tablosu['Grup'].unique()))
                 sec_g = st.selectbox("Düzenlenecek Grup Seç:", ["Seçiniz"] + t_gruplar, key="admin_edit_grup")
                 
                 if sec_g != "Seçiniz":
@@ -975,7 +1022,8 @@ with tab6:
 
         st.markdown("### 🗑️ Grup Silme İşlemleri")
         if not st.session_state.skor_tablosu.empty:
-            silinecek_gruplar = sorted(list(st.session_state.skor_tablosu['Grup'].unique()))
+            # Silinecek grupları doğal sırala
+            silinecek_gruplar = dogal_sirala(list(st.session_state.skor_tablosu['Grup'].unique()))
             secilen_sil_grup = st.selectbox("Silinecek Grubu Seçin:", ["Seçiniz"] + silinecek_gruplar, key="grup_sil_secim")
             
             if secilen_sil_grup != "Seçiniz":
