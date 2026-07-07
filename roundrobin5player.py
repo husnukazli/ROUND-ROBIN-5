@@ -187,29 +187,6 @@ if 'mac_programi' in st.session_state:
     if "Kazanan" not in st.session_state.mac_programi.columns:
         st.session_state.mac_programi["Kazanan"] = ""
 
-# ==============================================================================
-# BAŞHAKEM YÖNETİM GİRİŞİ
-# ==============================================================================
-with st.sidebar:
-    st.markdown("### 👨‍⚖️ Turnuva Yönetim Girişi")
-    if not st.session_state.admin_mi:
-        girilen_sifre = st.text_input("Yönetici Şifresi:", type="password")
-        if st.button("🔒 Giriş Yap"):
-            if girilen_sifre == "zonguldak2026":
-                st.session_state.admin_mi = True
-                st.success("✅ Başhakem Yetkisi Aktif!")
-                st.rerun()
-            else:
-                st.error("❌ Hatalı Şifre!")
-    else:
-        st.write("🟢 **Mod:** Başhakem (Yönetici)")
-        if st.button("🔓 Çıkış Yap (İzleyici Modu)"):
-            st.session_state.admin_mi = False
-            st.rerun()
-
-# ==============================================================================
-# SİLBAŞTAN SKOR DOĞRULAMA VE FİKSTÜR ÜRETECİ MOTORU
-# ==============================================================================
 def set_gecerli_mi(t1, t2, is_set3=False):
     if t1 == 0 and t2 == 0: return True, ""
     if t1 < 0 or t2 < 0: return False, "Skorlar negatif olamaz."
@@ -298,16 +275,29 @@ def eslesmeleri_olustur(grup_adi, takimlar, grup_tipi, format_secimi):
     return program
 
 # ==============================================================================
-# GLOBAL AŞAMA FİLTRESİ (SEKMELERİN TAŞMASINI ENGELLEYEN YENİ SİSTEM)
+# YÖNETİM GİRİŞİ VE AŞAMA SEÇİMİ (SOL SIDEBAR) - DOM HATASINI ÖNLEYEN KISIM
 # ==============================================================================
-st.markdown("---")
-c_asama1, c_asama2 = st.columns([1, 4])
-with c_asama1:
-    st.markdown("<h4 style='margin-top:0px;'>🎯 Turnuva Aşaması:</h4>", unsafe_allow_html=True)
-with c_asama2:
-    aktif_asama = st.radio("Aşama Seçimi:", ["1. Aşama", "2. Aşama"], horizontal=True, label_visibility="collapsed", key="global_asama_secici")
-st.info(f"Aşağıdaki **tüm sekmeler** şu an **{aktif_asama}** için filtrelenmiştir ve o aşamanın verilerini gösterir.")
-st.markdown("---")
+with st.sidebar:
+    st.markdown("### 🎯 Turnuva Aşaması")
+    aktif_asama = st.radio("Aşama Seçimi:", ["1. Aşama", "2. Aşama"], key="global_asama_secici")
+    st.info(f"Sağdaki tüm sekmeler **{aktif_asama}** için filtrelendi.")
+    st.divider()
+
+    st.markdown("### 👨‍⚖️ Turnuva Yönetim Girişi")
+    if not st.session_state.admin_mi:
+        girilen_sifre = st.text_input("Yönetici Şifresi:", type="password")
+        if st.button("🔒 Giriş Yap"):
+            if girilen_sifre == "zonguldak2026":
+                st.session_state.admin_mi = True
+                st.success("✅ Başhakem Yetkisi Aktif!")
+                st.rerun()
+            else:
+                st.error("❌ Hatalı Şifre!")
+    else:
+        st.write("🟢 **Mod:** Başhakem (Yönetici)")
+        if st.button("🔓 Çıkış Yap (İzleyici Modu)"):
+            st.session_state.admin_mi = False
+            st.rerun()
 
 # ==============================================================================
 # SEKME STRÜKTÜRÜ
@@ -316,12 +306,12 @@ tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["👥 1. Grup Ayarları", "✍️ 
 
 # --- TAB 1: GRUP Ayarları ---
 with tab1:
-    st.subheader("Turnuva Grupları ve Kadrolar")
-    st.info("ℹ️ İpucu: Excel'de sütun başlıklarına 'Takım Adı', altındaki satırlara o takımın oyuncularını yazarak dosya yükleyebilirsiniz.")
-
+    st.subheader(f"Turnuva Grupları ve Kadrolar ({aktif_asama})")
+    
     if st.session_state.admin_mi:
         if aktif_asama == "1. Aşama":
             with st.expander("📥 Excel / CSV'den Takım ve Oyuncu Havuzu Yükle", expanded=False):
+                st.info("ℹ️ İpucu: Excel'de sütun başlıklarına 'Takım Adı', altındaki satırlara o takımın oyuncularını yazarak dosya yükleyebilirsiniz.")
                 uploaded_file = st.file_uploader("Takım listesini yükleyin (.xlsx veya .csv)", type=["csv", "xlsx"])
                 if uploaded_file:
                     try:
@@ -484,7 +474,7 @@ with tab1:
 
 # --- TAB 2: SKOR GİRİŞİ ---
 with tab2:
-    st.subheader("Maç Skorları ve Oyuncu Seçim Girişleri")
+    st.subheader(f"Maç Skorları ve Oyuncu Seçim Girişleri ({aktif_asama})")
 
     if st.session_state.admin_mi:
         if not st.session_state.skor_tablosu.empty:
@@ -612,7 +602,7 @@ with tab2:
 
 # --- TAB 3: PUAN DURUMU ---
 with tab3:
-    st.subheader("Canlı Puan Durumu")
+    st.subheader(f"Canlı Puan Durumu ({aktif_asama})")
 
     if not st.session_state.skor_tablosu.empty:
         gecerli_gruplar_t3 = [g for g in st.session_state.skor_tablosu['Grup'].unique() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama]
@@ -641,13 +631,13 @@ with tab3:
             if pdf_gruplar_data:
                 st.divider()
                 combined_pdf_bytes = generate_combined_standings_pdf(pdf_gruplar_data)
-                st.download_button(label=f"📥 Seçili Grupların Puan Durumunu Tek PDF Olarak İndir ({aktif_asama})", data=combined_pdf_bytes, file_name=f"puan_durumu_{aktif_asama}.pdf", mime="application/pdf", key="pdf_puan_toplu")
+                st.download_button(label=f"📥 Seçili Grupların Puan Durumunu Tek PDF Olarak İndir", data=combined_pdf_bytes, file_name=f"puan_durumu_toplu.pdf", mime="application/pdf", key="pdf_puan_toplu")
         else:
             st.info(f"Bu aşamada henüz maç bulunmuyor.")
 
 # --- TAB 4: MAÇ PROGRAMI ---
 with tab4:
-    st.subheader("📅 Maç Programı ve Fikstür")
+    st.subheader(f"📅 Maç Programı ve Fikstür ({aktif_asama})")
 
     st.markdown("### 📅 Maç Olan Günler (Filtre)")
     gecerli_gruplar_t4 = [g for g in st.session_state.grup_asamalari.keys() if st.session_state.grup_asamalari[g] == aktif_asama]
@@ -722,7 +712,7 @@ with tab4:
                 if "T1 Oyuncu" in df_pdf_export.columns: df_pdf_export["T1 Oyuncu"] = "-"
                 if "T2 Oyuncu" in df_pdf_export.columns: df_pdf_export["T2 Oyuncu"] = "-"
 
-            st.markdown(f"### ➕ {formatted_tarih} Tarihine Maç Ekle ({aktif_asama})")
+            st.markdown(f"### ➕ {formatted_tarih} Tarihine Maç Ekle")
             c1, c2, c3 = st.columns(3)
             
             gruplar_prog = dogal_sirala([g for g in st.session_state.skor_tablosu['Grup'].unique() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama])
@@ -802,7 +792,7 @@ with tab4:
                         st.rerun()
 
         else:
-            st.markdown(f"### 📋 {formatted_tarih} Tarihli Maç Akışı ({aktif_asama})")
+            st.markdown(f"### 📋 {formatted_tarih} Tarihli Maç Akışı")
             if df_gunluk.empty:
                 st.info("Bu tarihte planlanmış maç bulunmamaktadır.")
             else:
@@ -820,13 +810,13 @@ with tab4:
                         for _, row in grup_df.iterrows():
                             skor = str(row.get('Canlı Skor', 'Oynanmadı'))
                             skor_html = f"<span style='color:green; font-weight:bold;'>{skor}</span>" if skor not in ["Oynanmadı", ""] else "<i>Bekleniyor</i>"
-                            t1_o = str(row.get('T1 Oyuncu', '')).strip()
-                            t2_o = str(row.get('T2 Oyuncu', '')).strip()
-                            html_rows += f"<tr><td>{row['Branş']}</td><td>{t1_o} / {t2_o}</td><td>{skor_html}</td></tr>"
+                            t1_o = html.escape(str(row.get('T1 Oyuncu', '')).strip())
+                            t2_o = html.escape(str(row.get('T2 Oyuncu', '')).strip())
+                            html_rows += f"<tr><td style='border:1px solid #ddd; padding:5px;'>{row['Branş']}</td><td style='border:1px solid #ddd; padding:5px;'>{t1_o} / {t2_o}</td><td style='border:1px solid #ddd; padding:5px;'>{skor_html}</td></tr>"
                         
                         st.markdown(f"""
                         <table style="width:100%; border-collapse: collapse; font-family: sans-serif;">
-                            <tr style="background:#f1f1f1;"><th style="padding:5px;">Branş</th><th style="padding:5px;">Oyuncular</th><th style="padding:5px;">Skor</th></tr>
+                            <tr style="background:#f1f1f1;"><th style="border:1px solid #ddd; padding:5px;">Branş</th><th style="border:1px solid #ddd; padding:5px;">Oyuncular</th><th style="border:1px solid #ddd; padding:5px;">Skor</th></tr>
                             {html_rows}
                         </table>
                         """, unsafe_allow_html=True)
@@ -888,7 +878,7 @@ with tab5:
 
 # --- TAB 6: YÖNETİM & DOSYA İŞLEMLERİ ---
 with tab6:
-    st.subheader("⚙️ Gelişmiş Yönetim Paneli")
+    st.subheader(f"⚙️ Gelişmiş Yönetim Paneli ({aktif_asama})")
 
     if st.session_state.admin_mi:
         with st.expander("✍️ Grup Tipi, Format, İsim ve Kadroları Revize Et", expanded=True):
