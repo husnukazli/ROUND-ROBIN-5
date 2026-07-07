@@ -30,28 +30,48 @@ def dogal_sirala(liste):
         return [int(c) if c.isdigit() else c.lower() for c in re.split(r'(\d+)', str(text))]
     return sorted(liste, key=_natural_keys)
 
+# --- FONT KONTROLLERİ ---
 FONT_YUKLENDI = os.path.exists("arial.ttf")
+FONT_BOLD_YUKLENDI = os.path.exists("arialbd.ttf")
 
 def to_pdf_text(text):
     if FONT_YUKLENDI: return str(text)
     return str(text).encode('latin-1', 'replace').decode('latin-1')
 
+def setup_pdf_fonts(pdf):
+    """PDF için gerekli fontları güvenli şekilde yükler."""
+    if FONT_YUKLENDI:
+        try:
+            pdf.add_font("ArialTR", "", "arial.ttf", uni=True)
+            if FONT_BOLD_YUKLENDI:
+                pdf.add_font("ArialTR", "B", "arialbd.ttf", uni=True)
+        except:
+            pass
+
+def apply_font(pdf, bold=False, size=10):
+    """Sistemde bold font varsa kullanır, yoksa FPDF hatasını engeller."""
+    if FONT_YUKLENDI:
+        if bold and FONT_BOLD_YUKLENDI:
+            pdf.set_font("ArialTR", "B", size)
+        else:
+            pdf.set_font("ArialTR", "", size)
+    else:
+        pdf.set_font("Arial", 'B' if bold else '', size)
+
 def generate_pdf(df, baslik):
     pdf = FPDF(orientation='L', unit='mm', format='A4')
     pdf.add_page()
-    font_family = "ArialTR" if FONT_YUKLENDI else "Arial"
-    if FONT_YUKLENDI:
-        try: pdf.add_font("ArialTR", "", "arial.ttf", uni=True)
-        except: font_family = "Arial"
+    setup_pdf_fonts(pdf)
     
-    pdf.set_font(font_family, 'B' if not FONT_YUKLENDI else "", 14)
+    apply_font(pdf, bold=True, size=14)
     pdf.cell(0, 10, to_pdf_text(baslik), ln=True, align='C')
     pdf.ln(5)
     
-    pdf.set_font(font_family, 'B' if not FONT_YUKLENDI else "", 10)
+    apply_font(pdf, bold=True, size=10)
     if len(df.columns) > 0:
         col_width = 270 / len(df.columns)
-        for col in df.columns: pdf.cell(col_width, 10, to_pdf_text(col), border=1)
+        for col in df.columns: 
+            pdf.cell(col_width, 10, to_pdf_text(col), border=1)
         pdf.ln()
         
         for _, row in df.iterrows():
@@ -64,18 +84,11 @@ def generate_pdf(df, baslik):
                     text = text[2:-2]
                     is_bold = True
                 
-                if is_bold:
-                    if FONT_YUKLENDI:
-                        text = f"{text} (K)" # Font çökmesini önlemek için özel simge
-                        pdf.set_font("ArialTR", "", 9)
-                    else:
-                        pdf.set_font("Arial", 'B', 9)
-                else:
-                    if FONT_YUKLENDI:
-                        pdf.set_font("ArialTR", "", 9)
-                    else:
-                        pdf.set_font("Arial", "", 9)
-                
+                # Eğer kalın font yüklenmediyse (K) yerine evrensel Yıldız (*) işareti koy
+                if is_bold and FONT_YUKLENDI and not FONT_BOLD_YUKLENDI:
+                    text = f"{text} *" 
+                    
+                apply_font(pdf, bold=is_bold, size=9)
                 pdf_text = to_pdf_text(text)
                 pdf.cell(col_width, 8, pdf_text, border=1)
             pdf.ln()
@@ -84,21 +97,22 @@ def generate_pdf(df, baslik):
 def generate_combined_standings_pdf(gruplar_dict):
     pdf = FPDF(orientation='L', unit='mm', format='A4')
     pdf.add_page()
-    font_family = "ArialTR" if FONT_YUKLENDI else "Arial"
-    if FONT_YUKLENDI:
-        try: pdf.add_font("ArialTR", "", "arial.ttf", uni=True)
-        except: font_family = "Arial"
+    setup_pdf_fonts(pdf)
+    
     for grup_adi, df in gruplar_dict.items():
-        pdf.set_font(font_family, 'B' if not FONT_YUKLENDI else "", 12)
+        apply_font(pdf, bold=True, size=12)
         pdf.cell(0, 10, to_pdf_text(grup_adi + " Puan Durumu"), ln=True, align='L')
         if len(df.columns) > 0:
-            pdf.set_font(font_family, 'B' if not FONT_YUKLENDI else "", 10)
+            apply_font(pdf, bold=True, size=10)
             col_width = 270 / len(df.columns)
-            for col in df.columns: pdf.cell(col_width, 8, to_pdf_text(col), border=1)
+            for col in df.columns: 
+                pdf.cell(col_width, 8, to_pdf_text(col), border=1)
             pdf.ln()
-            pdf.set_font(font_family, "" if FONT_YUKLENDI else "", 9)
+            
+            apply_font(pdf, bold=False, size=9)
             for _, row in df.iterrows():
-                for item in row: pdf.cell(col_width, 8, to_pdf_text(str(item)), border=1)
+                for item in row: 
+                    pdf.cell(col_width, 8, to_pdf_text(str(item)), border=1)
                 pdf.ln()
         pdf.ln(5)
     return bytes(pdf.output())
@@ -134,12 +148,9 @@ def generate_matrix_pdf(grup_adi, takimlar, df_grup):
             
     pdf = FPDF(orientation='L', unit='mm', format='A4')
     pdf.add_page()
-    font_family = "ArialTR" if FONT_YUKLENDI else "Arial"
-    if FONT_YUKLENDI:
-        try: pdf.add_font("ArialTR", "", "arial.ttf", uni=True)
-        except: font_family = "Arial"
+    setup_pdf_fonts(pdf)
     
-    pdf.set_font(font_family, 'B' if not FONT_YUKLENDI else "", 14)
+    apply_font(pdf, bold=True, size=14)
     pdf.cell(0, 10, to_pdf_text(f"{grup_adi} - Takım Maçları Matrisi"), ln=True, align='C')
     pdf.ln(5)
     
@@ -149,23 +160,23 @@ def generate_matrix_pdf(grup_adi, takimlar, df_grup):
     for col in cols:
         txt = to_pdf_text(col)
         size = 10
-        pdf.set_font(font_family, 'B' if not FONT_YUKLENDI else "", size)
+        apply_font(pdf, bold=True, size=size)
         while pdf.get_string_width(txt) > (col_width - 2) and size > 6:
             size -= 0.5
-            pdf.set_font(font_family, 'B' if not FONT_YUKLENDI else "", size)
+            apply_font(pdf, bold=True, size=size)
         pdf.cell(col_width, 10, txt, border=1, align='C')
     pdf.ln()
     
     for t1 in takimlar:
         size = 10
-        pdf.set_font(font_family, 'B' if not FONT_YUKLENDI else "", size)
+        apply_font(pdf, bold=True, size=size)
         txt = to_pdf_text(t1)
         while pdf.get_string_width(txt) > (col_width - 2) and size > 6:
             size -= 0.5
-            pdf.set_font(font_family, 'B' if not FONT_YUKLENDI else "", size)
+            apply_font(pdf, bold=True, size=size)
         pdf.cell(col_width, 8, txt, border=1, align='C')
         
-        pdf.set_font(font_family, "" if FONT_YUKLENDI else "", 10)
+        apply_font(pdf, bold=False, size=10)
         for t2 in takimlar:
             val = to_pdf_text(matrix.at[t1, t2])
             pdf.cell(col_width, 8, val, border=1, align='C')
@@ -793,7 +804,6 @@ elif menu_secim == "🏆 3. Puan Durumu":
 elif menu_secim == "📅 4. Maç Programı":
     st.subheader(f"📅 Maç Programı ve Fikstür ({aktif_asama})")
 
-    # --- YENİ EKLENTİ: AKILLI GÖSTERİM ŞALTERİ ---
     gosterim_sekli = st.radio("👁️ Fikstür ve PDF Gösterim Şekli:", ["Bireysel Maçlar (Tekler/Çiftler Skorları)", "Takım Maçları (Genel Skor)"], horizontal=True)
     is_bireysel = "Bireysel" in gosterim_sekli
     st.markdown("---")
@@ -857,7 +867,6 @@ elif menu_secim == "📅 4. Maç Programı":
 
         df_gunluk = st.session_state.mac_programi[(st.session_state.mac_programi['Tarih'] == formatted_tarih) & (st.session_state.mac_programi['Grup'].isin(gecerli_gruplar_t4))].copy()
         
-        # --- TAKIM SKORLARI HESAPLAYICISI (ARKA PLAN) ---
         df_team_summary_list = []
         for (saat, tarih, gun, kort, grup, match_gun, eslesme, takim1, takim2), g_df in df_gunluk.groupby(
             ['Maç Saati', 'Tarih', 'Gün Adı', 'Kort', 'Grup', 'Gün', 'Eşleşme', 'Takım 1', 'Takım 2']
@@ -880,7 +889,6 @@ elif menu_secim == "📅 4. Maç Programı":
                 "Canlı Skor": team_score, "Kazanan": team_winner
             })
         df_team_summary = pd.DataFrame(df_team_summary_list)
-        # -----------------------------------------------
         
         if st.session_state.admin_mi:
             st.markdown("### 📥 PDF İndirme Ayarları")
@@ -891,7 +899,6 @@ elif menu_secim == "📅 4. Maç Programı":
                 
             secilen_pdf_cols = st.multiselect("PDF'e eklenecek sütunları seçin:", options=tum_kolonlar, default=["Maç Saati", "Kort", "Grup", "Branş", "Takım 1", "Takım 2", "Canlı Skor"])
 
-            # --- PDF İÇİN KAZANANLARI KALIN (BOLD) YAPMA ---
             if is_bireysel:
                 df_pdf_export = df_gunluk.copy()
                 if not df_pdf_export.empty:
@@ -912,7 +919,6 @@ elif menu_secim == "📅 4. Maç Programı":
                         win = df_pdf_export.at[i, 'Kazanan']
                         if win == 'T1': df_pdf_export.at[i, 'Takım 1'] = f"**{df_pdf_export.at[i, 'Takım 1']}**"
                         elif win == 'T2': df_pdf_export.at[i, 'Takım 2'] = f"**{df_pdf_export.at[i, 'Takım 2']}**"
-            # -----------------------------------------------
 
             st.markdown(f"### ➕ {formatted_tarih} Tarihine Maç Ekle ({aktif_asama})")
             c1, c2, c3 = st.columns(3)
@@ -963,7 +969,6 @@ elif menu_secim == "📅 4. Maç Programı":
                     pdf_bytes_admin = generate_pdf(df_pdf_export[secilen_pdf_cols], f"Mac Programi - {formatted_tarih}")
                     st.download_button("📥 Programı PDF Olarak İndir", data=pdf_bytes_admin, file_name=f"mac_programi_{formatted_tarih}.pdf", mime="application/pdf", key="pdf_admin")
                 
-                # Editör Daima Bireysel Maçları Gösterir (Düzenleme İçin)
                 edited_dfs = []
                 for (grup_adi, eslesme_adi), grup_df in df_gunluk.groupby(['Grup', 'Eşleşme']):
                     kort = grup_df.iloc[0]['Kort']
@@ -994,7 +999,6 @@ elif menu_secim == "📅 4. Maç Programı":
                         st.success("Güncellendi!")
                         st.rerun()
 
-        # EKRAN GÖRÜNTÜSÜ: BİREYSEL VEYA TAKIM FİLTRESİ
         else:
             st.markdown(f"### 📋 {formatted_tarih} Tarihli Maç Akışı ({aktif_asama})")
             if df_gunluk.empty:
