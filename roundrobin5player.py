@@ -68,7 +68,6 @@ def generate_combined_standings_pdf(gruplar_dict):
         pdf.set_font(font_family, 'B' if not FONT_YUKLENDI else "", 12)
         pdf.cell(0, 10, to_pdf_text(grup_adi + " Puan Durumu"), ln=True, align='L')
         if len(df.columns) > 0:
-            # HATA BURADAYDI, 'B' YERİNE "" EKLENEREK DÜZELTİLDİ
             pdf.set_font(font_family, 'B' if not FONT_YUKLENDI else "", 10)
             col_width = 270 / len(df.columns)
             for col in df.columns: pdf.cell(col_width, 8, to_pdf_text(col), border=1)
@@ -80,10 +79,8 @@ def generate_combined_standings_pdf(gruplar_dict):
         pdf.ln(5)
     return bytes(pdf.output())
 
-# --- PUAN DURUMU HESAPLAMA MOTORU (Aşama 2 Dinamik Takım Çekimi İçin) ---
 def hesapla_tum_puan_durumu(df_girdi):
-    if df_girdi.empty:
-        return pd.DataFrame()
+    if df_girdi.empty: return pd.DataFrame()
     df = df_girdi.copy()
     def satir_hesapla(row):
         s1_t1, s1_t2 = int(row['1.Set T1']), int(row['1.Set T2'])
@@ -95,7 +92,6 @@ def hesapla_tum_puan_durumu(df_girdi):
         t2_set = int(s1_t2 > s1_t1) + int(s2_t2 > s2_t1)
         t1_oyun = s1_t1 + s2_t1
         t2_oyun = s1_t2 + s2_t2
-        
         if s3_t1 > 0 or s3_t2 > 0:
             if s3_t1 >= 10 or s3_t2 >= 10: 
                 if s3_t1 > s3_t2: t1_set += 1; t1_oyun += 1
@@ -302,6 +298,18 @@ def eslesmeleri_olustur(grup_adi, takimlar, grup_tipi, format_secimi):
     return program
 
 # ==============================================================================
+# GLOBAL AŞAMA FİLTRESİ (SEKMELERİN TAŞMASINI ENGELLEYEN YENİ SİSTEM)
+# ==============================================================================
+st.markdown("---")
+c_asama1, c_asama2 = st.columns([1, 4])
+with c_asama1:
+    st.markdown("<h4 style='margin-top:0px;'>🎯 Turnuva Aşaması:</h4>", unsafe_allow_html=True)
+with c_asama2:
+    aktif_asama = st.radio("Aşama Seçimi:", ["1. Aşama", "2. Aşama"], horizontal=True, label_visibility="collapsed", key="global_asama_secici")
+st.info(f"Aşağıdaki **tüm sekmeler** şu an **{aktif_asama}** için filtrelenmiştir ve o aşamanın verilerini gösterir.")
+st.markdown("---")
+
+# ==============================================================================
 # SEKME STRÜKTÜRÜ
 # ==============================================================================
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["👥 1. Grup Ayarları", "✍️ 2. Skor Girişi", "🏆 3. Puan Durumu", "📅 4. Maç Programı", "📢 5. Duyurular", "⚙️ 6. Yönetim & Dosya"])
@@ -310,12 +318,9 @@ tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["👥 1. Grup Ayarları", "✍️ 
 with tab1:
     st.subheader("Turnuva Grupları ve Kadrolar")
     st.info("ℹ️ İpucu: Excel'de sütun başlıklarına 'Takım Adı', altındaki satırlara o takımın oyuncularını yazarak dosya yükleyebilirsiniz.")
-    
-    aktif_asama_tab1 = st.radio("Turnuva Aşaması Seçimi:", ["1. Aşama", "2. Aşama"], horizontal=True, key="tab1_asama")
-    st.divider()
 
     if st.session_state.admin_mi:
-        if aktif_asama_tab1 == "1. Aşama":
+        if aktif_asama == "1. Aşama":
             with st.expander("📥 Excel / CSV'den Takım ve Oyuncu Havuzu Yükle", expanded=False):
                 uploaded_file = st.file_uploader("Takım listesini yükleyin (.xlsx veya .csv)", type=["csv", "xlsx"])
                 if uploaded_file:
@@ -343,7 +348,7 @@ with tab1:
         with col_t1:
             kategori_secimi = st.radio("Kategori:", ["Erkekler", "Kadınlar"], horizontal=True)
         with col_t2:
-            if aktif_asama_tab1 == "1. Aşama":
+            if aktif_asama == "1. Aşama":
                 grup_tipi_liste = ["3'lü Grup", "4'lü Grup", "5'li Grup", "6'lı Grup"]
             else:
                 grup_tipi_liste = ["3'lü Grup", "4'lü Grup"] # 2. Aşama için 5'li ve 6'lı kapatıldı
@@ -351,13 +356,13 @@ with tab1:
         with col_t3:
             format_secimi = st.radio("Müsabaka Maç Formatı:", ["3 Maçlık (2 Tek, 1 Çift)", "5 Maçlık (3 Tek, 2 Çift)"], horizontal=True)
         
-        grup_adi = st.text_input("Grup Adı:", placeholder="Örn: 35+ Erkekler A Grubu" if aktif_asama_tab1 == "1. Aşama" else "Örn: 35+ Birinciler Grubu")
+        grup_adi = st.text_input("Grup Adı:", placeholder="Örn: 35+ Erkekler A Grubu" if aktif_asama == "1. Aşama" else "Örn: 35+ Birinciler Grubu")
         grup_adi_temiz = grup_adi.strip()
         
         havuz_isimleri = ["✏️ Yeni / Listede Olmayan Takım (Elle Gir)"]
         baska_gruplardaki_takimlar = {}
 
-        if aktif_asama_tab1 == "1. Aşama":
+        if aktif_asama == "1. Aşama":
             for g_n, g_k in st.session_state.takim_kadrolari.items():
                 g_kat = st.session_state.grup_kategorileri.get(g_n, "Erkekler")
                 g_asam = st.session_state.grup_asamalari.get(g_n, "1. Aşama")
@@ -404,7 +409,7 @@ with tab1:
                 if secim == "✏️ Yeni / Listede Olmayan Takım (Elle Gir)":
                     t_isim = st.text_input("Takım Adı:", key=f"isim_t_{i}", placeholder="Takım Adı Yazın")
                     def_kadro = ""
-                elif aktif_asama_tab1 == "2. Aşama":
+                elif aktif_asama == "2. Aşama":
                     match = re.search(r'\((.*?)\)$', secim)
                     if match:
                         t_isim = match.group(1).strip()
@@ -432,14 +437,14 @@ with tab1:
             cakisan_takimlar = [t for t in takimlar if t in baska_gruplardaki_takimlar]
             if cakisan_takimlar:
                 hata_detay = ", ".join([f"'{t}' ({baska_gruplardaki_takimlar[t]})" for t in cakisan_takimlar])
-                st.error(f"⚠️ Hata: Girdiğiniz takım(lar) {kategori_secimi} kategorisinde ({aktif_asama_tab1}) zaten kayıtlı!\nÇakışanlar: {hata_detay}")
+                st.error(f"⚠️ Hata: Girdiğiniz takım(lar) {kategori_secimi} kategorisinde ({aktif_asama}) zaten kayıtlı!\nÇakışanlar: {hata_detay}")
             elif not grup_adi or len(takimlar) != beklenen_sayi or kadro_hata or len(set(takimlar)) != beklenen_sayi:
                 st.error("Lütfen grup adını girin, tüm takımları eksiksiz/farklı doldurun ve kurallara uyun.")
             else:
                 st.session_state.takim_kadrolari[grup_adi_temiz] = grup_kadrolari
                 st.session_state.grup_formatlari[grup_adi_temiz] = format_secimi
                 st.session_state.grup_kategorileri[grup_adi_temiz] = kategori_secimi
-                st.session_state.grup_asamalari[grup_adi_temiz] = aktif_asama_tab1
+                st.session_state.grup_asamalari[grup_adi_temiz] = aktif_asama
                 
                 if not st.session_state.skor_tablosu.empty and grup_adi_temiz in st.session_state.skor_tablosu['Grup'].unique():
                     ortak_veriyi_kaydet()
@@ -449,12 +454,12 @@ with tab1:
                     if st.session_state.skor_tablosu.empty: st.session_state.skor_tablosu = yeni_df
                     else: st.session_state.skor_tablosu = pd.concat([st.session_state.skor_tablosu, yeni_df], ignore_index=True)
                     ortak_veriyi_kaydet()
-                    st.success(f"{aktif_asama_tab1} grubu başarıyla oluşturuldu!")
+                    st.success(f"{aktif_asama} grubu başarıyla oluşturuldu!")
                 
         if st.session_state.takim_kadrolari:
             st.markdown("---")
-            st.markdown(f"### 📁 Mevcut Kayıtlı Gruplar ve Kadrolar ({aktif_asama_tab1})")
-            gosterilecek_gruplar_klasor = [g for g in st.session_state.takim_kadrolari.keys() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama_tab1]
+            st.markdown(f"### 📁 Mevcut Kayıtlı Gruplar ve Kadrolar ({aktif_asama})")
+            gosterilecek_gruplar_klasor = [g for g in st.session_state.takim_kadrolari.keys() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama]
             for g_isim in dogal_sirala(gosterilecek_gruplar_klasor):
                 f_turu = st.session_state.grup_formatlari.get(g_isim, "3 Maçlık (2 Tek, 1 Çift)")
                 f_kat = st.session_state.grup_kategorileri.get(g_isim, "Erkekler")
@@ -466,8 +471,8 @@ with tab1:
     else:
         st.info("ℹ️ Kadro ve grup tanımlama işlemleri sadece Başhakem yetkisindedir.")
         if st.session_state.takim_kadrolari:
-            st.markdown(f"### 📁 Mevcut Kayıtlı Gruplar ve Kadrolar ({aktif_asama_tab1})")
-            gosterilecek_gruplar_klasor = [g for g in st.session_state.takim_kadrolari.keys() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama_tab1]
+            st.markdown(f"### 📁 Mevcut Kayıtlı Gruplar ve Kadrolar ({aktif_asama})")
+            gosterilecek_gruplar_klasor = [g for g in st.session_state.takim_kadrolari.keys() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama]
             for g_isim in dogal_sirala(gosterilecek_gruplar_klasor):
                 f_turu = st.session_state.grup_formatlari.get(g_isim, "3 Maçlık (2 Tek, 1 Çift)")
                 f_kat = st.session_state.grup_kategorileri.get(g_isim, "Erkekler")
@@ -480,15 +485,13 @@ with tab1:
 # --- TAB 2: SKOR GİRİŞİ ---
 with tab2:
     st.subheader("Maç Skorları ve Oyuncu Seçim Girişleri")
-    aktif_asama_tab2 = st.radio("Aşama Filtresi:", ["1. Aşama", "2. Aşama"], horizontal=True, key="tab2_asama")
-    st.divider()
 
     if st.session_state.admin_mi:
         if not st.session_state.skor_tablosu.empty:
-            gecerli_gruplar_t2 = [g for g in st.session_state.skor_tablosu['Grup'].unique() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama_tab2]
+            gecerli_gruplar_t2 = [g for g in st.session_state.skor_tablosu['Grup'].unique() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama]
             
             if not gecerli_gruplar_t2:
-                st.info(f"{aktif_asama_tab2} için kayıtlı grup bulunmamaktadır.")
+                st.info(f"{aktif_asama} için kayıtlı grup bulunmamaktadır.")
             else:
                 gruplar = dogal_sirala(gecerli_gruplar_t2)
                 secilen_grup = st.selectbox("Grup Seç:", gruplar, key="skor_grup_sec")
@@ -610,11 +613,9 @@ with tab2:
 # --- TAB 3: PUAN DURUMU ---
 with tab3:
     st.subheader("Canlı Puan Durumu")
-    aktif_asama_tab3 = st.radio("Aşama Filtresi:", ["1. Aşama", "2. Aşama"], horizontal=True, key="tab3_asama")
-    st.divider()
 
     if not st.session_state.skor_tablosu.empty:
-        gecerli_gruplar_t3 = [g for g in st.session_state.skor_tablosu['Grup'].unique() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama_tab3]
+        gecerli_gruplar_t3 = [g for g in st.session_state.skor_tablosu['Grup'].unique() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama]
         df_asama_t3 = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'].isin(gecerli_gruplar_t3)]
         
         if not df_asama_t3.empty:
@@ -640,18 +641,16 @@ with tab3:
             if pdf_gruplar_data:
                 st.divider()
                 combined_pdf_bytes = generate_combined_standings_pdf(pdf_gruplar_data)
-                st.download_button(label=f"📥 Seçili Grupların Puan Durumunu Tek PDF Olarak İndir ({aktif_asama_tab3})", data=combined_pdf_bytes, file_name=f"puan_durumu_{aktif_asama_tab3}.pdf", mime="application/pdf", key="pdf_puan_toplu")
+                st.download_button(label=f"📥 Seçili Grupların Puan Durumunu Tek PDF Olarak İndir ({aktif_asama})", data=combined_pdf_bytes, file_name=f"puan_durumu_{aktif_asama}.pdf", mime="application/pdf", key="pdf_puan_toplu")
         else:
             st.info(f"Bu aşamada henüz maç bulunmuyor.")
 
 # --- TAB 4: MAÇ PROGRAMI ---
 with tab4:
     st.subheader("📅 Maç Programı ve Fikstür")
-    aktif_asama_tab4 = st.radio("Aşama Filtresi:", ["1. Aşama", "2. Aşama"], horizontal=True, key="tab4_asama")
-    st.divider()
 
     st.markdown("### 📅 Maç Olan Günler (Filtre)")
-    gecerli_gruplar_t4 = [g for g in st.session_state.grup_asamalari.keys() if st.session_state.grup_asamalari[g] == aktif_asama_tab4]
+    gecerli_gruplar_t4 = [g for g in st.session_state.grup_asamalari.keys() if st.session_state.grup_asamalari[g] == aktif_asama]
     mac_programi_asama = st.session_state.mac_programi[st.session_state.mac_programi['Grup'].isin(gecerli_gruplar_t4)].copy()
 
     if not mac_programi_asama.empty:
@@ -723,10 +722,10 @@ with tab4:
                 if "T1 Oyuncu" in df_pdf_export.columns: df_pdf_export["T1 Oyuncu"] = "-"
                 if "T2 Oyuncu" in df_pdf_export.columns: df_pdf_export["T2 Oyuncu"] = "-"
 
-            st.markdown(f"### ➕ {formatted_tarih} Tarihine Maç Ekle ({aktif_asama_tab4})")
+            st.markdown(f"### ➕ {formatted_tarih} Tarihine Maç Ekle ({aktif_asama})")
             c1, c2, c3 = st.columns(3)
             
-            gruplar_prog = dogal_sirala([g for g in st.session_state.skor_tablosu['Grup'].unique() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama_tab4])
+            gruplar_prog = dogal_sirala([g for g in st.session_state.skor_tablosu['Grup'].unique() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama])
             if not gruplar_prog:
                 st.info("Bu aşamada ekleyebileceğiniz grup bulunmuyor.")
             else:
@@ -803,7 +802,7 @@ with tab4:
                         st.rerun()
 
         else:
-            st.markdown(f"### 📋 {formatted_tarih} Tarihli Maç Akışı ({aktif_asama_tab4})")
+            st.markdown(f"### 📋 {formatted_tarih} Tarihli Maç Akışı ({aktif_asama})")
             if df_gunluk.empty:
                 st.info("Bu tarihte planlanmış maç bulunmamaktadır.")
             else:
@@ -890,16 +889,14 @@ with tab5:
 # --- TAB 6: YÖNETİM & DOSYA İŞLEMLERİ ---
 with tab6:
     st.subheader("⚙️ Gelişmiş Yönetim Paneli")
-    aktif_asama_tab6 = st.radio("Aşama Filtresi:", ["1. Aşama", "2. Aşama"], horizontal=True, key="tab6_asama")
-    st.divider()
 
     if st.session_state.admin_mi:
         with st.expander("✍️ Grup Tipi, Format, İsim ve Kadroları Revize Et", expanded=True):
             if not st.session_state.skor_tablosu.empty:
-                t_gruplar = dogal_sirala([g for g in st.session_state.skor_tablosu['Grup'].unique() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama_tab6])
+                t_gruplar = dogal_sirala([g for g in st.session_state.skor_tablosu['Grup'].unique() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama])
                 
                 if not t_gruplar:
-                    st.info(f"{aktif_asama_tab6} için kayıtlı grup bulunmamaktadır.")
+                    st.info(f"{aktif_asama} için kayıtlı grup bulunmamaktadır.")
                 else:
                     sec_g = st.selectbox("Düzenlenecek Grup Seç:", ["Seçiniz"] + t_gruplar, key="admin_edit_grup")
                     
@@ -909,7 +906,7 @@ with tab6:
                         
                         m_kadrolar = st.session_state.takim_kadrolari.get(sec_g, {})
                         mevcut_takim_sayisi = len(m_kadrolar)
-                        tip_liste = ["3'lü Grup", "4'lü Grup", "5'li Grup", "6'lı Grup"] if aktif_asama_tab6 == "1. Aşama" else ["3'lü Grup", "4'lü Grup"]
+                        tip_liste = ["3'lü Grup", "4'lü Grup", "5'li Grup", "6'lı Grup"] if aktif_asama == "1. Aşama" else ["3'lü Grup", "4'lü Grup"]
                         
                         if mevcut_takim_sayisi == 3: tip_idx = 0
                         elif mevcut_takim_sayisi == 4: tip_idx = 1
@@ -957,13 +954,13 @@ with tab6:
                             for g_n, g_k in st.session_state.takim_kadrolari.items():
                                 g_kat = st.session_state.grup_kategorileri.get(g_n, "Erkekler")
                                 g_asam = st.session_state.grup_asamalari.get(g_n, "1. Aşama")
-                                if g_n != sec_g and g_kat == yeni_kategori and g_asam == aktif_asama_tab6:
+                                if g_n != sec_g and g_kat == yeni_kategori and g_asam == aktif_asama:
                                     for t_n in g_k.keys(): kullanilan_baska_takimlar_tab6[t_n] = g_n
                             
                             cakisanlar_tab6 = [t for t in list(yeni_k_yapisi.keys()) if t in kullanilan_baska_takimlar_tab6]
                             if cakisanlar_tab6:
                                 hata_msj = ", ".join([f"'{t}' ({kullanilan_baska_takimlar_tab6[t]})" for t in cakisanlar_tab6])
-                                st.error(f"⚠️ Hata: Eklemek veya değiştirmek istediğiniz takım(lar) {yeni_kategori} kategorisinde ({aktif_asama_tab6}) zaten başka gruplarda kayıtlı!\nÇakışanlar: {hata_msj}")
+                                st.error(f"⚠️ Hata: Eklemek veya değiştirmek istediğiniz takım(lar) {yeni_kategori} kategorisinde ({aktif_asama}) zaten başka gruplarda kayıtlı!\nÇakışanlar: {hata_msj}")
                             else:
                                 g_hedef = yeni_grup_adi if yeni_grup_adi.strip() != "" else sec_g
                                 
@@ -974,7 +971,7 @@ with tab6:
                                     st.session_state.takim_kadrolari[g_hedef] = yeni_k_yapisi
                                     st.session_state.grup_formatlari[g_hedef] = yeni_format
                                     st.session_state.grup_kategorileri[g_hedef] = yeni_kategori
-                                    st.session_state.grup_asamalari[g_hedef] = aktif_asama_tab6
+                                    st.session_state.grup_asamalari[g_hedef] = aktif_asama
                                     
                                     if sec_g != g_hedef:
                                         if sec_g in st.session_state.takim_kadrolari: del st.session_state.takim_kadrolari[sec_g]
@@ -993,7 +990,7 @@ with tab6:
                                 else:
                                     st.session_state.takim_kadrolari[sec_g] = yeni_k_yapisi
                                     st.session_state.grup_kategorileri[sec_g] = yeni_kategori
-                                    st.session_state.grup_asamalari[sec_g] = aktif_asama_tab6
+                                    st.session_state.grup_asamalari[sec_g] = aktif_asama
                                     
                                     if isim_degisiklikleri:
                                         for e_a, y_a in isim_degisiklikleri.items():
@@ -1015,7 +1012,7 @@ with tab6:
 
         st.markdown("### 🗑️ Grup Silme İşlemleri")
         if not st.session_state.skor_tablosu.empty:
-            silinecek_gruplar = dogal_sirala([g for g in st.session_state.skor_tablosu['Grup'].unique() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama_tab6])
+            silinecek_gruplar = dogal_sirala([g for g in st.session_state.skor_tablosu['Grup'].unique() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama])
             secilen_sil_grup = st.selectbox("Silinecek Grubu Seçin:", ["Seçiniz"] + silinecek_gruplar, key="grup_sil_secim")
             
             if secilen_sil_grup != "Seçiniz":
@@ -1034,7 +1031,7 @@ with tab6:
                     st.success(f"'{secilen_sil_grup}' grubu sistemden başarıyla silindi!")
                     st.rerun()
         else:
-            st.info(f"{aktif_asama_tab6} için silinecek herhangi bir grup bulunmuyor.")
+            st.info(f"{aktif_asama} için silinecek herhangi bir grup bulunmuyor.")
 
         st.markdown("---")
 
