@@ -275,12 +275,23 @@ def eslesmeleri_olustur(grup_adi, takimlar, grup_tipi, format_secimi):
     return program
 
 # ==============================================================================
-# YÖNETİM GİRİŞİ VE AŞAMA SEÇİMİ (SOL SIDEBAR) - DOM HATASINI ÖNLEYEN KISIM
+# YÖNETİM GİRİŞİ, AŞAMA SEÇİMİ VE ANA MENÜ (SOL SIDEBAR) - DOM HATASI ÇÖZÜMÜ
 # ==============================================================================
 with st.sidebar:
     st.markdown("### 🎯 Turnuva Aşaması")
-    aktif_asama = st.radio("Aşama Seçimi:", ["1. Aşama", "2. Aşama"], key="global_asama_secici")
-    st.info(f"Sağdaki tüm sekmeler **{aktif_asama}** için filtrelendi.")
+    aktif_asama = st.radio("Aşama Seçimi:", ["1. Aşama", "2. Aşama"], key="global_asama_secici", label_visibility="collapsed")
+    st.divider()
+
+    st.markdown("### 📌 Ana Menü")
+    menu_secenekleri = [
+        "👥 1. Grup Ayarları", 
+        "✍️ 2. Skor Girişi", 
+        "🏆 3. Puan Durumu", 
+        "📅 4. Maç Programı", 
+        "📢 5. Duyurular", 
+        "⚙️ 6. Yönetim & Dosya"
+    ]
+    menu_secim = st.radio("Sayfa Seçin:", menu_secenekleri, label_visibility="collapsed")
     st.divider()
 
     st.markdown("### 👨‍⚖️ Turnuva Yönetim Girişi")
@@ -300,12 +311,11 @@ with st.sidebar:
             st.rerun()
 
 # ==============================================================================
-# SEKME STRÜKTÜRÜ
+# SAYFA İÇERİKLERİ (TABS YERİNE MENÜ MİMARİSİ İLE)
 # ==============================================================================
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["👥 1. Grup Ayarları", "✍️ 2. Skor Girişi", "🏆 3. Puan Durumu", "📅 4. Maç Programı", "📢 5. Duyurular", "⚙️ 6. Yönetim & Dosya"])
 
-# --- TAB 1: GRUP Ayarları ---
-with tab1:
+# --- SAYFA 1: GRUP AYARLARI ---
+if menu_secim == "👥 1. Grup Ayarları":
     st.subheader(f"Turnuva Grupları ve Kadrolar ({aktif_asama})")
     
     if st.session_state.admin_mi:
@@ -341,7 +351,7 @@ with tab1:
             if aktif_asama == "1. Aşama":
                 grup_tipi_liste = ["3'lü Grup", "4'lü Grup", "5'li Grup", "6'lı Grup"]
             else:
-                grup_tipi_liste = ["3'lü Grup", "4'lü Grup"] # 2. Aşama için 5'li ve 6'lı kapatıldı
+                grup_tipi_liste = ["3'lü Grup", "4'lü Grup"]
             grup_tipi = st.radio("Grup Tipi:", grup_tipi_liste, horizontal=True)
         with col_t3:
             format_secimi = st.radio("Müsabaka Maç Formatı:", ["3 Maçlık (2 Tek, 1 Çift)", "5 Maçlık (3 Tek, 2 Çift)"], horizontal=True)
@@ -360,7 +370,7 @@ with tab1:
                     for t_n in g_k.keys(): baska_gruplardaki_takimlar[t_n] = g_n
             musait_havuz = dogal_sirala([t for t in st.session_state.takim_havuzu.keys() if t not in baska_gruplardaki_takimlar])
             havuz_isimleri += musait_havuz
-        else: # 2. AŞAMA DİNAMİK LİSTE ÜRETİMİ
+        else:
             for g_n, g_k in st.session_state.takim_kadrolari.items():
                 g_kat = st.session_state.grup_kategorileri.get(g_n, "Erkekler")
                 g_asam = st.session_state.grup_asamalari.get(g_n, "1. Aşama")
@@ -472,8 +482,8 @@ with tab1:
                         st.markdown(f"**🛡️ {t_isim}**")
                         st.write(", ".join(g_kadro[t_isim]) if g_kadro[t_isim] else "Oyuncu yok")
 
-# --- TAB 2: SKOR GİRİŞİ ---
-with tab2:
+# --- SAYFA 2: SKOR GİRİŞİ ---
+elif menu_secim == "✍️ 2. Skor Girişi":
     st.subheader(f"Maç Skorları ve Oyuncu Seçim Girişleri ({aktif_asama})")
 
     if st.session_state.admin_mi:
@@ -600,8 +610,8 @@ with tab2:
     else:
         st.warning("🔒 Skor ve esame giriş paneli dışarıya kapalıdır. Lütfen giriş yapınız.")
 
-# --- TAB 3: PUAN DURUMU ---
-with tab3:
+# --- SAYFA 3: PUAN DURUMU ---
+elif menu_secim == "🏆 3. Puan Durumu":
     st.subheader(f"Canlı Puan Durumu ({aktif_asama})")
 
     if not st.session_state.skor_tablosu.empty:
@@ -635,8 +645,8 @@ with tab3:
         else:
             st.info(f"Bu aşamada henüz maç bulunmuyor.")
 
-# --- TAB 4: MAÇ PROGRAMI ---
-with tab4:
+# --- SAYFA 4: MAÇ PROGRAMI ---
+elif menu_secim == "📅 4. Maç Programı":
     st.subheader(f"📅 Maç Programı ve Fikstür ({aktif_asama})")
 
     st.markdown("### 📅 Maç Olan Günler (Filtre)")
@@ -712,7 +722,7 @@ with tab4:
                 if "T1 Oyuncu" in df_pdf_export.columns: df_pdf_export["T1 Oyuncu"] = "-"
                 if "T2 Oyuncu" in df_pdf_export.columns: df_pdf_export["T2 Oyuncu"] = "-"
 
-            st.markdown(f"### ➕ {formatted_tarih} Tarihine Maç Ekle")
+            st.markdown(f"### ➕ {formatted_tarih} Tarihine Maç Ekle ({aktif_asama})")
             c1, c2, c3 = st.columns(3)
             
             gruplar_prog = dogal_sirala([g for g in st.session_state.skor_tablosu['Grup'].unique() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama])
@@ -792,7 +802,7 @@ with tab4:
                         st.rerun()
 
         else:
-            st.markdown(f"### 📋 {formatted_tarih} Tarihli Maç Akışı")
+            st.markdown(f"### 📋 {formatted_tarih} Tarihli Maç Akışı ({aktif_asama})")
             if df_gunluk.empty:
                 st.info("Bu tarihte planlanmış maç bulunmamaktadır.")
             else:
@@ -823,8 +833,8 @@ with tab4:
     else:
         st.info("Gruplar oluşturulmadan maç programı aktif edilemez.")
 
-# --- TAB 5: DUYURULAR ---
-with tab5:
+# --- SAYFA 5: DUYURULAR ---
+elif menu_secim == "📢 5. Duyurular":
     st.subheader("📢 Turnuva Duyuruları ve Belgeler")
     if st.session_state.admin_mi:
         st.markdown("### ✍️ Duyuru Düzenleme (Sadece Başhakem)")
@@ -876,8 +886,8 @@ with tab5:
         else:
             st.write("Sisteme henüz herhangi bir belge yüklenmemiş.")
 
-# --- TAB 6: YÖNETİM & DOSYA İŞLEMLERİ ---
-with tab6:
+# --- SAYFA 6: YÖNETİM & DOSYA İŞLEMLERİ ---
+elif menu_secim == "⚙️ 6. Yönetim & Dosya":
     st.subheader(f"⚙️ Gelişmiş Yönetim Paneli ({aktif_asama})")
 
     if st.session_state.admin_mi:
