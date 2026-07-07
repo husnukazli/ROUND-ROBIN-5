@@ -79,7 +79,6 @@ def generate_combined_standings_pdf(gruplar_dict):
         pdf.ln(5)
     return bytes(pdf.output())
 
-# YENİ ÖZELLİK: Matris Tasarımlı PDF Üreticisi
 def generate_matrix_pdf(grup_adi, takimlar, df_grup):
     matrix = pd.DataFrame(index=takimlar, columns=takimlar)
     matrix = matrix.fillna("")
@@ -210,14 +209,22 @@ def ortak_veriyi_yukle():
         try:
             with open(VERI_DOSYASI, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            st.session_state.skor_tablosu = pd.DataFrame(data["skor_tablosu"])
-            mp_df = pd.DataFrame(data["mac_programi"])
-            if "T1 Oyuncu" not in mp_df.columns:
-                mp_df["T1 Oyuncu"] = ""; mp_df["T2 Oyuncu"] = ""
-            if "Kazanan" not in mp_df.columns:
-                mp_df["Kazanan"] = ""
-            st.session_state.mac_programi = mp_df
-            st.session_state.takim_kadrolari = data["takim_kadrolari"]
+                
+            # HATA ÇÖZÜMÜ: Boş listelerin sütunsuz DataFrame oluşturmasını engellemek için güvenlik kontrolleri eklendi
+            if data.get("skor_tablosu"):
+                st.session_state.skor_tablosu = pd.DataFrame(data["skor_tablosu"])
+            else:
+                st.session_state.skor_tablosu = pd.DataFrame(columns=["Grup", "Gün", "Eşleşme", "Branş", "Takım 1", "Takım 2", "T1_Oyuncu", "T2_Oyuncu", "1.Set T1", "1.Set T2", "2.Set T1", "2.Set T2", "3.Set T1", "3.Set T2"])
+                
+            if data.get("mac_programi"):
+                mp_df = pd.DataFrame(data["mac_programi"])
+                if "T1 Oyuncu" not in mp_df.columns: mp_df["T1 Oyuncu"] = ""; mp_df["T2 Oyuncu"] = ""
+                if "Kazanan" not in mp_df.columns: mp_df["Kazanan"] = ""
+                st.session_state.mac_programi = mp_df
+            else:
+                st.session_state.mac_programi = pd.DataFrame(columns=["Maç Saati", "Tarih", "Gün Adı", "Kort", "Grup", "Gün", "Branş", "Eşleşme", "Takım 1", "Takım 2", "T1 Oyuncu", "T2 Oyuncu", "Canlı Skor", "Kazanan"])
+
+            st.session_state.takim_kadrolari = data.get("takim_kadrolari", {})
             st.session_state.grup_formatlari = data.get("grup_formatlari", {})
             st.session_state.grup_kategorileri = data.get("grup_kategorileri", {})
             st.session_state.grup_asamalari = data.get("grup_asamalari", {})
@@ -233,7 +240,7 @@ def show_pdf(file_path):
     st.markdown(pdf_display, unsafe_allow_html=True)
 
 # ==============================================================================
-# HAFIZA (SESSION STATE) BAŞLATMA
+# HAFIZA (SESSION STATE) BAŞLATMA VE BOŞ DOSYA GÜVENLİĞİ
 # ==============================================================================
 if "admin_mi" not in st.session_state: st.session_state.admin_mi = False
 if "expand_all" not in st.session_state: st.session_state.expand_all = False
@@ -251,11 +258,15 @@ if 'skor_tablosu' not in st.session_state:
         st.session_state.skor_tablosu = pd.DataFrame(columns=["Grup", "Gün", "Eşleşme", "Branş", "Takım 1", "Takım 2", "T1_Oyuncu", "T2_Oyuncu", "1.Set T1", "1.Set T2", "2.Set T1", "2.Set T2", "3.Set T1", "3.Set T2"])
         st.session_state.mac_programi = pd.DataFrame(columns=["Maç Saati", "Tarih", "Gün Adı", "Kort", "Grup", "Gün", "Branş", "Eşleşme", "Takım 1", "Takım 2", "T1 Oyuncu", "T2 Oyuncu", "Canlı Skor", "Kazanan"])
 
+# HATA ÇÖZÜMÜ: Eğer bir sebeple DataFrame sütunsuz yüklenmişse (eski cache vb) iskeleti zorla yeniden kurar.
 if 'mac_programi' in st.session_state:
-    if "T1 Oyuncu" not in st.session_state.mac_programi.columns:
-        st.session_state.mac_programi["T1 Oyuncu"] = ""; st.session_state.mac_programi["T2 Oyuncu"] = ""
-    if "Kazanan" not in st.session_state.mac_programi.columns:
-        st.session_state.mac_programi["Kazanan"] = ""
+    if st.session_state.mac_programi.empty and len(st.session_state.mac_programi.columns) < 5:
+         st.session_state.mac_programi = pd.DataFrame(columns=["Maç Saati", "Tarih", "Gün Adı", "Kort", "Grup", "Gün", "Branş", "Eşleşme", "Takım 1", "Takım 2", "T1 Oyuncu", "T2 Oyuncu", "Canlı Skor", "Kazanan"])
+    else:
+        if "T1 Oyuncu" not in st.session_state.mac_programi.columns:
+            st.session_state.mac_programi["T1 Oyuncu"] = ""; st.session_state.mac_programi["T2 Oyuncu"] = ""
+        if "Kazanan" not in st.session_state.mac_programi.columns:
+            st.session_state.mac_programi["Kazanan"] = ""
 
 def set_gecerli_mi(t1, t2, is_set3=False):
     if t1 == 0 and t2 == 0: return True, ""
@@ -571,20 +582,21 @@ elif menu_secim == "✍️ 2. Skor Girişi":
             else:
                 gruplar = dogal_sirala(gecerli_gruplar_t2)
                 
-                # --- YENİ EKLENTİ: GRUP SEÇİMİ VE MATRİS BUTONU ---
-                c_grup_sec, c_matris = st.columns([3, 1])
-                secilen_grup = c_grup_sec.selectbox("Grup Seç:", gruplar, key="skor_grup_sec")
-                df_grup = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] == secilen_grup].copy()
+                c_grup, c_btn = st.columns([3, 1])
+                secilen_grup = c_grup.selectbox("Grup Seç:", gruplar, key="skor_grup_sec")
                 
-                # Matris PDF Oluşturma Butonu
-                takimlar_matris = dogal_sirala(list(set(df_grup['Takım 1']).union(set(df_grup['Takım 2']))))
-                matris_pdf_bytes = generate_matrix_pdf(secilen_grup, takimlar_matris, df_grup)
-                c_matris.markdown("<br>", unsafe_allow_html=True)
-                c_matris.download_button("📊 Grubun Maç Matrisini İndir", data=matris_pdf_bytes, file_name=f"{secilen_grup}_Matris.pdf", mime="application/pdf", use_container_width=True)
-                st.markdown("---")
-                # ----------------------------------------------------
-
+                df_grup = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] == secilen_grup].copy()
                 aktif_gunler = sorted(df_grup['Gün'].unique(), key=lambda x: int(x.split('.')[0]) if '.' in x else 99)
+                
+                # --- YENİ EKLENTİ: MATRİS PDF ÇIKTISI ---
+                if c_btn.button("📊 Seçili Grubun Maç Matrisini İndir (PDF)"):
+                    if not df_grup.empty:
+                        # Takım listesini çıkart
+                        matris_takimlar = dogal_sirala(list(set(df_grup['Takım 1'].unique()).union(set(df_grup['Takım 2'].unique()))))
+                        matris_pdf_bytes = generate_matrix_pdf(secilen_grup, matris_takimlar, df_grup)
+                        st.download_button(label="📥 PDF Hazır, İndirmek İçin Tıklayın", data=matris_pdf_bytes, file_name=f"matris_{secilen_grup}.pdf", mime="application/pdf")
+                # ----------------------------------------
+                
                 secilen_gun = st.selectbox("Müsabaka Günü:", aktif_gunler)
                 df_gun = df_grup[df_grup['Gün'] == secilen_gun]
                 
@@ -701,7 +713,7 @@ elif menu_secim == "✍️ 2. Skor Girişi":
                         if not ok1: hata_mesajlari.append(f"{mac_tanimi} Set 1: {msg1}")
                         if not ok2: hata_mesajlari.append(f"{mac_tanimi} Set 2: {msg2}")
                         if not ok3: hata_mesajlari.append(f"{mac_tanimi} Set 3: {msg3}")
-
+                        
                         # --- YENİ EKLENTİ: 2-0 BİTME DURUMUNDA 3. SET ENGELLEMESİ ---
                         if s1t1 > s1t2 and s2t1 > s2t2: 
                             if s3t1 != 0 or s3t2 != 0:
