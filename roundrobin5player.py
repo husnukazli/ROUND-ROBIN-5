@@ -15,7 +15,8 @@ from fpdf import FPDF
 st.set_page_config(page_title="Tenis Turnuva Otomasyonu", page_icon="🎾", layout="wide")
 st.title("🎾 Tenis Turnuva Yönetim Sistemi")
 
-VERI_DOSYASI = "turnuva_veri.json"
+# SPESİFİK VERİ DOSYASI İSMİ
+VERI_DOSYASI = "tenis_grup_turnuvasi_veri.json"
 BELGELER_KLASORU = "turnuva_belgeleri"
 
 if not os.path.exists(BELGELER_KLASORU):
@@ -275,7 +276,7 @@ def eslesmeleri_olustur(grup_adi, takimlar, grup_tipi, format_secimi):
     return program
 
 # ==============================================================================
-# YÖNETİM GİRİŞİ, AŞAMA SEÇİMİ VE ANA MENÜ (SOL SIDEBAR) - DOM HATASI ÇÖZÜMÜ
+# YÖNETİM GİRİŞİ, AŞAMA SEÇİMİ VE ANA MENÜ (SOL SIDEBAR)
 # ==============================================================================
 with st.sidebar:
     st.markdown("### 🎯 Turnuva Aşaması")
@@ -311,7 +312,7 @@ with st.sidebar:
             st.rerun()
 
 # ==============================================================================
-# SAYFA İÇERİKLERİ (TABS YERİNE MENÜ MİMARİSİ İLE)
+# SAYFA İÇERİKLERİ
 # ==============================================================================
 
 # --- SAYFA 1: GRUP AYARLARI ---
@@ -377,7 +378,13 @@ if menu_secim == "👥 1. Grup Ayarları":
                 if g_n != grup_adi_temiz and g_kat == kategori_secimi and g_asam == "2. Aşama":
                     for t_n in g_k.keys(): baska_gruplardaki_takimlar[t_n] = g_n
             
-            stage1_gruplar = [g for g, k in st.session_state.grup_kategorileri.items() if k == kategori_secimi and st.session_state.grup_asamalari.get(g, "1. Aşama") == "1. Aşama"]
+            stage1_gruplar = []
+            for g in st.session_state.takim_kadrolari.keys():
+                k = st.session_state.grup_kategorileri.get(g, "Erkekler")
+                a = st.session_state.grup_asamalari.get(g, "1. Aşama")
+                if k == kategori_secimi and a == "1. Aşama":
+                    stage1_gruplar.append(g)
+                    
             df_s1 = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'].isin(stage1_gruplar)]
             stats_s1 = hesapla_tum_puan_durumu(df_s1)
             
@@ -503,7 +510,15 @@ elif menu_secim == "✍️ 2. Skor Girişi":
                 form_verileri = {}
                 for idx, row in df_gun.iterrows():
                     st.markdown(f"**🔹 {row['Branş']} ({row['Eşleşme']})**")
-                    r_cols = st.columns([1.5, 2.0, 1.5, 2.0, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7])
+                    
+                    # --- YENİ EKLENEN KISIM: SET BAŞLIKLARI VE GÖRSEL GRUPLAMA ---
+                    h_cols = st.columns([7.0, 0.2, 1.2, 0.3, 1.2, 0.3, 1.2])
+                    h_cols[2].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; color:#1f77b4; border-bottom: 2px solid #1f77b4; padding-bottom: 2px;'>1. SET</div>", unsafe_allow_html=True)
+                    h_cols[4].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; color:#1f77b4; border-bottom: 2px solid #1f77b4; padding-bottom: 2px;'>2. SET</div>", unsafe_allow_html=True)
+                    h_cols[6].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; color:#1f77b4; border-bottom: 2px solid #1f77b4; padding-bottom: 2px;'>3. SET</div>", unsafe_allow_html=True)
+
+                    r_cols = st.columns([1.5, 2.0, 1.5, 2.0, 0.2, 0.6, 0.6, 0.3, 0.6, 0.6, 0.3, 0.6, 0.6])
+                    # -------------------------------------------------------------
                     
                     t1_isim, t2_isim = row['Takım 1'], row['Takım 2']
                     grup_kadro_dict = st.session_state.takim_kadrolari.get(secilen_grup, {})
@@ -546,12 +561,18 @@ elif menu_secim == "✍️ 2. Skor Girişi":
                         t2_secim_raw = r_cols[3].selectbox("T2 Oyuncu", options=opts2, index=idx2, key=f"t2_o_{idx}", label_visibility="collapsed")
                         t2_oyuncu_str = t2_secim_raw if t2_secim_raw != "Seçiniz" else ""
                     
-                    s1t1 = r_cols[4].number_input("S1T1", min_value=0, value=int(row['1.Set T1']), step=1, key=f"s1t1_{idx}", label_visibility="collapsed")
-                    s1t2 = r_cols[5].number_input("S1T2", min_value=0, value=int(row['1.Set T2']), step=1, key=f"s1t2_{idx}", label_visibility="collapsed")
-                    s2t1 = r_cols[6].number_input("S2T1", min_value=0, value=int(row['2.Set T1']), step=1, key=f"s2t1_{idx}", label_visibility="collapsed")
-                    s2t2 = r_cols[7].number_input("S2T2", min_value=0, value=int(row['2.Set T2']), step=1, key=f"s2t2_{idx}", label_visibility="collapsed")
-                    s3t1 = r_cols[8].number_input("S3T1", min_value=0, value=int(row['3.Set T1']), step=1, key=f"s3t1_{idx}", label_visibility="collapsed")
-                    s3t2 = r_cols[9].number_input("S3T2", min_value=0, value=int(row['3.Set T2']), step=1, key=f"s3t2_{idx}", label_visibility="collapsed")
+                    s1t1 = r_cols[5].number_input("S1T1", min_value=0, value=int(row['1.Set T1']), step=1, key=f"s1t1_{idx}", label_visibility="collapsed")
+                    s1t2 = r_cols[6].number_input("S1T2", min_value=0, value=int(row['1.Set T2']), step=1, key=f"s1t2_{idx}", label_visibility="collapsed")
+                    
+                    r_cols[7].markdown("<div style='text-align:center; color:#ccc; margin-top:5px; font-weight:bold;'>|</div>", unsafe_allow_html=True)
+                    
+                    s2t1 = r_cols[8].number_input("S2T1", min_value=0, value=int(row['2.Set T1']), step=1, key=f"s2t1_{idx}", label_visibility="collapsed")
+                    s2t2 = r_cols[9].number_input("S2T2", min_value=0, value=int(row['2.Set T2']), step=1, key=f"s2t2_{idx}", label_visibility="collapsed")
+                    
+                    r_cols[10].markdown("<div style='text-align:center; color:#ccc; margin-top:5px; font-weight:bold;'>|</div>", unsafe_allow_html=True)
+                    
+                    s3t1 = r_cols[11].number_input("S3T1", min_value=0, value=int(row['3.Set T1']), step=1, key=f"s3t1_{idx}", label_visibility="collapsed")
+                    s3t2 = r_cols[12].number_input("S3T2", min_value=0, value=int(row['3.Set T2']), step=1, key=f"s3t2_{idx}", label_visibility="collapsed")
                     
                     form_verileri[idx] = {
                         "T1_Oyuncu": t1_oyuncu_str, "T2_Oyuncu": t2_oyuncu_str,
@@ -1048,7 +1069,7 @@ elif menu_secim == "⚙️ 6. Yönetim & Dosya":
                 "duyuru_metni": st.session_state.duyuru_metni,
                 "takim_havuzu": st.session_state.get("takim_havuzu", {})
             }
-            st.download_button("📥 Turnuva Veritabanını İndir (.json)", data=json.dumps(export_data, ensure_ascii=False, indent=4), file_name="turnuva_yedek.json", mime="application/json")
+            st.download_button("📥 Turnuva Veritabanını İndir (.json)", data=json.dumps(export_data, ensure_ascii=False, indent=4), file_name="tenis_grup_turnuva_yedek.json", mime="application/json")
         with c_ld:
             up_file = st.file_uploader("Geri Yüklemek İçin Yedek Dosyası Seçin:", type=["json"])
             if up_file is not None and st.button("📤 Seçilen Yedeği Sisteme Entegre Et"):
