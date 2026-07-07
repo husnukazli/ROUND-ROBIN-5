@@ -8,6 +8,7 @@ import datetime
 import base64
 import shutil
 import re
+import html
 from fpdf import FPDF
 
 # --- GENEL SAYFA AYARLARI ---
@@ -67,7 +68,8 @@ def generate_combined_standings_pdf(gruplar_dict):
         pdf.set_font(font_family, 'B' if not FONT_YUKLENDI else "", 12)
         pdf.cell(0, 10, to_pdf_text(grup_adi + " Puan Durumu"), ln=True, align='L')
         if len(df.columns) > 0:
-            pdf.set_font(font_family, 'B' if not FONT_YUKLENDI else "B", 10)
+            # HATA BURADAYDI, 'B' YERİNE "" EKLENEREK DÜZELTİLDİ
+            pdf.set_font(font_family, 'B' if not FONT_YUKLENDI else "", 10)
             col_width = 270 / len(df.columns)
             for col in df.columns: pdf.cell(col_width, 8, to_pdf_text(col), border=1)
             pdf.ln()
@@ -649,7 +651,6 @@ with tab4:
     st.divider()
 
     st.markdown("### 📅 Maç Olan Günler (Filtre)")
-    # Program sekmesinde günleri de aşamaya göre filtrele
     gecerli_gruplar_t4 = [g for g in st.session_state.grup_asamalari.keys() if st.session_state.grup_asamalari[g] == aktif_asama_tab4]
     mac_programi_asama = st.session_state.mac_programi[st.session_state.mac_programi['Grup'].isin(gecerli_gruplar_t4)].copy()
 
@@ -706,7 +707,6 @@ with tab4:
                     st.session_state.mac_programi.at[idx, "Canlı Skor"] = "Oynanmadı"
                     st.session_state.mac_programi.at[idx, "Kazanan"] = ""
 
-        # Sadece seçili aşamadaki maçları göster
         df_gunluk = st.session_state.mac_programi[(st.session_state.mac_programi['Tarih'] == formatted_tarih) & (st.session_state.mac_programi['Grup'].isin(gecerli_gruplar_t4))].copy()
         
         if st.session_state.admin_mi:
@@ -726,7 +726,6 @@ with tab4:
             st.markdown(f"### ➕ {formatted_tarih} Tarihine Maç Ekle ({aktif_asama_tab4})")
             c1, c2, c3 = st.columns(3)
             
-            # Seçili aşamaya ait grupları listele
             gruplar_prog = dogal_sirala([g for g in st.session_state.skor_tablosu['Grup'].unique() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama_tab4])
             if not gruplar_prog:
                 st.info("Bu aşamada ekleyebileceğiniz grup bulunmuyor.")
