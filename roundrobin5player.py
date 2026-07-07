@@ -15,7 +15,6 @@ from fpdf import FPDF
 st.set_page_config(page_title="Tenis Turnuva Otomasyonu", page_icon="🎾", layout="wide")
 st.title("🎾 Tenis Turnuva Yönetim Sistemi")
 
-# SPESİFİK VERİ DOSYASI İSMİ
 VERI_DOSYASI = "tenis_grup_turnuvasi_veri.json"
 BELGELER_KLASORU = "turnuva_belgeleri"
 
@@ -78,6 +77,76 @@ def generate_combined_standings_pdf(gruplar_dict):
                 for item in row: pdf.cell(col_width, 8, to_pdf_text(str(item)), border=1)
                 pdf.ln()
         pdf.ln(5)
+    return bytes(pdf.output())
+
+# YENİ ÖZELLİK: Matris Tasarımlı PDF Üreticisi
+def generate_matrix_pdf(grup_adi, takimlar, df_grup):
+    matrix = pd.DataFrame(index=takimlar, columns=takimlar)
+    matrix = matrix.fillna("")
+    for t in takimlar: matrix.at[t, t] = "X"
+    
+    def get_match_winner(row):
+        s1_t1, s1_t2 = int(row['1.Set T1']), int(row['1.Set T2'])
+        s2_t1, s2_t2 = int(row['2.Set T1']), int(row['2.Set T2'])
+        s3_t1, s3_t2 = int(row['3.Set T1']), int(row['3.Set T2'])
+        if s1_t1 == 0 and s1_t2 == 0 and s2_t1 == 0 and s2_t2 == 0: return 0, 0
+        t1_set = int(s1_t1 > s1_t2) + int(s2_t1 > s2_t2)
+        t2_set = int(s1_t2 > s1_t1) + int(s2_t2 > s2_t1)
+        if s3_t1 > 0 or s3_t2 > 0:
+            if s3_t1 >= 10 or s3_t2 >= 10: 
+                if s3_t1 > s3_t2: t1_set += 1
+                else: t2_set += 1
+            else: 
+                t1_set += int(s3_t1 > s3_t2); t2_set += int(s3_t2 > s3_t1)
+        return (1, 0) if t1_set > t2_set else ((0, 1) if t2_set > t1_set else (0, 0))
+    
+    for (t1, t2), group in df_grup.groupby(['Takım 1', 'Takım 2']):
+        t1_total, t2_total = 0, 0
+        for _, row in group.iterrows():
+            w1, w2 = get_match_winner(row)
+            t1_total += w1; t2_total += w2
+        if t1_total > 0 or t2_total > 0:
+            matrix.at[t1, t2] = f"{t1_total} - {t2_total}"
+            matrix.at[t2, t1] = f"{t2_total} - {t1_total}"
+            
+    pdf = FPDF(orientation='L', unit='mm', format='A4')
+    pdf.add_page()
+    font_family = "ArialTR" if FONT_YUKLENDI else "Arial"
+    if FONT_YUKLENDI:
+        try: pdf.add_font("ArialTR", "", "arial.ttf", uni=True)
+        except: font_family = "Arial"
+    
+    pdf.set_font(font_family, 'B' if not FONT_YUKLENDI else "", 14)
+    pdf.cell(0, 10, to_pdf_text(f"{grup_adi} - Takım Maçları Matrisi"), ln=True, align='C')
+    pdf.ln(5)
+    
+    cols = ["Takımlar"] + takimlar
+    col_width = 275 / len(cols)
+    
+    for col in cols:
+        txt = to_pdf_text(col)
+        size = 10
+        pdf.set_font(font_family, 'B' if not FONT_YUKLENDI else "", size)
+        while pdf.get_string_width(txt) > (col_width - 2) and size > 6:
+            size -= 0.5
+            pdf.set_font(font_family, 'B' if not FONT_YUKLENDI else "", size)
+        pdf.cell(col_width, 10, txt, border=1, align='C')
+    pdf.ln()
+    
+    for t1 in takimlar:
+        size = 10
+        pdf.set_font(font_family, 'B' if not FONT_YUKLENDI else "", size)
+        txt = to_pdf_text(t1)
+        while pdf.get_string_width(txt) > (col_width - 2) and size > 6:
+            size -= 0.5
+            pdf.set_font(font_family, 'B' if not FONT_YUKLENDI else "", size)
+        pdf.cell(col_width, 8, txt, border=1, align='C')
+        
+        pdf.set_font(font_family, "" if FONT_YUKLENDI else "", 10)
+        for t2 in takimlar:
+            val = to_pdf_text(matrix.at[t1, t2])
+            pdf.cell(col_width, 8, val, border=1, align='C')
+        pdf.ln()
     return bytes(pdf.output())
 
 def hesapla_tum_puan_durumu(df_girdi):
@@ -501,8 +570,20 @@ elif menu_secim == "✍️ 2. Skor Girişi":
                 st.info(f"{aktif_asama} için kayıtlı grup bulunmamaktadır.")
             else:
                 gruplar = dogal_sirala(gecerli_gruplar_t2)
-                secilen_grup = st.selectbox("Grup Seç:", gruplar, key="skor_grup_sec")
+                
+                # --- YENİ EKLENTİ: GRUP SEÇİMİ VE MATRİS BUTONU ---
+                c_grup_sec, c_matris = st.columns([3, 1])
+                secilen_grup = c_grup_sec.selectbox("Grup Seç:", gruplar, key="skor_grup_sec")
                 df_grup = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] == secilen_grup].copy()
+                
+                # Matris PDF Oluşturma Butonu
+                takimlar_matris = dogal_sirala(list(set(df_grup['Takım 1']).union(set(df_grup['Takım 2']))))
+                matris_pdf_bytes = generate_matrix_pdf(secilen_grup, takimlar_matris, df_grup)
+                c_matris.markdown("<br>", unsafe_allow_html=True)
+                c_matris.download_button("📊 Grubun Maç Matrisini İndir", data=matris_pdf_bytes, file_name=f"{secilen_grup}_Matris.pdf", mime="application/pdf", use_container_width=True)
+                st.markdown("---")
+                # ----------------------------------------------------
+
                 aktif_gunler = sorted(df_grup['Gün'].unique(), key=lambda x: int(x.split('.')[0]) if '.' in x else 99)
                 secilen_gun = st.selectbox("Müsabaka Günü:", aktif_gunler)
                 df_gun = df_grup[df_grup['Gün'] == secilen_gun]
@@ -511,14 +592,12 @@ elif menu_secim == "✍️ 2. Skor Girişi":
                 for idx, row in df_gun.iterrows():
                     st.markdown(f"**🔹 {row['Branş']} ({row['Eşleşme']})**")
                     
-                    # --- YENİ EKLENEN KISIM: SET BAŞLIKLARI VE GÖRSEL GRUPLAMA ---
                     h_cols = st.columns([7.0, 0.2, 1.2, 0.3, 1.2, 0.3, 1.2])
                     h_cols[2].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; color:#1f77b4; border-bottom: 2px solid #1f77b4; padding-bottom: 2px;'>1. SET</div>", unsafe_allow_html=True)
                     h_cols[4].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; color:#1f77b4; border-bottom: 2px solid #1f77b4; padding-bottom: 2px;'>2. SET</div>", unsafe_allow_html=True)
                     h_cols[6].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; color:#1f77b4; border-bottom: 2px solid #1f77b4; padding-bottom: 2px;'>3. SET</div>", unsafe_allow_html=True)
 
                     r_cols = st.columns([1.5, 2.0, 1.5, 2.0, 0.2, 0.6, 0.6, 0.3, 0.6, 0.6, 0.3, 0.6, 0.6])
-                    # -------------------------------------------------------------
                     
                     t1_isim, t2_isim = row['Takım 1'], row['Takım 2']
                     grup_kadro_dict = st.session_state.takim_kadrolari.get(secilen_grup, {})
@@ -610,12 +689,27 @@ elif menu_secim == "✍️ 2. Skor Girişi":
                     hata_mesajlari = []
                     for idx, guncel_row in form_verileri.items():
                         mac_tanimi = f"{secilen_gun} - {st.session_state.skor_tablosu.loc[idx]['Branş']}"
-                        ok1, msg1 = set_gecerli_mi(guncel_row["1.Set T1"], guncel_row["1.Set T2"])
-                        ok2, msg2 = set_gecerli_mi(guncel_row["2.Set T1"], guncel_row["2.Set T2"])
-                        ok3, msg3 = set_gecerli_mi(guncel_row["3.Set T1"], guncel_row["3.Set T2"], is_set3=True)
+                        
+                        s1t1, s1t2 = guncel_row["1.Set T1"], guncel_row["1.Set T2"]
+                        s2t1, s2t2 = guncel_row["2.Set T1"], guncel_row["2.Set T2"]
+                        s3t1, s3t2 = guncel_row["3.Set T1"], guncel_row["3.Set T2"]
+                        
+                        ok1, msg1 = set_gecerli_mi(s1t1, s1t2)
+                        ok2, msg2 = set_gecerli_mi(s2t1, s2t2)
+                        ok3, msg3 = set_gecerli_mi(s3t1, s3t2, is_set3=True)
+                        
                         if not ok1: hata_mesajlari.append(f"{mac_tanimi} Set 1: {msg1}")
                         if not ok2: hata_mesajlari.append(f"{mac_tanimi} Set 2: {msg2}")
                         if not ok3: hata_mesajlari.append(f"{mac_tanimi} Set 3: {msg3}")
+
+                        # --- YENİ EKLENTİ: 2-0 BİTME DURUMUNDA 3. SET ENGELLEMESİ ---
+                        if s1t1 > s1t2 and s2t1 > s2t2: 
+                            if s3t1 != 0 or s3t2 != 0:
+                                hata_mesajlari.append(f"{mac_tanimi}: Maç 2-0 bittiği için 3. sete skor girilemez.")
+                        elif s1t2 > s1t1 and s2t2 > s2t1:
+                            if s3t1 != 0 or s3t2 != 0:
+                                hata_mesajlari.append(f"{mac_tanimi}: Maç 2-0 bittiği için 3. sete skor girilemez.")
+                        # -------------------------------------------------------------
                     
                     if hata_mesajlari:
                         for h in hata_mesajlari: st.error(h)
