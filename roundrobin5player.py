@@ -30,7 +30,6 @@ def dogal_sirala(liste):
         return [int(c) if c.isdigit() else c.lower() for c in re.split(r'(\d+)', str(text))]
     return sorted(liste, key=_natural_keys)
 
-# --- FONT KONTROLLERİ ---
 FONT_YUKLENDI = os.path.exists("arial.ttf")
 FONT_BOLD_YUKLENDI = os.path.exists("arialbd.ttf")
 
@@ -39,7 +38,6 @@ def to_pdf_text(text):
     return str(text).encode('latin-1', 'replace').decode('latin-1')
 
 def setup_pdf_fonts(pdf):
-    """PDF için gerekli fontları güvenli şekilde yükler."""
     if FONT_YUKLENDI:
         try:
             pdf.add_font("ArialTR", "", "arial.ttf", uni=True)
@@ -49,7 +47,6 @@ def setup_pdf_fonts(pdf):
             pass
 
 def apply_font(pdf, bold=False, size=10):
-    """Sistemde bold font varsa kullanır, yoksa FPDF hatasını engeller."""
     if FONT_YUKLENDI:
         if bold and FONT_BOLD_YUKLENDI:
             pdf.set_font("ArialTR", "B", size)
@@ -79,12 +76,10 @@ def generate_pdf(df, baslik):
                 text = str(item)
                 is_bold = False
                 
-                # Kazananları kalın veya işaretli yapmak için Regex Kontrolü
                 if text.startswith("**") and text.endswith("**"):
                     text = text[2:-2]
                     is_bold = True
                 
-                # Eğer kalın font yüklenmediyse (K) yerine evrensel Yıldız (*) işareti koy
                 if is_bold and FONT_YUKLENDI and not FONT_BOLD_YUKLENDI:
                     text = f"{text} *" 
                     
@@ -284,6 +279,7 @@ if "grup_kategorileri" not in st.session_state: st.session_state.grup_kategorile
 if "grup_asamalari" not in st.session_state: st.session_state.grup_asamalari = {}
 if "duyuru_metni" not in st.session_state: st.session_state.duyuru_metni = ""
 if "takim_havuzu" not in st.session_state: st.session_state.takim_havuzu = {}
+if "takim_kadrolari" not in st.session_state: st.session_state.takim_kadrolari = {}
 
 if 'skor_tablosu' not in st.session_state:
     if os.path.exists(VERI_DOSYASI):
