@@ -187,7 +187,7 @@ def generate_matrix_pdf(grup_adi, takimlar, df_grup):
         pdf.ln()
     return bytes(pdf.output())
 
-# YENİ: KUSURSUZ MATEMATİK MOTORU (STB VE RET. DESTEKLİ)
+# YENİ: KUSURSUZ MATEMATİK MOTORU (DÜZELTİLMİŞ RET. VE STB DESTEKLİ)
 def hesapla_tum_puan_durumu(df_girdi):
     if df_girdi.empty: return pd.DataFrame()
     df = df_girdi.copy()
@@ -239,14 +239,14 @@ def hesapla_tum_puan_durumu(df_girdi):
             if t1_s1_win: t1_set = 1
             elif t2_s1_win: t2_set = 1
             else:
-                t1_set += 1; t1_oyun += max(0, 6 - s1_t1)
+                t1_set += 1; t1_oyun += max(0, (6 if s1_t2 <= 4 else 7) - s1_t1)
                 t1_set += 1; t1_oyun += 6
                 return pd.Series([t1_oyun, t2_oyun, t1_set, t2_set])
                 
             if t1_s2_win: t1_set += 1
             elif t2_s2_win: t2_set += 1
             else:
-                t1_set += 1; t1_oyun += max(0, 6 - s2_t1)
+                t1_set += 1; t1_oyun += max(0, (6 if s2_t2 <= 4 else 7) - s2_t1)
                 if t1_set == 1 and t2_set == 1:
                     t1_set += 1; t1_oyun += 1 if is_stb else 6
                 return pd.Series([t1_oyun, t2_oyun, t1_set, t2_set])
@@ -262,21 +262,21 @@ def hesapla_tum_puan_durumu(df_girdi):
                     if t1_s3_win: t1_set += 1
                     elif t2_s3_win: t2_set += 1
                     else:
-                        t1_set += 1; t1_oyun += max(0, 6 - s3_t1)
+                        t1_set += 1; t1_oyun += max(0, (6 if s3_t2 <= 4 else 7) - s3_t1)
             return pd.Series([t1_oyun, t2_oyun, t1_set, t2_set])
             
         elif durum == "Takım 2 Kazandı (Ret.)":
             if t1_s1_win: t1_set = 1
             elif t2_s1_win: t2_set = 1
             else:
-                t2_set += 1; t2_oyun += max(0, 6 - s1_t2)
+                t2_set += 1; t2_oyun += max(0, (6 if s1_t1 <= 4 else 7) - s1_t2)
                 t2_set += 1; t2_oyun += 6
                 return pd.Series([t1_oyun, t2_oyun, t1_set, t2_set])
                 
             if t1_s2_win: t1_set += 1
             elif t2_s2_win: t2_set += 1
             else:
-                t2_set += 1; t2_oyun += max(0, 6 - s2_t2)
+                t2_set += 1; t2_oyun += max(0, (6 if s2_t1 <= 4 else 7) - s2_t2)
                 if t1_set == 1 and t2_set == 1:
                     t2_set += 1; t2_oyun += 1 if is_stb else 6
                 return pd.Series([t1_oyun, t2_oyun, t1_set, t2_set])
@@ -292,7 +292,7 @@ def hesapla_tum_puan_durumu(df_girdi):
                     if t1_s3_win: t1_set += 1
                     elif t2_s3_win: t2_set += 1
                     else:
-                        t2_set += 1; t2_oyun += max(0, 6 - s3_t2)
+                        t2_set += 1; t2_oyun += max(0, (6 if s3_t1 <= 4 else 7) - s3_t2)
             return pd.Series([t1_oyun, t2_oyun, t1_set, t2_set])
 
         else: # Normal Tamamlandı
@@ -737,7 +737,6 @@ elif menu_secim == "✍️ 2. Skor Girişi":
                 for idx, row in df_gun.iterrows():
                     st.markdown(f"**🔹 {row['Branş']} ({row['Eşleşme']})**")
                     
-                    # DAHA DA GENİŞLETİLMİŞ VE FERAH TASARIM
                     h_cols = st.columns([8.2, 1.8, 0.2, 1.2, 0.3, 1.2, 0.3, 1.2])
                     h_cols[3].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; color:#1f77b4; border-bottom: 2px solid #1f77b4; padding-bottom: 2px;'>1. SET</div>", unsafe_allow_html=True)
                     h_cols[5].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; color:#1f77b4; border-bottom: 2px solid #1f77b4; padding-bottom: 2px;'>2. SET</div>", unsafe_allow_html=True)
@@ -786,10 +785,8 @@ elif menu_secim == "✍️ 2. Skor Girişi":
                         t2_secim_raw = r_cols[3].selectbox("T2 Oyuncu", options=opts2, index=idx2, key=f"t2_o_{idx}", label_visibility="collapsed")
                         t2_oyuncu_str = t2_secim_raw if t2_secim_raw != "Seçiniz" else ""
                     
-                    # DAHA ANLAŞILIR DURUM İSİMLENDİRMESİ
                     durum_opts = ["Tamamlandı", "Takım 1 Kazandı (W/O)", "Takım 2 Kazandı (W/O)", "Takım 1 Kazandı (Ret.)", "Takım 2 Kazandı (Ret.)"]
                     mevcut_durum = str(row.get('Durum', 'Tamamlandı'))
-                    # Eski kayıtlarla uyumluluk mapping'i
                     if mevcut_durum == "Takım 1 (W/O)": mevcut_durum = "Takım 2 Kazandı (W/O)"
                     elif mevcut_durum == "Takım 2 (W/O)": mevcut_durum = "Takım 1 Kazandı (W/O)"
                     elif mevcut_durum == "Takım 1 (Ret.)": mevcut_durum = "Takım 2 Kazandı (Ret.)"
@@ -798,9 +795,8 @@ elif menu_secim == "✍️ 2. Skor Girişi":
                     d_idx = durum_opts.index(mevcut_durum) if mevcut_durum in durum_opts else 0
                     secilen_durum = r_cols[4].selectbox("Durum", options=durum_opts, index=d_idx, key=f"durum_{idx}", label_visibility="collapsed")
 
-                    # YENİ EKLENTİ: STB (SUPER TIE-BREAK) ONAY KUTUSU
                     mevcut_stb = bool(row.get('STB', False))
-                    secilen_stb = r_cols[5].checkbox("STB", value=mevcut_stb, key=f"stb_{idx}", help="3. Set Süper Tie-Break ise (10 puanda biter) işaretleyin. Oyun averajı için sadece 1 oyun olarak hesaplanır.")
+                    secilen_stb = r_cols[5].checkbox("STB", value=mevcut_stb, key=f"stb_{idx}", help="3. Set Süper Tie-Break ise işaretleyin.")
 
                     is_wo = "W/O" in secilen_durum
                     
@@ -1006,7 +1002,6 @@ elif menu_secim == "📅 4. Maç Programı":
                 m = eslesen_mac.iloc[0]
                 durum = str(m.get('Durum', 'Tamamlandı'))
                 
-                # ESKİ KAYIT UYUMLULUĞU
                 if durum == "Takım 1 (W/O)": durum = "Takım 2 Kazandı (W/O)"
                 elif durum == "Takım 2 (W/O)": durum = "Takım 1 Kazandı (W/O)"
                 elif durum == "Takım 1 (Ret.)": durum = "Takım 2 Kazandı (Ret.)"
