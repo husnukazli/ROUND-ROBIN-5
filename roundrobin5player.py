@@ -269,7 +269,7 @@ def show_pdf(file_path):
     st.markdown(pdf_display, unsafe_allow_html=True)
 
 # ==============================================================================
-# HAFIZA (SESSION STATE) BAŞLATMA VE BOŞ DOSYA GÜVENLİĞİ
+# HAFIZA (SESSION STATE) BAŞLATMA
 # ==============================================================================
 if "admin_mi" not in st.session_state: st.session_state.admin_mi = False
 if "expand_all" not in st.session_state: st.session_state.expand_all = False
@@ -385,7 +385,7 @@ def eslesmeleri_olustur(grup_adi, takimlar, grup_tipi, format_secimi):
     return program
 
 # ==============================================================================
-# YÖNETİM GİRİŞİ, AŞAMA SEÇİMİ VE ANA MENÜ (SOL SIDEBAR)
+# YÖNETİM GİRİŞİ VE ANA MENÜ (SOL SIDEBAR)
 # ==============================================================================
 with st.sidebar:
     st.markdown("### 🎯 Turnuva Aşaması")
@@ -761,7 +761,7 @@ elif menu_secim == "✍️ 2. Skor Girişi":
     else:
         st.warning("🔒 Skor ve esame giriş paneli dışarıya kapalıdır. Lütfen giriş yapınız.")
 
-# --- SAYFA 3: PUAN DURUMU ---
+# --- SAYFA 3: PUAN DURUMU (YENİ AVERAJ MOTORU EKLENDİ) ---
 elif menu_secim == "🏆 3. Puan Durumu":
     st.subheader(f"Canlı Puan Durumu ({aktif_asama})")
 
@@ -793,6 +793,41 @@ elif menu_secim == "🏆 3. Puan Durumu":
                 st.divider()
                 combined_pdf_bytes = generate_combined_standings_pdf(pdf_gruplar_data)
                 st.download_button(label=f"📥 Seçili Grupların Puan Durumunu Tek PDF Olarak İndir", data=combined_pdf_bytes, file_name=f"puan_durumu_toplu.pdf", mime="application/pdf", key="pdf_puan_toplu")
+            
+            # --- YENİ EKLENTİ: GELİŞMİŞ AVERAJ (MİNİ LİG) HESAPLAYICI ---
+            st.markdown("---")
+            with st.expander("⚖️ Gelişmiş Averaj ve Mini Lig Hesaplayıcı"):
+                st.info("ℹ️ Üçlü veya dörtlü averaj kilitlenmelerinde bir grup ve sadece averaja dahil edilecek takımları seçin. Sistem, dışarıdaki takımlarla oynanan maçları yoksayarak yepyeni bir Mini Lig oluşturur.")
+                
+                avg_gruplar = dogal_sirala(list(df_asama_t3['Grup'].unique()))
+                sec_avg_grup = st.selectbox("Averaj Hesaplanacak Grubu Seçin:", ["Seçiniz"] + avg_gruplar, key="avg_grup_sec")
+                
+                if sec_avg_grup != "Seçiniz":
+                    grup_maclari_avg = df_asama_t3[df_asama_t3['Grup'] == sec_avg_grup]
+                    takimlar_avg = dogal_sirala(list(set(grup_maclari_avg['Takım 1']).union(set(grup_maclari_avg['Takım 2']))))
+                    
+                    secilen_takimlar_avg = st.multiselect("Averaja Kalmış (Kendi aralarında hesaplanacak) Takımları Seçin:", options=takimlar_avg)
+                    
+                    if len(secilen_takimlar_avg) >= 2:
+                        if st.button("🧮 Seçili Takımların Kendi Arasındaki Averajını Hesapla (Mini Lig)"):
+                            # Sadece seçili takımların birbiriyle oynadığı maçları filtrele
+                            mask_t1 = grup_maclari_avg['Takım 1'].isin(secilen_takimlar_avg)
+                            mask_t2 = grup_maclari_avg['Takım 2'].isin(secilen_takimlar_avg)
+                            mini_lig_df = grup_maclari_avg[mask_t1 & mask_t2]
+                            
+                            if mini_lig_df.empty:
+                                st.warning("Bu takımlar arasında oynanmış ve skoru girilmiş bir maç bulunamadı.")
+                            else:
+                                mini_stats = hesapla_tum_puan_durumu(mini_lig_df)
+                                if not mini_stats.empty:
+                                    mini_grup_df = mini_stats.drop(columns=['Grup']).sort_values(by=['Galibiyet', 'Maç Av.', 'Oyun Av.'], ascending=False)
+                                    mini_grup_df.index = range(1, len(mini_grup_df) + 1)
+                                    
+                                    st.success(f"✅ {sec_avg_grup} - Mini Lig Puan Durumu (Sadece seçili takımlar)")
+                                    st.dataframe(mini_grup_df, use_container_width=True)
+                    elif len(secilen_takimlar_avg) == 1:
+                        st.warning("Averaj hesaplamak için en az 2 takım seçmelisiniz.")
+            # -------------------------------------------------------------
         else:
             st.info(f"Bu aşamada henüz maç bulunmuyor.")
 
