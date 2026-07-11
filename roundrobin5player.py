@@ -744,68 +744,68 @@ elif menu_secim == "✍️ 2. Skor Girişi":
                 for idx, row in df_gun.iterrows():
                     st.markdown(f"**🔹 {row['Branş']} ({row['Eşleşme']})**")
                     
-                    # BAŞLIKLAR KATI: Takım isimleri ve set başlıkları
-                    h_cols = st.columns([2.8, 2.8, 2.6, 1.4, 0.2, 1.4, 0.2, 1.4])
+                    h_cols = st.columns([8.2, 1.4, 0.2, 1.4, 0.2, 1.4])
+                    h_cols[1].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; color:#1f77b4; border-bottom: 2px solid #1f77b4; padding-bottom: 2px;'>1. SET</div>", unsafe_allow_html=True)
+                    h_cols[3].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; color:#1f77b4; border-bottom: 2px solid #1f77b4; padding-bottom: 2px;'>2. SET</div>", unsafe_allow_html=True)
+                    h_cols[5].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; color:#1f77b4; border-bottom: 2px solid #1f77b4; padding-bottom: 2px;'>3. SET</div>", unsafe_allow_html=True)
+
+                    r_cols = st.columns([3.0, 3.0, 1.8, 0.4, 0.7, 0.7, 0.2, 0.7, 0.7, 0.2, 0.7, 0.7])
                     
                     t1_isim, t2_isim = row['Takım 1'], row['Takım 2']
-                    h_cols[0].markdown(f"<div style='font-size:14px; font-weight:bold; color:#1f77b4; padding-bottom:5px;'>🛡️ {t1_isim}</div>", unsafe_allow_html=True)
-                    h_cols[1].markdown(f"<div style='font-size:14px; font-weight:bold; color:#1f77b4; padding-bottom:5px;'>🛡️ {t2_isim}</div>", unsafe_allow_html=True)
-                    
-                    h_cols[3].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; color:#1f77b4; border-bottom: 2px solid #1f77b4; padding-bottom: 2px;'>1. SET</div>", unsafe_allow_html=True)
-                    h_cols[5].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; color:#1f77b4; border-bottom: 2px solid #1f77b4; padding-bottom: 2px;'>2. SET</div>", unsafe_allow_html=True)
-                    h_cols[7].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; color:#1f77b4; border-bottom: 2px solid #1f77b4; padding-bottom: 2px;'>3. SET</div>", unsafe_allow_html=True)
-
-                    # KUTULAR KATI: Sadece veri giriş elemanları
-                    r_cols = st.columns([2.8, 2.8, 2.1, 0.5, 0.7, 0.7, 0.2, 0.7, 0.7, 0.2, 0.7, 0.7])
-                    
                     grup_kadro_dict = st.session_state.takim_kadrolari.get(secilen_grup, {})
                     t1_havuz = grup_kadro_dict.get(t1_isim, ["Belirtilmedi"])
                     t2_havuz = grup_kadro_dict.get(t2_isim, ["Belirtilmedi"])
                     
-                    if "Çiftler" in str(row['Branş']):
-                        eski_kayit1 = str(row['T1_Oyuncu'])
-                        for char in ["[", "]", "'", '"']: eski_kayit1 = eski_kayit1.replace(char, "")
-                        ayirici1 = ' - ' if ' - ' in eski_kayit1 else ','
-                        eski_oyuncular1 = [o.strip() for o in eski_kayit1.split(ayirici1) if o.strip() and o.strip() in t1_havuz and o.strip() != "Seçiniz"]
-                        t1_oyuncu = r_cols[0].multiselect("T1 Oyuncular", options=t1_havuz, default=eski_oyuncular1, max_selections=2, key=f"t1_o_{idx}", label_visibility="collapsed")
-                        t1_oyuncu_str = " - ".join(t1_oyuncu)
-                    else:
-                        opts1 = ["Seçiniz"] + [o for o in t1_havuz if o != "Belirtilmedi"]
-                        eski_veri1 = str(row['T1_Oyuncu']).strip()
-                        for char in ["[", "]", "'", '"']: eski_veri1 = eski_veri1.replace(char, "")
-                        eski_o1 = eski_veri1 if eski_veri1 and eski_veri1 not in ["nan", "None", ""] else "Seçiniz"
-                        idx1 = opts1.index(eski_o1) if eski_o1 in opts1 else 0
-                        t1_secim_raw = r_cols[0].selectbox("T1 Oyuncu", options=opts1, index=idx1, key=f"t1_o_{idx}", label_visibility="collapsed")
-                        t1_oyuncu_str = t1_secim_raw if t1_secim_raw != "Seçiniz" else ""
-                    
-                    if "Çiftler" in str(row['Branş']):
-                        eski_kayit2 = str(row['T2_Oyuncu'])
-                        for char in ["[", "]", "'", '"']: eski_kayit2 = eski_kayit2.replace(char, "")
-                        ayirici2 = ' - ' if ' - ' in eski_kayit2 else ','
-                        eski_oyuncular2 = [o.strip() for o in eski_kayit2.split(ayirici2) if o.strip() and o.strip() in t2_havuz and o.strip() != "Seçiniz"]
-                        t2_oyuncu = r_cols[1].multiselect("T2 Oyuncular", options=t2_havuz, default=eski_oyuncular2, max_selections=2, key=f"t2_o_{idx}", label_visibility="collapsed")
-                        t2_oyuncu_str = " - ".join(t2_oyuncu)
-                    else:
-                        opts2 = ["Seçiniz"] + [o for o in t2_havuz if o != "Belirtilmedi"]
-                        eski_veri2 = str(row['T2_Oyuncu']).strip()
-                        for char in ["[", "]", "'", '"']: eski_veri2 = eski_veri2.replace(char, "")
-                        eski_o2 = eski_veri2 if eski_veri2 and eski_veri2 not in ["nan", "None", ""] else "Seçiniz"
-                        idx2 = opts2.index(eski_o2) if eski_o2 in opts2 else 0
-                        t2_secim_raw = r_cols[1].selectbox("T2 Oyuncu", options=opts2, index=idx2, key=f"t2_o_{idx}", label_visibility="collapsed")
-                        t2_oyuncu_str = t2_secim_raw if t2_secim_raw != "Seçiniz" else ""
-                    
-                    durum_opts = ["Tamamlandı", "Takım 1 Kazandı (W/O)", "Takım 2 Kazandı (W/O)", "Takım 1 Kazandı (Ret.)", "Takım 2 Kazandı (Ret.)"]
-                    mevcut_durum = str(row.get('Durum', 'Tamamlandı'))
-                    if mevcut_durum == "Takım 1 (W/O)": mevcut_durum = "Takım 2 Kazandı (W/O)"
-                    elif mevcut_durum == "Takım 2 (W/O)": mevcut_durum = "Takım 1 Kazandı (W/O)"
-                    elif mevcut_durum == "Takım 1 (Ret.)": mevcut_durum = "Takım 2 Kazandı (Ret.)"
-                    elif mevcut_durum == "Takım 2 (Ret.)": mevcut_durum = "Takım 1 Kazandı (Ret.)"
-                    
-                    d_idx = durum_opts.index(mevcut_durum) if mevcut_durum in durum_opts else 0
-                    secilen_durum = r_cols[2].selectbox("Durum", options=durum_opts, index=d_idx, key=f"durum_{idx}", label_visibility="collapsed")
+                    with r_cols[0]:
+                        st.markdown(f"<div style='margin-bottom: -15px;'><b>{t1_isim}</b></div>", unsafe_allow_html=True)
+                        if "Çiftler" in str(row['Branş']):
+                            eski_kayit1 = str(row['T1_Oyuncu'])
+                            for char in ["[", "]", "'", '"']: eski_kayit1 = eski_kayit1.replace(char, "")
+                            ayirici1 = ' - ' if ' - ' in eski_kayit1 else ','
+                            eski_oyuncular1 = [o.strip() for o in eski_kayit1.split(ayirici1) if o.strip() and o.strip() in t1_havuz and o.strip() != "Seçiniz"]
+                            t1_oyuncu = st.multiselect("T1", options=t1_havuz, default=eski_oyuncular1, max_selections=2, key=f"t1_o_{idx}", label_visibility="collapsed")
+                            t1_oyuncu_str = " - ".join(t1_oyuncu)
+                        else:
+                            opts1 = ["Seçiniz"] + [o for o in t1_havuz if o != "Belirtilmedi"]
+                            eski_veri1 = str(row['T1_Oyuncu']).strip()
+                            for char in ["[", "]", "'", '"']: eski_veri1 = eski_veri1.replace(char, "")
+                            eski_o1 = eski_veri1 if eski_veri1 and eski_veri1 not in ["nan", "None", ""] else "Seçiniz"
+                            idx1 = opts1.index(eski_o1) if eski_o1 in opts1 else 0
+                            t1_secim_raw = st.selectbox("T1", options=opts1, index=idx1, key=f"t1_o_{idx}", label_visibility="collapsed")
+                            t1_oyuncu_str = t1_secim_raw if t1_secim_raw != "Seçiniz" else ""
 
-                    mevcut_stb = bool(row.get('STB', False))
-                    secilen_stb = r_cols[3].checkbox("STB", value=mevcut_stb, key=f"stb_{idx}", help="3. Set Süper Tie-Break ise işaretleyin.")
+                    with r_cols[1]:
+                        st.markdown(f"<div style='margin-bottom: -15px;'><b>{t2_isim}</b></div>", unsafe_allow_html=True)
+                        if "Çiftler" in str(row['Branş']):
+                            eski_kayit2 = str(row['T2_Oyuncu'])
+                            for char in ["[", "]", "'", '"']: eski_kayit2 = eski_kayit2.replace(char, "")
+                            ayirici2 = ' - ' if ' - ' in eski_kayit2 else ','
+                            eski_oyuncular2 = [o.strip() for o in eski_kayit2.split(ayirici2) if o.strip() and o.strip() in t2_havuz and o.strip() != "Seçiniz"]
+                            t2_oyuncu = st.multiselect("T2", options=t2_havuz, default=eski_oyuncular2, max_selections=2, key=f"t2_o_{idx}", label_visibility="collapsed")
+                            t2_oyuncu_str = " - ".join(t2_oyuncu)
+                        else:
+                            opts2 = ["Seçiniz"] + [o for o in t2_havuz if o != "Belirtilmedi"]
+                            eski_veri2 = str(row['T2_Oyuncu']).strip()
+                            for char in ["[", "]", "'", '"']: eski_veri2 = eski_veri2.replace(char, "")
+                            eski_o2 = eski_veri2 if eski_veri2 and eski_veri2 not in ["nan", "None", ""] else "Seçiniz"
+                            idx2 = opts2.index(eski_o2) if eski_o2 in opts2 else 0
+                            t2_secim_raw = st.selectbox("T2", options=opts2, index=idx2, key=f"t2_o_{idx}", label_visibility="collapsed")
+                            t2_oyuncu_str = t2_secim_raw if t2_secim_raw != "Seçiniz" else ""
+                    
+                    with r_cols[2]:
+                        durum_opts = ["Tamamlandı", "Takım 1 Kazandı (W/O)", "Takım 2 Kazandı (W/O)", "Takım 1 Kazandı (Ret.)", "Takım 2 Kazandı (Ret.)"]
+                        mevcut_durum = str(row.get('Durum', 'Tamamlandı'))
+                        if mevcut_durum == "Takım 1 (W/O)": mevcut_durum = "Takım 2 Kazandı (W/O)"
+                        elif mevcut_durum == "Takım 2 (W/O)": mevcut_durum = "Takım 1 Kazandı (W/O)"
+                        elif mevcut_durum == "Takım 1 (Ret.)": mevcut_durum = "Takım 2 Kazandı (Ret.)"
+                        elif mevcut_durum == "Takım 2 (Ret.)": mevcut_durum = "Takım 1 Kazandı (Ret.)"
+                        
+                        d_idx = durum_opts.index(mevcut_durum) if mevcut_durum in durum_opts else 0
+                        secilen_durum = st.selectbox("Durum", options=durum_opts, index=d_idx, key=f"durum_{idx}", label_visibility="collapsed")
+
+                    with r_cols[3]:
+                        mevcut_stb = bool(row.get('STB', False))
+                        secilen_stb = st.checkbox("STB", value=mevcut_stb, key=f"stb_{idx}")
 
                     is_wo = "W/O" in secilen_durum
                     
@@ -1122,7 +1122,7 @@ elif menu_secim == "📅 4. Maç Programı":
                 sec_gun_prog = c2.selectbox("Gün Seç:", gunler_prog, key="prog_gun")
                 df_m_prog = df_g_prog[df_g_prog['Gün'] == sec_gun_prog]
                 
-                # KESİN ENGELLEME: Maç herhangi bir tarihe eklenmişse listeden çıkar
+                # KESİN ENGELLEME: Maç başka güne eklenmişse listeden çıkar
                 mevcut_mask = df_m_prog.apply(lambda r: not st.session_state.mac_programi[
                     (st.session_state.mac_programi['Grup'] == r['Grup']) &
                     (st.session_state.mac_programi['Gün'] == r['Gün']) & 
@@ -1131,19 +1131,33 @@ elif menu_secim == "📅 4. Maç Programı":
                 ].empty, axis=1)
                 df_m_prog_eklenebilir = df_m_prog[~mevcut_mask]
                 
-                if df_m_prog_eklenebilir.empty: c3.info("✅ Bu gruba/güne ait tüm maçlar programa yerleştirilmiş.")
+                if df_m_prog_eklenebilir.empty: 
+                    c3.info("✅ Bu gruba/güne ait tüm maçlar programa yerleştirilmiş.")
                 else:
-                    mac_listesi = [f"{row['Takım 1']} vs {row['Takım 2']} ({row['Branş']})" for idx, row in df_m_prog_eklenebilir.iterrows()]
-                    sec_mac_adi = c3.selectbox("Maç Seç:", mac_listesi, key="prog_mac")
-                    if st.button("➕ Akışa Ekle"):
-                        secilen_row = df_m_prog_eklenebilir.iloc[mac_listesi.index(sec_mac_adi)]
-                        yeni_kayit = pd.DataFrame([{
-                            "Maç Saati": "10:00", "Tarih": formatted_tarih, "Gün Adı": gun_adi, "Kort": "Kort 1",
-                            "Grup": secilen_row['Grup'], "Gün": secilen_row['Gün'], "Branş": secilen_row['Branş'], "Eşleşme": secilen_row['Eşleşme'],
-                            "Takım 1": secilen_row['Takım 1'], "Takım 2": secilen_row['Takım 2'], "T1 Oyuncu": "", "T2 Oyuncu": "", "Canlı Skor": "Oynanmadı", "Kazanan": ""
-                        }])
-                        st.session_state.mac_programi = pd.concat([st.session_state.mac_programi, yeni_kayit], ignore_index=True)
-                        ortak_veriyi_kaydet(); st.success("Maç eklendi!"); st.rerun()
+                    # YENİ: EŞLEŞME (TIE) BAZLI LİSTELEME
+                    eslesmeler = df_m_prog_eklenebilir[['Eşleşme', 'Takım 1', 'Takım 2']].drop_duplicates()
+                    mac_listesi = [f"{row['Takım 1']} vs {row['Takım 2']} ({row['Eşleşme']})" for idx, row in eslesmeler.iterrows()]
+                    
+                    sec_mac_adi = c3.selectbox("Eşleşme Seç (Tüm Maçlar Eklenecek):", mac_listesi, key="prog_mac")
+                    if st.button("➕ Tüm Eşleşmeyi Akışa Ekle"):
+                        secilen_eslesme_idx = mac_listesi.index(sec_mac_adi)
+                        secilen_eslesme_bilgisi = eslesmeler.iloc[secilen_eslesme_idx]
+                        secilen_eslesme_no = secilen_eslesme_bilgisi['Eşleşme']
+                        
+                        eklenecek_maclar = df_m_prog_eklenebilir[df_m_prog_eklenebilir['Eşleşme'] == secilen_eslesme_no]
+                        
+                        yeni_kayitlar = []
+                        for _, r in eklenecek_maclar.iterrows():
+                            yeni_kayitlar.append({
+                                "Maç Saati": "10:00", "Tarih": formatted_tarih, "Gün Adı": gun_adi, "Kort": "Kort 1",
+                                "Grup": r['Grup'], "Gün": r['Gün'], "Branş": r['Branş'], "Eşleşme": r['Eşleşme'],
+                                "Takım 1": r['Takım 1'], "Takım 2": r['Takım 2'], "T1 Oyuncu": "", "T2 Oyuncu": "", "Canlı Skor": "Oynanmadı", "Kazanan": ""
+                            })
+                        
+                        st.session_state.mac_programi = pd.concat([st.session_state.mac_programi, pd.DataFrame(yeni_kayitlar)], ignore_index=True)
+                        ortak_veriyi_kaydet()
+                        st.success(f"Eşleşmeye ait {len(yeni_kayitlar)} maç başarıyla eklendi!")
+                        st.rerun()
 
             if not df_gunluk.empty:
                 st.markdown("### 📋 Günlük Akış Editörü")
