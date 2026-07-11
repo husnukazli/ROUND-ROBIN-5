@@ -744,7 +744,7 @@ elif menu_secim == "✍️ 2. Skor Girişi":
                 for idx, row in df_gun.iterrows():
                     st.markdown(f"**🔹 {row['Branş']} ({row['Eşleşme']})**")
                     
-                    # BAŞLIKLAR KATI: Takım isimleri ve set başlıkları (Kutuları aşağıya itmez)
+                    # BAŞLIKLAR KATI: Takım isimleri ve set başlıkları
                     h_cols = st.columns([2.8, 2.8, 2.6, 1.4, 0.2, 1.4, 0.2, 1.4])
                     
                     t1_isim, t2_isim = row['Takım 1'], row['Takım 2']
@@ -755,7 +755,7 @@ elif menu_secim == "✍️ 2. Skor Girişi":
                     h_cols[5].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; color:#1f77b4; border-bottom: 2px solid #1f77b4; padding-bottom: 2px;'>2. SET</div>", unsafe_allow_html=True)
                     h_cols[7].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; color:#1f77b4; border-bottom: 2px solid #1f77b4; padding-bottom: 2px;'>3. SET</div>", unsafe_allow_html=True)
 
-                    # KUTULAR KATI: Sadece veri giriş elemanları (Hepsi ip gibi aynı hizada olur)
+                    # KUTULAR KATI: Sadece veri giriş elemanları
                     r_cols = st.columns([2.8, 2.8, 2.1, 0.5, 0.7, 0.7, 0.2, 0.7, 0.7, 0.2, 0.7, 0.7])
                     
                     grup_kadro_dict = st.session_state.takim_kadrolari.get(secilen_grup, {})
@@ -1122,14 +1122,16 @@ elif menu_secim == "📅 4. Maç Programı":
                 sec_gun_prog = c2.selectbox("Gün Seç:", gunler_prog, key="prog_gun")
                 df_m_prog = df_g_prog[df_g_prog['Gün'] == sec_gun_prog]
                 
+                # KESİN ENGELLEME: Maç herhangi bir tarihe eklenmişse listeden çıkar
                 mevcut_mask = df_m_prog.apply(lambda r: not st.session_state.mac_programi[
-                    (st.session_state.mac_programi['Tarih'] == formatted_tarih) & (st.session_state.mac_programi['Grup'] == r['Grup']) &
-                    (st.session_state.mac_programi['Gün'] == r['Gün']) & (st.session_state.mac_programi['Branş'] == r['Branş']) &
+                    (st.session_state.mac_programi['Grup'] == r['Grup']) &
+                    (st.session_state.mac_programi['Gün'] == r['Gün']) & 
+                    (st.session_state.mac_programi['Branş'] == r['Branş']) &
                     (st.session_state.mac_programi['Eşleşme'] == r['Eşleşme'])
                 ].empty, axis=1)
                 df_m_prog_eklenebilir = df_m_prog[~mevcut_mask]
                 
-                if df_m_prog_eklenebilir.empty: c3.info("✅ Fikstürdeki maçlar eklenmiş.")
+                if df_m_prog_eklenebilir.empty: c3.info("✅ Bu gruba/güne ait tüm maçlar programa yerleştirilmiş.")
                 else:
                     mac_listesi = [f"{row['Takım 1']} vs {row['Takım 2']} ({row['Branş']})" for idx, row in df_m_prog_eklenebilir.iterrows()]
                     sec_mac_adi = c3.selectbox("Maç Seç:", mac_listesi, key="prog_mac")
