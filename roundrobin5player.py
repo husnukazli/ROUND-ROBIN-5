@@ -956,7 +956,7 @@ elif menu_secim == "🏆 3. Puan Durumu":
             
             st.markdown("---")
             with st.expander("⚖️ Gelişmiş Averaj  Hesaplayıcı"):
-                st.info("ℹ️ Üçlü veya dörtlü averaj kilitlenmelerinde bir grup ve sadece averaja dahil edilecek takımları seçin. Sistem, dışarıdaki takımlarla oynanan maçları yoksayarak yepyeni bir Mini Lig oluşturur.")
+                st.info("ℹ️ Üçlü veya dörtlü averaj kilitlenmelerinde bir grup ve sadece averaja dahil edilecek takımları seçin. Sistem, dışarıdaki takımlarla oynanan maçları yoksayarak yeniden hesaplar.")
                 
                 avg_gruplar = dogal_sirala(list(df_asama_t3['Grup'].unique()))
                 sec_avg_grup = st.selectbox("Averaj Hesaplanacak Grubu Seçin:", ["Seçiniz"] + avg_gruplar, key="avg_grup_sec")
