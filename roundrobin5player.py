@@ -12,7 +12,8 @@ import html
 from fpdf import FPDF
 
 # --- GENEL SAYFA AYARLARI ---
-st.set_page_config(page_title="Tenis Turnuva Otomasyonu", page_icon="🎾", layout="wide")
+# initial_sidebar_state="collapsed" eklendi, böylece site açıldığında sol panel hep kapalı başlar.
+st.set_page_config(page_title="Tenis Turnuva Otomasyonu", page_icon="🎾", layout="wide", initial_sidebar_state="collapsed")
 st.title("🎾 Tenis Turnuva Yönetim Sistemi")
 
 VERI_DOSYASI = "tenis_grup_turnuvasi_veri.json"
@@ -499,36 +500,57 @@ def eslesmeleri_olustur(grup_adi, takimlar, grup_tipi, format_secimi):
     return program
 
 # ==============================================================================
-# YÖNETİM GİRİŞİ, AŞAMA SEÇİMİ VE ANA MENÜ (SOL SIDEBAR)
+# YÖNETİM GİRİŞİ VE ANA MENÜ KONTROLÜ
 # ==============================================================================
-with st.sidebar:
-    st.markdown("### 🎯 Turnuva Aşaması")
-    aktif_asama = st.radio("Aşama Seçimi:", ["1. Aşama", "2. Aşama"], key="global_asama_secici", label_visibility="collapsed")
-    st.divider()
 
-    st.markdown("### 📌 Ana Menü")
-    menu_secenekleri = [
-        "👥 1. Grup Ayarları", 
-        "✍️ 2. Skor Girişi", 
-        "🏆 3. Puan Durumu", 
-        "📅 4. Maç Programı", 
-        "📢 5. Duyurular", 
-        "⚙️ 6. Yönetim & Dosya"
-    ]
-    menu_secim = st.radio("Sayfa Seçin:", menu_secenekleri, label_visibility="collapsed")
-    st.divider()
-
-    st.markdown("### 👨‍⚖️ Turnuva Yönetim Girişi")
-    if not st.session_state.admin_mi:
-        girilen_sifre = st.text_input("Yönetici Şifresi:", type="password")
+# Eğer admin (Başhakem) giriş YAPMAMIŞSA -> Ziyaretçi (Misafir) Menüsü
+if not st.session_state.admin_mi:
+    
+    # Yönetici giriş paneli hala sol panelde (ama panel kapalı başlayacak)
+    with st.sidebar:
+        st.markdown("### 👨‍⚖️ Yönetici Girişi")
+        girilen_sifre = st.text_input("Şifre:", type="password")
         if st.button("🔒 Giriş Yap"):
             if girilen_sifre == "zonguldak2026":
                 st.session_state.admin_mi = True
-                st.success("✅ Başhakem Yetkisi Aktif!")
+                st.success("Giriş Başarılı! Kontrol paneli yükleniyor...")
                 st.rerun()
             else:
                 st.error("❌ Hatalı Şifre!")
-    else:
+
+    # Ziyaretçiler için sayfanın EN ÜSTÜNE sabit, yatay ve şık menü tasarımı
+    col_asama, col_menu = st.columns([1, 3])
+    with col_asama:
+        aktif_asama = st.radio("🎯 Aşama Seçimi:", ["1. Aşama", "2. Aşama"], horizontal=True, key="guest_asama")
+    with col_menu:
+        menu_secim_guest = st.radio("📌 Turnuva Menüsü:", ["👥 Takımlar ve Kadrolar", "🏆 Puan Durumu", "📅 Maç Fikstürü", "📢 Duyurular"], horizontal=True, key="guest_menu", label_visibility="collapsed")
+    st.markdown("---")
+
+    # Misafirlerin tıkladığı sekmeyi, ana kodumuzun anladığı değişkenlere (haritalama) dönüştürüyoruz
+    if menu_secim_guest == "👥 Takımlar ve Kadrolar": menu_secim = "👥 1. Grup Ayarları"
+    elif menu_secim_guest == "🏆 Puan Durumu": menu_secim = "🏆 3. Puan Durumu"
+    elif menu_secim_guest == "📅 Maç Fikstürü": menu_secim = "📅 4. Maç Programı"
+    elif menu_secim_guest == "📢 Duyurular": menu_secim = "📢 5. Duyurular"
+
+# Eğer admin (Başhakem) giriş YAPMIŞSA -> Tam Yetkili Sol Panel (Eski Sistem)
+else:
+    with st.sidebar:
+        st.markdown("### 🎯 Turnuva Aşaması")
+        aktif_asama = st.radio("Aşama Seçimi:", ["1. Aşama", "2. Aşama"], key="admin_asama", label_visibility="collapsed")
+        st.divider()
+
+        st.markdown("### 📌 Ana Menü")
+        menu_secenekleri = [
+            "👥 1. Grup Ayarları", 
+            "✍️ 2. Skor Girişi", 
+            "🏆 3. Puan Durumu", 
+            "📅 4. Maç Programı", 
+            "📢 5. Duyurular", 
+            "⚙️ 6. Yönetim & Dosya"
+        ]
+        menu_secim = st.radio("Sayfa Seçin:", menu_secenekleri, label_visibility="collapsed")
+        st.divider()
+
         st.write("🟢 **Mod:** Başhakem (Yönetici)")
         if st.button("🔓 Çıkış Yap (İzleyici Modu)"):
             st.session_state.admin_mi = False
@@ -540,7 +562,10 @@ with st.sidebar:
 
 # --- SAYFA 1: GRUP AYARLARI ---
 if menu_secim == "👥 1. Grup Ayarları":
-    st.subheader(f"Turnuva Grupları ve Kadrolar ({aktif_asama})")
+    if st.session_state.admin_mi:
+        st.subheader(f"Turnuva Grupları ve Kadrolar ({aktif_asama})")
+    else:
+        st.subheader(f"Takımlar ve Kadrolar ({aktif_asama})") # Ziyaretçi için daha sade başlık
     
     if st.session_state.admin_mi:
         if aktif_asama == "1. Aşama":
@@ -699,9 +724,8 @@ if menu_secim == "👥 1. Grup Ayarları":
                         st.markdown(f"**🛡️ {t_isim}**")
                         st.write(", ".join(g_kadro[t_isim]) if g_kadro[t_isim] else "Oyuncu yok")
     else:
-        st.info("ℹ️ Kadro ve grup tanımlama işlemleri sadece Başhakem yetkisindedir.")
+        # Ziyaretçi (Misafir) Görünümü (Bilgi Kutusu Kaldırıldı)
         if st.session_state.takim_kadrolari:
-            st.markdown(f"### 📁 Mevcut Kayıtlı Gruplar ve Kadrolar ({aktif_asama})")
             gosterilecek_gruplar_klasor = [g for g in st.session_state.takim_kadrolari.keys() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama]
             for g_isim in dogal_sirala(gosterilecek_gruplar_klasor):
                 f_turu = st.session_state.grup_formatlari.get(g_isim, "3 Maçlık (2 Tek, 1 Çift)")
@@ -711,6 +735,8 @@ if menu_secim == "👥 1. Grup Ayarları":
                     for t_isim in dogal_sirala(list(g_kadro.keys())):
                         st.markdown(f"**🛡️ {t_isim}**")
                         st.write(", ".join(g_kadro[t_isim]) if g_kadro[t_isim] else "Oyuncu yok")
+        else:
+            st.info("Kayıtlı takım bulunmamaktadır.")
 
 # --- SAYFA 2: SKOR GİRİŞİ ---
 elif menu_secim == "✍️ 2. Skor Girişi":
@@ -1122,7 +1148,6 @@ elif menu_secim == "📅 4. Maç Programı":
                 sec_gun_prog = c2.selectbox("Gün Seç:", gunler_prog, key="prog_gun")
                 df_m_prog = df_g_prog[df_g_prog['Gün'] == sec_gun_prog]
                 
-                # KESİN ENGELLEME: Maç başka güne eklenmişse listeden çıkar
                 mevcut_mask = df_m_prog.apply(lambda r: not st.session_state.mac_programi[
                     (st.session_state.mac_programi['Grup'] == r['Grup']) &
                     (st.session_state.mac_programi['Gün'] == r['Gün']) & 
@@ -1134,7 +1159,6 @@ elif menu_secim == "📅 4. Maç Programı":
                 if df_m_prog_eklenebilir.empty: 
                     c3.info("✅ Bu gruba/güne ait tüm maçlar programa yerleştirilmiş.")
                 else:
-                    # YENİ: EŞLEŞME (TIE) BAZLI LİSTELEME
                     eslesmeler = df_m_prog_eklenebilir[['Eşleşme', 'Takım 1', 'Takım 2']].drop_duplicates()
                     mac_listesi = [f"{row['Takım 1']} vs {row['Takım 2']} ({row['Eşleşme']})" for idx, row in eslesmeler.iterrows()]
                     
