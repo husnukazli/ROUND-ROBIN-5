@@ -12,7 +12,6 @@ import html
 from fpdf import FPDF
 
 # --- GENEL SAYFA AYARLARI ---
-# Sol paneli tamamen gizliyoruz, artık sadece Ana Sayfa (Dashboard) üzerinden ilerleyeceğiz.
 st.set_page_config(page_title="Tenis Turnuva Otomasyonu", page_icon="🎾", layout="wide", initial_sidebar_state="collapsed")
 
 VERI_DOSYASI = "tenis_grup_turnuvasi_veri.json"
@@ -388,7 +387,6 @@ if "duyuru_metni" not in st.session_state: st.session_state.duyuru_metni = ""
 if "takim_havuzu" not in st.session_state: st.session_state.takim_havuzu = {}
 if "takim_kadrolari" not in st.session_state: st.session_state.takim_kadrolari = {}
 
-# YENİ EKLENTİ: ANA SAYFA NAVİGASYON MOTORU
 if "current_page" not in st.session_state: st.session_state.current_page = "Home"
 if "aktif_asama" not in st.session_state: st.session_state.aktif_asama = "1. Aşama"
 
@@ -515,8 +513,6 @@ def render_big_button(icon, title, target_page):
 if st.session_state.current_page == "Home":
     st.markdown("<h2 style='text-align:center;'>🎾 Turnuva Ana Ekranı</h2>", unsafe_allow_html=True)
     
-    # Aşama Seçici (Merkezde ve Çok Şık)
-    st.write("")
     c_stage1, c_stage2, c_stage3 = st.columns([1, 2, 1])
     with c_stage2:
         idx = 0 if st.session_state.aktif_asama == "1. Aşama" else 1
@@ -527,7 +523,6 @@ if st.session_state.current_page == "Home":
     
     st.divider()
     
-    # BAŞHAKEM KONTROL PANELİ (6'LI ŞEKİL)
     if st.session_state.admin_mi:
         st.markdown("<h4 style='text-align:center; color:#1f77b4;'>👨‍⚖️ Başhakem Kontrol Paneli</h4>", unsafe_allow_html=True)
         st.write("")
@@ -547,7 +542,6 @@ if st.session_state.current_page == "Home":
             st.session_state.admin_mi = False
             st.rerun()
 
-    # MİSAFİR EKRANI (3'LÜ ŞEKİL)
     else:
         c1, c2, c3 = st.columns(3)
         with c1: render_big_button("🏆", "Puan Durumu & Kadrolar", "🏆 3. Puan Durumu")
@@ -555,7 +549,6 @@ if st.session_state.current_page == "Home":
         with c3: render_big_button("📢", "Duyurular & Belgeler", "📢 5. Duyurular")
         
         st.divider()
-        # Yönetici Girişi en altta gizli bir kutuda duruyor
         with st.expander("👨‍⚖️ Yönetici Girişi"):
             girilen_sifre = st.text_input("Şifre:", type="password", key="login_pass")
             if st.button("🔒 Giriş Yap"):
@@ -573,7 +566,6 @@ else:
     menu_secim = st.session_state.current_page
     aktif_asama = st.session_state.aktif_asama
     
-    # 🔙 ÜST GERİ DÖNÜŞ BARI VE SAYFA BAŞLIĞI
     b1, b2 = st.columns([1, 8])
     with b1:
         if st.button("🔙 Ana Sayfa", type="primary"):
@@ -772,20 +764,25 @@ else:
                     for idx, row in df_gun.iterrows():
                         st.markdown(f"**🔹 {row['Branş']} ({row['Eşleşme']})**")
                         
-                        h_cols = st.columns([8.2, 1.4, 0.2, 1.4, 0.2, 1.4])
-                        h_cols[1].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; color:#1f77b4; border-bottom: 2px solid #1f77b4; padding-bottom: 2px;'>1. SET</div>", unsafe_allow_html=True)
-                        h_cols[3].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; color:#1f77b4; border-bottom: 2px solid #1f77b4; padding-bottom: 2px;'>2. SET</div>", unsafe_allow_html=True)
-                        h_cols[5].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; color:#1f77b4; border-bottom: 2px solid #1f77b4; padding-bottom: 2px;'>3. SET</div>", unsafe_allow_html=True)
-
-                        r_cols = st.columns([3.0, 3.0, 1.8, 0.4, 0.7, 0.7, 0.2, 0.7, 0.7, 0.2, 0.7, 0.7])
+                        # BAŞLIKLAR KATI
+                        h_cols = st.columns([2.8, 2.8, 2.6, 1.4, 0.2, 1.4, 0.2, 1.4])
                         
                         t1_isim, t2_isim = row['Takım 1'], row['Takım 2']
+                        h_cols[0].markdown(f"<div style='font-size:14px; font-weight:bold; color:#1f77b4; padding-bottom:5px;'>🛡️ {t1_isim}</div>", unsafe_allow_html=True)
+                        h_cols[1].markdown(f"<div style='font-size:14px; font-weight:bold; color:#1f77b4; padding-bottom:5px;'>🛡️ {t2_isim}</div>", unsafe_allow_html=True)
+                        
+                        h_cols[3].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; color:#1f77b4; border-bottom: 2px solid #1f77b4; padding-bottom: 2px;'>1. SET</div>", unsafe_allow_html=True)
+                        h_cols[5].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; color:#1f77b4; border-bottom: 2px solid #1f77b4; padding-bottom: 2px;'>2. SET</div>", unsafe_allow_html=True)
+                        h_cols[7].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; color:#1f77b4; border-bottom: 2px solid #1f77b4; padding-bottom: 2px;'>3. SET</div>", unsafe_allow_html=True)
+
+                        # KUTULAR KATI
+                        r_cols = st.columns([2.8, 2.8, 2.1, 0.5, 0.7, 0.7, 0.2, 0.7, 0.7, 0.2, 0.7, 0.7])
+                        
                         grup_kadro_dict = st.session_state.takim_kadrolari.get(secilen_grup, {})
                         t1_havuz = grup_kadro_dict.get(t1_isim, ["Belirtilmedi"])
                         t2_havuz = grup_kadro_dict.get(t2_isim, ["Belirtilmedi"])
                         
                         with r_cols[0]:
-                            st.markdown(f"<div style='margin-bottom: -15px;'><b>{t1_isim}</b></div>", unsafe_allow_html=True)
                             if "Çiftler" in str(row['Branş']):
                                 eski_kayit1 = str(row['T1_Oyuncu'])
                                 for char in ["[", "]", "'", '"']: eski_kayit1 = eski_kayit1.replace(char, "")
@@ -803,7 +800,6 @@ else:
                                 t1_oyuncu_str = t1_secim_raw if t1_secim_raw != "Seçiniz" else ""
 
                         with r_cols[1]:
-                            st.markdown(f"<div style='margin-bottom: -15px;'><b>{t2_isim}</b></div>", unsafe_allow_html=True)
                             if "Çiftler" in str(row['Branş']):
                                 eski_kayit2 = str(row['T2_Oyuncu'])
                                 for char in ["[", "]", "'", '"']: eski_kayit2 = eski_kayit2.replace(char, "")
@@ -988,7 +984,6 @@ else:
             else:
                 st.info(f"Bu aşamada henüz maç bulunmuyor.")
 
-        # Misafirler için "Takım Kadroları" bu sekmenin altına eklendi.
         if not st.session_state.admin_mi:
             st.markdown("---")
             st.markdown(f"### 🛡️ Takımlar ve Oyuncu Kadroları ({aktif_asama})")
