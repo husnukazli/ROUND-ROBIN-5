@@ -955,7 +955,7 @@ elif menu_secim == "🏆 3. Puan Durumu":
                 st.download_button(label=f"📥 Seçili Grupların Puan Durumunu Tek PDF Olarak İndir", data=combined_pdf_bytes, file_name=f"puan_durumu_toplu.pdf", mime="application/pdf", key="pdf_puan_toplu")
             
             st.markdown("---")
-            with st.expander("⚖️ Gelişmiş Averaj ve Mini Lig Hesaplayıcı"):
+            with st.expander("⚖️ Gelişmiş Averaj  Hesaplayıcı"):
                 st.info("ℹ️ Üçlü veya dörtlü averaj kilitlenmelerinde bir grup ve sadece averaja dahil edilecek takımları seçin. Sistem, dışarıdaki takımlarla oynanan maçları yoksayarak yepyeni bir Mini Lig oluşturur.")
                 
                 avg_gruplar = dogal_sirala(list(df_asama_t3['Grup'].unique()))
@@ -968,7 +968,7 @@ elif menu_secim == "🏆 3. Puan Durumu":
                     secilen_takimlar_avg = st.multiselect("Averaja Kalmış (Kendi aralarında hesaplanacak) Takımları Seçin:", options=takimlar_avg)
                     
                     if len(secilen_takimlar_avg) >= 2:
-                        if st.button("🧮 Seçili Takımların Kendi Arasındaki Averajını Hesapla (Mini Lig)"):
+                        if st.button("🧮 Seçili Takımların Kendi Arasındaki Averajını Hesapla "):
                             mask_t1 = grup_maclari_avg['Takım 1'].isin(secilen_takimlar_avg)
                             mask_t2 = grup_maclari_avg['Takım 2'].isin(secilen_takimlar_avg)
                             mini_lig_df = grup_maclari_avg[mask_t1 & mask_t2]
