@@ -172,8 +172,15 @@ def get_formatted_match_score(row, target_t1):
     elif durum == "Takım 1 (Ret.)": durum = "Takım 2 Kazandı (Ret.)"
     elif durum == "Takım 2 (Ret.)": durum = "Takım 1 Kazandı (Ret.)"
 
-    if durum == "Takım 1 Kazandı (W/O)": return "W/O (Galip)" if is_t1 else "W/O (Mağlup)"
-    if durum == "Takım 2 Kazandı (W/O)": return "W/O (Mağlup)" if is_t1 else "W/O (Galip)"
+    # Branşı W/O dönmeden önce hazırlıyoruz!
+    brans = str(row['Branş']).replace("1. Tekler", "1.Tek").replace("2. Tekler", "2.Tek").replace("3. Tekler", "3.Tek").replace("1. Çiftler", "1.Çift").replace("2. Çiftler", "2.Çift").replace("Çiftler", "Çift")
+
+    if durum == "Takım 1 Kazandı (W/O)": 
+        score_str = "W/O (Galip)" if is_t1 else "W/O (Mağlup)"
+        return f"<b>{brans}</b>: {score_str}"
+    if durum == "Takım 2 Kazandı (W/O)": 
+        score_str = "W/O (Mağlup)" if is_t1 else "W/O (Galip)"
+        return f"<b>{brans}</b>: {score_str}"
 
     s1_1, s1_2 = int(row['1.Set T1']), int(row['1.Set T2'])
     s2_1, s2_2 = int(row['2.Set T1']), int(row['2.Set T2'])
@@ -194,7 +201,6 @@ def get_formatted_match_score(row, target_t1):
     if durum == "Takım 1 Kazandı (Ret.)": score_str += " Ret." if is_t1 else " (Ret.)"
     elif durum == "Takım 2 Kazandı (Ret.)": score_str += " (Ret.)" if is_t1 else " Ret."
 
-    brans = str(row['Branş']).replace("1. Tekler", "1.Tek").replace("2. Tekler", "2.Tek").replace("3. Tekler", "3.Tek").replace("1. Çiftler", "1.Çift").replace("2. Çiftler", "2.Çift").replace("Çiftler", "Çift")
     return f"<b>{brans}</b>: {score_str}"
 
 def render_html_matrix(takimlar, df_grup):
@@ -826,7 +832,6 @@ else:
                 else:
                     gruplar = dogal_sirala(gecerli_gruplar_t2)
                     
-                    # MATRİS İNDİRME BUTONU BURADAN KALDIRILDI (Puan Durumuna Taşındı)
                     secilen_grup = st.selectbox("Grup Seç:", gruplar, key="skor_grup_sec")
                     
                     df_grup = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] == secilen_grup].copy()
@@ -1018,7 +1023,6 @@ else:
                         pdf_df = grup_df.reset_index().rename(columns={"index": "Sıra"})
                         pdf_gruplar_data[gp] = pdf_df
                         
-                        # YENİ EKLENTİ: PUAN DURUMU VE MATRİS SEKMELERİ
                         tab1, tab2 = st.tabs(["🏆 Puan Durumu Tablosu", "📊 Maç Matrisi"])
                         
                         with tab1:
@@ -1031,7 +1035,6 @@ else:
                             html_matrix = render_html_matrix(matris_takimlar, df_gp_matches)
                             st.markdown(html_matrix, unsafe_allow_html=True)
                             
-                            # Eski PDF İndirme Butonu Artık Matrisin Altında
                             st.write("")
                             matris_pdf_bytes = generate_matrix_pdf(gp, matris_takimlar, df_gp_matches)
                             st.download_button(label="📥 Matrisi İndir (PDF - Sade Görünüm)", data=matris_pdf_bytes, file_name=f"matris_{gp}.pdf", mime="application/pdf", key=f"mat_pdf_{gp}")
