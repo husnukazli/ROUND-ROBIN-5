@@ -15,7 +15,7 @@ from fpdf import FPDF
 # --- GENEL SAYFA AYARLARI ---
 st.set_page_config(page_title="Tenis Turnuva Otomasyonu", page_icon="🎾", layout="wide", initial_sidebar_state="collapsed")
 
-# --- ROLAND GARROS ÖZEL TEMASI VE DİNAMİK CSS ENJEKSİYONU ---
+# --- GÜVENLİK VE GİZLİLİK CSS'İ (RENK TEMASI KALDIRILDI) ---
 st.markdown("""
 <style>
     /* Gizlilik Ayarları (Streamlit üst/alt menülerini gizleme) */
@@ -25,74 +25,15 @@ st.markdown("""
     #MainMenu {visibility: hidden !important;}
     header {visibility: hidden !important;}
     footer {visibility: hidden !important;}
-
-    /* AÇIK MOD (Light Mode) - Standart Roland Garros Teması */
-    :root {
-        --rg-clay: #C85A17; /* Toprak Kiremit */
-        --rg-text: #0B3B24; /* Koyu Orman Yeşili */
-        --rg-subtext: #555555; /* Detay Metinleri */
-        --rg-bg: #FBF9F6; /* Kum Beji Arka Plan */
-        --btn-bg: #FFFFFF; /* Buton ve Tablo Arka Planı */
-        --btn-border: #E8E5DF; /* Kenarlıklar */
-        --table-header-bg: #FBF9F6; /* Tablo Başlıkları */
-        --table-row-bg: #FFFFFF; /* Tablo Satırları */
-        --ikort-blue: #0056b3; /* i-Kort Mavisi */
-        --rg-success: #28a745; /* Canlı Skor Yeşili */
-    }
-
-    /* KOYU MOD (Dark Mode) - Otomatik Adaptasyon */
-    @media (prefers-color-scheme: dark) {
-        :root {
-            --rg-clay: #E2712A; /* Koyu modda daha parlak kiremit */
-            --rg-text: #E8E5DF; /* Koyu modda açık krem metin */
-            --rg-subtext: #AAAAAA; /* Açık gri detay metinleri */
-            --rg-bg: #0E1117; /* Streamlit Koyu Arka Plan */
-            --btn-bg: #262730; /* Koyu mod eleman arka planı */
-            --btn-border: #444444; /* Koyu mod kenarlıklar */
-            --table-header-bg: #1A1C23; /* Koyu tablo başlıkları */
-            --table-row-bg: #0E1117; /* Koyu tablo satırları */
-            --ikort-blue: #3399ff; /* Koyu modda daha parlak mavi */
-            --rg-success: #4ADE80; /* Koyu modda fosforlu yeşil */
-        }
-    }
     
-    /* Arka plan ve metinler */
-    .stApp {
-        background-color: var(--rg-bg);
-    }
-    h1, h2, h3, h4, h5, h6, p, span, div {
-        color: var(--rg-text);
-    }
-    h1, h2, h3, h4, h5, h6 {
-        font-weight: 700 !important;
-    }
-    
-    /* Butonlara zarif (Elegant) mobil uygulama görünümü */
+    /* Butonları biraz daha belirgin yapalım (Streamlit'in doğal yapısını bozmadan) */
     .stButton > button {
-        border-radius: 12px;
-        border: 2px solid var(--btn-border);
-        background-color: var(--btn-bg);
-        color: var(--rg-text) !important;
-        transition: all 0.3s ease;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        border-radius: 8px;
+        transition: all 0.2s ease-in-out;
     }
-    .stButton > button:hover {
-        border-color: var(--rg-clay) !important;
-        color: var(--rg-clay) !important;
-        box-shadow: 0 6px 12px rgba(200, 90, 23, 0.15);
-        transform: translateY(-2px);
-    }
-    
-    /* İkonlu Büyük Kartlar İçin Yazı Boyutu Ayarı */
     .stButton > button p {
-        font-size: 18px !important;
+        font-size: 16px !important;
         font-weight: 600 !important;
-    }
-    
-    /* Seçili (Aktif) Aşama Sekmesi Rengi */
-    div[role="radiogroup"] label[data-baseweb="radio"] div {
-        color: var(--rg-text);
-        font-weight: bold;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -259,10 +200,10 @@ def get_formatted_match_score(row, target_t1):
 
     if durum == "Takım 1 Kazandı (W/O)": 
         score_str = "W/O (Galip)" if is_t1 else "W/O (Mağlup)"
-        return f"<b style='color:var(--rg-text);'>{brans}</b>: {score_str}"
+        return f"<b>{brans}</b>: {score_str}"
     if durum == "Takım 2 Kazandı (W/O)": 
         score_str = "W/O (Mağlup)" if is_t1 else "W/O (Galip)"
-        return f"<b style='color:var(--rg-text);'>{brans}</b>: {score_str}"
+        return f"<b>{brans}</b>: {score_str}"
 
     s1_1, s1_2 = int(row['1.Set T1']), int(row['1.Set T2'])
     s2_1, s2_2 = int(row['2.Set T1']), int(row['2.Set T2'])
@@ -283,25 +224,26 @@ def get_formatted_match_score(row, target_t1):
     if durum == "Takım 1 Kazandı (Ret.)": score_str += " Ret." if is_t1 else " (Ret.)"
     elif durum == "Takım 2 Kazandı (Ret.)": score_str += " (Ret.)" if is_t1 else " Ret."
 
-    return f"<b style='color:var(--rg-text);'>{brans}</b>: <span style='color:var(--rg-subtext);'>{score_str}</span>"
+    return f"<b>{brans}</b>: {score_str}"
 
 def render_html_matrix(takimlar, df_grup):
-    html = '<table style="width:100%; border-collapse: collapse; text-align:center; font-family: sans-serif; font-size: 14px; background-color: var(--btn-bg);">'
-    html += '<tr style="background-color: var(--table-header-bg);">'
-    html += '<th style="border: 1px solid var(--btn-border); padding: 10px; color: var(--rg-text);">Takımlar</th>'
+    # rgba() renkleri kullanarak hem açık hem koyu modda çalışan şeffaf kenarlıklar ekliyoruz
+    html = '<table style="width:100%; border-collapse: collapse; text-align:center; font-family: sans-serif; font-size: 14px;">'
+    html += '<tr>'
+    html += '<th style="border: 1px solid rgba(128,128,128,0.3); padding: 10px; color: #1f77b4;">Takımlar</th>'
     for t in takimlar:
-        html += f'<th style="border: 1px solid var(--btn-border); padding: 10px; color: var(--rg-clay);">{t}</th>'
+        html += f'<th style="border: 1px solid rgba(128,128,128,0.3); padding: 10px; color: #1f77b4;">{t}</th>'
     html += '</tr>'
 
     for t1 in takimlar:
-        html += f'<tr><td style="border: 1px solid var(--btn-border); padding: 10px; font-weight: bold; background-color: var(--table-header-bg); color: var(--rg-clay);">{t1}</td>'
+        html += f'<tr><td style="border: 1px solid rgba(128,128,128,0.3); padding: 10px; font-weight: bold; color: #1f77b4;">{t1}</td>'
         for t2 in takimlar:
             if t1 == t2:
-                html += '<td style="border: 1px solid var(--btn-border); padding: 10px; background-color: var(--btn-bg);"><b style="color:var(--rg-text);">X</b></td>'
+                html += '<td style="border: 1px solid rgba(128,128,128,0.3); padding: 10px; background-color: rgba(128,128,128,0.1);"><b>X</b></td>'
             else:
                 matches = df_grup[((df_grup['Takım 1'] == t1) & (df_grup['Takım 2'] == t2)) | ((df_grup['Takım 1'] == t2) & (df_grup['Takım 2'] == t1))]
                 if matches.empty:
-                    html += '<td style="border: 1px solid var(--btn-border); padding: 10px;"></td>'
+                    html += '<td style="border: 1px solid rgba(128,128,128,0.3); padding: 10px;"></td>'
                 else:
                     temp_stats = hesapla_tum_puan_durumu(matches)
                     t1_wins = 0; t2_wins = 0
@@ -327,7 +269,7 @@ def render_html_matrix(takimlar, df_grup):
                         if fmt: details.append(fmt)
 
                     if t1_wins == 0 and t2_wins == 0 and not details:
-                        html += '<td style="border: 1px solid var(--btn-border); padding: 10px;"></td>'
+                        html += '<td style="border: 1px solid rgba(128,128,128,0.3); padding: 10px;"></td>'
                     else:
                         t1_galibiyet = 0
                         t2_galibiyet = 0
@@ -344,11 +286,11 @@ def render_html_matrix(takimlar, df_grup):
                         if t1_puan_info == t2_puan_info and (t1_galibiyet > 0 or t2_galibiyet > 0):
                             puan_str += " (Av.)"
                         
-                        main_score = f"<div style='font-size: 18px; font-weight: bold; margin-bottom: 2px; color: var(--rg-text);'>{crown1}{t1_wins} - {t2_wins}{crown2}</div>"
-                        puan_div = f"<div style='font-size: 10px; color: var(--rg-clay); font-weight: bold; margin-bottom: 5px;'>{puan_str}</div>" if puan_str else ""
+                        main_score = f"<div style='font-size: 18px; font-weight: bold; margin-bottom: 2px;'>{crown1}{t1_wins} - {t2_wins}{crown2}</div>"
+                        puan_div = f"<div style='font-size: 11px; color: #e25822; font-weight: bold; margin-bottom: 5px;'>{puan_str}</div>" if puan_str else ""
                         details_html = "<br>".join(details)
                         
-                        html += f'<td style="border: 1px solid var(--btn-border); padding: 10px; vertical-align: top; background-color: var(--table-row-bg);">{main_score}{puan_div}<div style="font-size: 11px; line-height: 1.4;">{details_html}</div></td>'
+                        html += f'<td style="border: 1px solid rgba(128,128,128,0.3); padding: 10px; vertical-align: top;">{main_score}{puan_div}<div style="font-size: 11px; opacity: 0.8; line-height: 1.4;">{details_html}</div></td>'
         html += '</tr>'
     html += '</table>'
     return html
@@ -664,6 +606,95 @@ if st.session_state.admin_mi:
         width=0,
     )
 
+def set_gecerli_mi(t1, t2, is_set3=False, durum="Tamamlandı"):
+    if durum != "Tamamlandı": return True, ""
+    
+    if t1 == 0 and t2 == 0: return True, ""
+    if t1 < 0 or t2 < 0: return False, "Skorlar negatif olamaz."
+    max_s, min_s = max(t1, t2), min(t1, t2)
+    diff = max_s - min_s
+    if is_set3:
+        if max_s >= 10:
+            if max_s == 10 and min_s <= 8: return True, ""
+            elif max_s > 10 and diff == 2: return True, ""
+            else: return False, "Süper Tie-Break kurallarına uymuyor (Örn: 10-8 veya 12-10 olmalıdır)."
+        else:
+            if max_s < 6: return False, "Set en az 6 oyun olmalıdır."
+            if max_s == 6 and diff >= 2: return True, ""
+            if max_s == 7 and (diff == 2 or diff == 1): return True, ""
+            return False, "Geçersiz normal set skoru."
+    else:
+        if max_s < 6: return False, "Set en az 6 oyun olmalıdır."
+        if max_s == 6 and diff >= 2: return True, ""
+        if max_s == 7 and (diff == 2 or diff == 1): return True, ""
+        return False, "Geçersiz set skoru."
+
+def eslesmeleri_olustur(grup_adi, takimlar, grup_tipi, format_secimi):
+    if grup_tipi == "3'lü Grup":
+        base_matches = [
+            {"Gün": "1. Gün", "Eşleşme": "2 ve 3", "Takım 1": takimlar[1], "Takım 2": takimlar[2]},
+            {"Gün": "2. Gün", "Eşleşme": "1 ve 3", "Takım 1": takimlar[0], "Takım 2": takimlar[2]},
+            {"Gün": "3. Gün", "Eşleşme": "1 ve 2", "Takım 1": takimlar[0], "Takım 2": takimlar[1]},
+        ]
+    elif grup_tipi == "4'lü Grup":
+        base_matches = [
+            {"Gün": "1. Gün", "Eşleşme": "1 ve 4", "Takım 1": takimlar[0], "Takım 2": takimlar[3]},
+            {"Gün": "1. Gün", "Eşleşme": "2 ve 3", "Takım 1": takimlar[1], "Takım 2": takimlar[2]},
+            {"Gün": "2. Gün", "Eşleşme": "1 ve 3", "Takım 1": takimlar[0], "Takım 2": takimlar[2]},
+            {"Gün": "2. Gün", "Eşleşme": "2 ve 4", "Takım 1": takimlar[1], "Takım 2": takimlar[3]},
+            {"Gün": "3. Gün", "Eşleşme": "1 ve 2", "Takım 1": takimlar[0], "Takım 2": takimlar[1]},
+            {"Gün": "3. Gün", "Eşleşme": "3 ve 4", "Takım 1": takimlar[2], "Takım 2": takimlar[3]},
+        ]
+    elif grup_tipi == "5'li Grup":
+        base_matches = [
+            {"Gün": "1. Gün", "Eşleşme": "2 ve 5", "Takım 1": takimlar[1], "Takım 2": takimlar[4]},
+            {"Gün": "1. Gün", "Eşleşme": "3 ve 4", "Takım 1": takimlar[2], "Takım 2": takimlar[3]},
+            {"Gün": "2. Gün", "Eşleşme": "1 ve 5", "Takım 1": takimlar[0], "Takım 2": takimlar[4]},
+            {"Gün": "2. Gün", "Eşleşme": "2 ve 3", "Takım 1": takimlar[1], "Takım 2": takimlar[2]},
+            {"Gün": "3. Gün", "Eşleşme": "1 ve 4", "Takım 1": takimlar[0], "Takım 2": takimlar[3]},
+            {"Gün": "3. Gün", "Eşleşme": "3 ve 5", "Takım 1": takimlar[2], "Takım 2": takimlar[4]},
+            {"Gün": "4. Gün", "Eşleşme": "1 ve 3", "Takım 1": takimlar[0], "Takım 2": takimlar[2]},
+            {"Gün": "4. Gün", "Eşleşme": "2 ve 4", "Takım 1": takimlar[1], "Takım 2": takimlar[3]},
+            {"Gün": "5. Gün", "Eşleşme": "1 ve 2", "Takım 1": takimlar[0], "Takım 2": takimlar[1]},
+            {"Gün": "5. Gün", "Eşleşme": "4 ve 5", "Takım 1": takimlar[3], "Takım 2": takimlar[4]},
+        ]
+    else: 
+        base_matches = [
+            {"Gün": "1. Gün", "Eşleşme": "1 ve 6", "Takım 1": takimlar[0], "Takım 2": takimlar[5]},
+            {"Gün": "1. Gün", "Eşleşme": "2 ve 5", "Takım 1": takimlar[1], "Takım 2": takimlar[4]},
+            {"Gün": "1. Gün", "Eşleşme": "3 ve 4", "Takım 1": takimlar[2], "Takım 2": takimlar[3]},
+            {"Gün": "2. Gün", "Eşleşme": "1 ve 5", "Takım 1": takimlar[0], "Takım 2": takimlar[4]},
+            {"Gün": "2. Gün", "Eşleşme": "2 ve 3", "Takım 1": takimlar[1], "Takım 2": takimlar[2]},
+            {"Gün": "2. Gün", "Eşleşme": "4 ve 6", "Takım 1": takimlar[3], "Takım 2": takimlar[5]},
+            {"Gün": "3. Gün", "Eşleşme": "1 ve 4", "Takım 1": takimlar[0], "Takım 2": takimlar[3]},
+            {"Gün": "3. Gün", "Eşleşme": "5 ve 3", "Takım 1": takimlar[4], "Takım 2": takimlar[2]},
+            {"Gün": "3. Gün", "Eşleşme": "2 ve 6", "Takım 1": takimlar[1], "Takım 2": takimlar[5]},
+            {"Gün": "4. Gün", "Eşleşme": "1 ve 3", "Takım 1": takimlar[0], "Takım 2": takimlar[2]},
+            {"Gün": "4. Gün", "Eşleşme": "4 ve 2", "Takım 1": takimlar[3], "Takım 2": takimlar[1]},
+            {"Gün": "4. Gün", "Eşleşme": "5 ve 6", "Takım 1": takimlar[4], "Takım 2": takimlar[5]},
+            {"Gün": "5. Gün", "Eşleşme": "1 ve 2", "Takım 1": takimlar[0], "Takım 2": takimlar[1]},
+            {"Gün": "5. Gün", "Eşleşme": "4 ve 5", "Takım 1": takimlar[3], "Takım 2": takimlar[4]},
+            {"Gün": "5. Gün", "Eşleşme": "3 ve 6", "Takım 1": takimlar[2], "Takım 2": takimlar[5]},
+        ]
+    
+    if format_secimi == "5 Maçlık (3 Tek, 2 Çift)":
+        branslar = ["1. Tekler", "2. Tekler", "3. Tekler", "1. Çiftler", "2. Çiftler"]
+    else:
+        branslar = ["1. Tekler", "2. Tekler", "Çiftler"]
+
+    program = []
+    for m in base_matches:
+        for brans in branslar:
+            satir = m.copy()
+            satir["Branş"] = brans
+            satir["Grup"] = grup_adi
+            satir.update({
+                "T1_Oyuncu": "", "T2_Oyuncu": "",
+                "1.Set T1": 0, "1.Set T2": 0, "2.Set T1": 0, "2.Set T2": 0, "3.Set T1": 0, "3.Set T2": 0, "Durum": "Tamamlandı", "STB": False
+            })
+            program.append(satir)
+    return program
+
 # ==============================================================================
 # GLOBAL AŞAMA SEÇİCİ VE ANA SAYFA (DASHBOARD) KONTROL MOTORU
 # ==============================================================================
@@ -686,12 +717,12 @@ with top_c3:
             b64 = base64.b64encode(f.read()).decode()
         ttf_logo_html = f'<img src="data:image/png;base64,{b64}" style="height: 45px; filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.2));" alt="TTF Logo">'
     else:
-        ttf_logo_html = '<div style="background-color: var(--rg-text); color: var(--btn-bg); padding: 10px 15px; border-radius: 8px; font-weight: bold; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.3s ease;">🇹🇷 TTF</div>'
+        ttf_logo_html = '<div style="background-color: #0B3B24; color: white; padding: 10px 15px; border-radius: 8px; font-weight: bold; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.3s ease;">🇹🇷 TTF</div>'
 
     st.markdown(f"""
         <div style="display: flex; gap: 10px; justify-content: flex-end; align-items: center; margin-top: 5px;">
             <a href="https://i-kort.ttf.org.tr/" target="_blank" style="text-decoration: none; display: block; width: 100px;">
-                <div style="background-color: var(--ikort-blue); color: white; padding: 10px 15px; border-radius: 8px; font-weight: bold; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.3s ease; width: 100%;">
+                <div style="background-color: #0056b3; color: white; padding: 10px 15px; border-radius: 8px; font-weight: bold; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.3s ease; width: 100%;">
                     🎾 i-Kort
                 </div>
             </a>
@@ -951,17 +982,17 @@ else:
                     
                     form_verileri = {}
                     for idx, row in df_gun.iterrows():
-                        st.markdown(f"**🔹 <span style='color:var(--rg-text);'>{row['Branş']}</span> ({row['Eşleşme']})**", unsafe_allow_html=True)
+                        st.markdown(f"**🔹 {row['Branş']} ({row['Eşleşme']})**", unsafe_allow_html=True)
                         
                         h_cols = st.columns([2.8, 2.8, 2.6, 1.4, 0.2, 1.4, 0.2, 1.4])
                         
                         t1_isim, t2_isim = row['Takım 1'], row['Takım 2']
-                        h_cols[0].markdown(f"<div style='font-size:14px; font-weight:bold; color:var(--rg-text); padding-bottom:5px;'>🛡️ {t1_isim}</div>", unsafe_allow_html=True)
-                        h_cols[1].markdown(f"<div style='font-size:14px; font-weight:bold; color:var(--rg-text); padding-bottom:5px;'>🛡️ {t2_isim}</div>", unsafe_allow_html=True)
+                        h_cols[0].markdown(f"<div style='font-size:14px; font-weight:bold; padding-bottom:5px;'>🛡️ {t1_isim}</div>", unsafe_allow_html=True)
+                        h_cols[1].markdown(f"<div style='font-size:14px; font-weight:bold; padding-bottom:5px;'>🛡️ {t2_isim}</div>", unsafe_allow_html=True)
                         
-                        h_cols[3].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; color:var(--rg-clay); border-bottom: 2px solid var(--rg-clay); padding-bottom: 2px;'>1. SET</div>", unsafe_allow_html=True)
-                        h_cols[5].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; color:var(--rg-clay); border-bottom: 2px solid var(--rg-clay); padding-bottom: 2px;'>2. SET</div>", unsafe_allow_html=True)
-                        h_cols[7].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; color:var(--rg-clay); border-bottom: 2px solid var(--rg-clay); padding-bottom: 2px;'>3. SET</div>", unsafe_allow_html=True)
+                        h_cols[3].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; border-bottom: 2px solid rgba(128,128,128,0.5); padding-bottom: 2px;'>1. SET</div>", unsafe_allow_html=True)
+                        h_cols[5].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; border-bottom: 2px solid rgba(128,128,128,0.5); padding-bottom: 2px;'>2. SET</div>", unsafe_allow_html=True)
+                        h_cols[7].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; border-bottom: 2px solid rgba(128,128,128,0.5); padding-bottom: 2px;'>3. SET</div>", unsafe_allow_html=True)
 
                         r_cols = st.columns([2.8, 2.8, 2.1, 0.5, 0.7, 0.7, 0.2, 0.7, 0.7, 0.2, 0.7, 0.7])
                         
@@ -1023,12 +1054,12 @@ else:
                         s1t1 = r_cols[4].number_input("S1T1", min_value=0, value=0 if is_wo else int(row['1.Set T1']), step=1, key=f"s1t1_{idx}", label_visibility="collapsed", disabled=is_wo)
                         s1t2 = r_cols[5].number_input("S1T2", min_value=0, value=0 if is_wo else int(row['1.Set T2']), step=1, key=f"s1t2_{idx}", label_visibility="collapsed", disabled=is_wo)
                         
-                        r_cols[6].markdown("<div style='text-align:center; color:var(--rg-text); margin-top:5px; font-weight:bold;'>|</div>", unsafe_allow_html=True)
+                        r_cols[6].markdown("<div style='text-align:center; opacity:0.5; margin-top:5px; font-weight:bold;'>|</div>", unsafe_allow_html=True)
                         
                         s2t1 = r_cols[7].number_input("S2T1", min_value=0, value=0 if is_wo else int(row['2.Set T1']), step=1, key=f"s2t1_{idx}", label_visibility="collapsed", disabled=is_wo)
                         s2t2 = r_cols[8].number_input("S2T2", min_value=0, value=0 if is_wo else int(row['2.Set T2']), step=1, key=f"s2t2_{idx}", label_visibility="collapsed", disabled=is_wo)
                         
-                        r_cols[9].markdown("<div style='text-align:center; color:var(--rg-text); margin-top:5px; font-weight:bold;'>|</div>", unsafe_allow_html=True)
+                        r_cols[9].markdown("<div style='text-align:center; opacity:0.5; margin-top:5px; font-weight:bold;'>|</div>", unsafe_allow_html=True)
                         
                         s3t1 = r_cols[10].number_input("S3T1", min_value=0, value=0 if is_wo else int(row['3.Set T1']), step=1, key=f"s3t1_{idx}", label_visibility="collapsed", disabled=is_wo)
                         s3t2 = r_cols[11].number_input("S3T2", min_value=0, value=0 if is_wo else int(row['3.Set T2']), step=1, key=f"s3t2_{idx}", label_visibility="collapsed", disabled=is_wo)
@@ -1212,7 +1243,7 @@ else:
                     with st.expander(f"📁 {g_isim} ({f_kat} | {f_turu})"):
                         g_kadro = st.session_state.takim_kadrolari[g_isim]
                         for t_isim in dogal_sirala(list(g_kadro.keys())):
-                            st.markdown(f"**🛡️ <span style='color:var(--rg-text);'>{t_isim}</span>**", unsafe_allow_html=True)
+                            st.markdown(f"**🛡️ {t_isim}**", unsafe_allow_html=True)
                             st.write(", ".join(g_kadro[t_isim]) if g_kadro[t_isim] else "Oyuncu yok")
             else:
                 st.info("Kayıtlı takım bulunmamaktadır.")
@@ -1489,18 +1520,18 @@ else:
                                 html_rows = ""
                                 for _, row in grup_df.iterrows():
                                     skor = str(row.get('Canlı Skor', 'Oynanmadı'))
-                                    skor_html = f"<span style='color:var(--rg-success); font-weight:bold;'>{skor}</span>" if skor not in ["Oynanmadı", ""] else "<i>Bekleniyor</i>"
+                                    skor_html = f"<span style='color:green; font-weight:bold;'>{skor}</span>" if skor not in ["Oynanmadı", ""] else "<i>Bekleniyor</i>"
                                     t1_o = html.escape(str(row.get('T1 Oyuncu', '')).strip())
                                     t2_o = html.escape(str(row.get('T2 Oyuncu', '')).strip())
                                     
                                     if row.get('Kazanan') == 'T1': t1_o = f"<b>{t1_o}</b>"
                                     elif row.get('Kazanan') == 'T2': t2_o = f"<b>{t2_o}</b>"
                                     
-                                    html_rows += f"<tr><td style='border:1px solid var(--btn-border); padding:5px; color:var(--rg-text);'>{row['Branş']}</td><td style='border:1px solid var(--btn-border); padding:5px; color:var(--rg-text);'>{t1_o} / {t2_o}</td><td style='border:1px solid var(--btn-border); padding:5px; color:var(--rg-text);'>{skor_html}</td></tr>"
+                                    html_rows += f"<tr><td style='border:1px solid rgba(128,128,128,0.3); padding:5px;'>{row['Branş']}</td><td style='border:1px solid rgba(128,128,128,0.3); padding:5px;'>{t1_o} / {t2_o}</td><td style='border:1px solid rgba(128,128,128,0.3); padding:5px;'>{skor_html}</td></tr>"
                                 
                                 st.markdown(f"""
                                 <table style="width:100%; border-collapse: collapse; font-family: sans-serif;">
-                                    <tr style="background:var(--table-header-bg);"><th style="border:1px solid var(--btn-border); padding:5px; color:var(--rg-text);">Branş</th><th style="border:1px solid var(--btn-border); padding:5px; color:var(--rg-text);">Oyuncular</th><th style="border:1px solid var(--btn-border); padding:5px; color:var(--rg-text);">Skor</th></tr>
+                                    <tr><th style="border:1px solid rgba(128,128,128,0.3); padding:5px;">Branş</th><th style="border:1px solid rgba(128,128,128,0.3); padding:5px;">Oyuncular</th><th style="border:1px solid rgba(128,128,128,0.3); padding:5px;">Skor</th></tr>
                                     {html_rows}
                                 </table>
                                 """, unsafe_allow_html=True)
@@ -1509,20 +1540,20 @@ else:
                             for (grup_adi, eslesme_adi), grup_df in df_team_summary.groupby(['Grup', 'Eşleşme']):
                                 row = grup_df.iloc[0]
                                 skor = str(row['Canlı Skor'])
-                                skor_html = f"<span style='color:var(--rg-success); font-weight:bold;'>{skor}</span>" if skor != "Oynanmadı" else "<i>Bekleniyor</i>"
+                                skor_html = f"<span style='color:green; font-weight:bold;'>{skor}</span>" if skor != "Oynanmadı" else "<i>Bekleniyor</i>"
                                 t1_n = html.escape(str(row['Takım 1']))
                                 t2_n = html.escape(str(row['Takım 2']))
                                 
                                 if row['Kazanan'] == 'T1': t1_n = f"<b>{t1_n}</b>"
                                 elif row['Kazanan'] == 'T2': t2_n = f"<b>{t2_n}</b>"
                                 
-                                html_rows = f"<tr><td style='border:1px solid var(--btn-border); padding:5px; color:var(--rg-text);'>Takım Karşılaşması</td><td style='border:1px solid var(--btn-border); padding:5px; color:var(--rg-text);'>{t1_n} / {t2_n}</td><td style='border:1px solid var(--btn-border); padding:5px; color:var(--rg-text);'>{skor_html}</td></tr>"
+                                html_rows = f"<tr><td style='border:1px solid rgba(128,128,128,0.3); padding:5px;'>Takım Karşılaşması</td><td style='border:1px solid rgba(128,128,128,0.3); padding:5px;'>{t1_n} / {t2_n}</td><td style='border:1px solid rgba(128,128,128,0.3); padding:5px;'>{skor_html}</td></tr>"
                                 
                                 expander_title = f"{row['Kort']} | {row['Tarih']} | {row['Gün Adı']} | {grup_adi} | {row['Takım 1']} - {row['Takım 2']}"
                                 with st.expander(expander_title, expanded=st.session_state.expand_all):
                                     st.markdown(f"""
                                     <table style="width:100%; border-collapse: collapse; font-family: sans-serif;">
-                                        <tr style="background:var(--table-header-bg);"><th style="border:1px solid var(--btn-border); padding:5px; color:var(--rg-text);">Branş</th><th style="border:1px solid var(--btn-border); padding:5px; color:var(--rg-text);">Takımlar</th><th style="border:1px solid var(--btn-border); padding:5px; color:var(--rg-text);">Skor</th></tr>
+                                        <tr><th style="border:1px solid rgba(128,128,128,0.3); padding:5px;">Branş</th><th style="border:1px solid rgba(128,128,128,0.3); padding:5px;">Takımlar</th><th style="border:1px solid rgba(128,128,128,0.3); padding:5px;">Skor</th></tr>
                                         {html_rows}
                                     </table>
                                     """, unsafe_allow_html=True)
@@ -1558,7 +1589,7 @@ else:
                 st.markdown("### 🗑️ Yüklü Belgeleri Yönet")
                 for pdf in pdf_dosyalari:
                     col1, col2 = st.columns([4, 1])
-                    col1.write(f"📄 **<span style='color:var(--rg-text);'>{pdf}</span>**", unsafe_allow_html=True)
+                    col1.write(f"📄 **{pdf}**", unsafe_allow_html=True)
                     if col2.button("Sil", key=f"del_{pdf}"):
                         os.remove(os.path.join(BELGELER_KLASORU, pdf))
                         st.success(f"{pdf} başarıyla silindi!")
