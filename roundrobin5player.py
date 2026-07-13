@@ -23,6 +23,7 @@ st.markdown("""
         --rg-clay: #C85A17; /* Toprak Kiremit */
         --rg-green: #0B3B24; /* Koyu Orman Yeşili */
         --rg-sand: #FBF9F6; /* Kum Beji Arka Plan */
+        --ikort-blue: #0056b3; /* i-Kort Mavisi */
     }
     
     /* Arka plan ve metinler */
@@ -720,19 +721,52 @@ def eslesmeleri_olustur(grup_adi, takimlar, grup_tipi, format_secimi):
             program.append(satir)
     return program
 
-
 # ==============================================================================
 # GLOBAL AŞAMA SEÇİCİ VE ANA SAYFA (DASHBOARD) KONTROL MOTORU
 # ==============================================================================
 
-# AŞAMA SEÇİCİ: Ana ekranın en üstünde, her sayfadan bağımsız olarak sabit durur.
-c_stage1, c_stage2, c_stage3 = st.columns([1, 2, 1])
-with c_stage2:
+# ÜST BAR (Aşama Seçici ve Logolar Yan Yana)
+top_c1, top_c2, top_c3 = st.columns([1, 2, 2])
+
+with top_c2:
     idx = 0 if st.session_state.aktif_asama == "1. Aşama" else 1
     yeni_asama = st.radio("🎯 Turnuva Aşaması:", ["1. Aşama", "2. Aşama"], index=idx, horizontal=True, label_visibility="collapsed")
     if yeni_asama != st.session_state.aktif_asama:
         st.session_state.aktif_asama = yeni_asama
         st.rerun()
+
+with top_c3:
+    # TTF Logo Base64 Çevrimi
+    ttf_logo_html = ""
+    if os.path.exists("TTFLOGO.png"):
+        with open("TTFLOGO.png", "rb") as f:
+            b64 = base64.b64encode(f.read()).decode()
+        ttf_logo_html = f'<img src="data:image/png;base64,{b64}" style="height: 45px; filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.2));" alt="TTF Logo">'
+    else:
+        ttf_logo_html = '<div style="background-color: var(--rg-green); color: white; padding: 10px 15px; border-radius: 8px; font-weight: bold; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.3s ease;">🇹🇷 TTF</div>'
+
+    st.markdown(f"""
+        <div style="display: flex; gap: 10px; justify-content: flex-end; align-items: center; margin-top: 5px;">
+            <a href="https://i-kort.ttf.org.tr/" target="_blank" style="text-decoration: none; display: block; width: 100px;">
+                <div style="background-color: var(--ikort-blue); color: white; padding: 10px 15px; border-radius: 8px; font-weight: bold; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.3s ease; width: 100%;">
+                    🎾 i-Kort
+                </div>
+            </a>
+            <a href="https://www.ttf.org.tr/" target="_blank" style="text-decoration: none; display: inline-block; transition: transform 0.3s ease;">
+                {ttf_logo_html}
+            </a>
+        </div>
+        <style>
+            a:hover div {{
+                filter: brightness(1.2);
+                transform: translateY(-2px);
+            }}
+            a:hover img {{
+                transform: translateY(-2px) scale(1.05);
+            }}
+        </style>
+    """, unsafe_allow_html=True)
+
 st.markdown("---")
 
 def render_big_button(icon, title, target_page):
@@ -741,35 +775,7 @@ def render_big_button(icon, title, target_page):
         st.rerun()
 
 if st.session_state.current_page == "Home":
-    
-    # --- TTF VE I-KORT LOGOLARI (SAĞ ÜST KÖŞE - SÜTUN YERLEŞİMİ) ---
-    col_bos, col_logolar = st.columns([7, 3])
-    with col_logolar:
-        st.markdown("""
-            <div style="display: flex; justify-content: flex-end; gap: 15px; align-items: center; padding-top: 10px;">
-                <a href="https://i-kort.ttf.org.tr/" target="_blank" title="i-Kort Resmi Sayfası" style="text-decoration: none;">
-                    <div style="background-color: var(--rg-green); color: white; padding: 6px 12px; border-radius: 8px; font-weight: bold; border: 2px solid #E8E5DF; box-shadow: 0 2px 4px rgba(0,0,0,0.1); font-size: 14px; transition: all 0.3s ease;">
-                        🎾 i-Kort
-                    </div>
-                </a>
-                <a href="https://www.ttf.org.tr/" target="_blank" title="Türkiye Tenis Federasyonu" style="transition: transform 0.3s ease;">
-                    <img src="https://upload.wikimedia.org/wikipedia/tr/b/b3/T%C3%BCrkiye_Tenis_Federasyonu_logo.png" style="height: 45px; filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.2));" alt="TTF Logo">
-                </a>
-            </div>
-            <style>
-                a:hover div {
-                    background-color: var(--rg-clay) !important;
-                    border-color: var(--rg-clay) !important;
-                    transform: translateY(-2px);
-                }
-                a:hover img {
-                    transform: translateY(-2px) scale(1.05);
-                }
-            </style>
-        """, unsafe_allow_html=True)
-    # -------------------------------------------------------------------
-    
-    st.markdown("<h1 style='text-align:center; margin-top: -30px;'>🎾 Turnuva Ana Ekranı</h1><br>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align:center;'>🎾 Turnuva Ana Ekranı</h1><br>", unsafe_allow_html=True)
     
     if st.session_state.admin_mi:
         st.markdown("<h4 style='text-align:center;'>👨‍⚖️ Başhakem Kontrol Paneli</h4><br>", unsafe_allow_html=True)
