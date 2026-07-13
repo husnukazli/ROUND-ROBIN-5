@@ -136,7 +136,7 @@ def generate_combined_standings_pdf(gruplar_dict):
         pdf.ln(5)
     return bytes(pdf.output())
 
-# --- MATRİS İÇİN ORTAK HESAPLAMA MOTORLARI ---
+# --- MATRİS VE HESAPLAMA İÇİN YARDIMCI MOTORLAR ---
 def hesapla_mac_kazanani(row):
     durum = str(row.get('Durum', 'Tamamlandı'))
     if durum == "Takım 1 (W/O)": durum = "Takım 2 Kazandı (W/O)"
@@ -172,7 +172,6 @@ def get_formatted_match_score(row, target_t1):
     elif durum == "Takım 1 (Ret.)": durum = "Takım 2 Kazandı (Ret.)"
     elif durum == "Takım 2 (Ret.)": durum = "Takım 1 Kazandı (Ret.)"
 
-    # Branşı W/O dönmeden önce hazırlıyoruz!
     brans = str(row['Branş']).replace("1. Tekler", "1.Tek").replace("2. Tekler", "2.Tek").replace("3. Tekler", "3.Tek").replace("1. Çiftler", "1.Çift").replace("2. Çiftler", "2.Çift").replace("Çiftler", "Çift")
 
     if durum == "Takım 1 Kazandı (W/O)": 
@@ -221,17 +220,26 @@ def render_html_matrix(takimlar, df_grup):
                 if matches.empty:
                     html += '<td style="border: 1px solid #ddd; padding: 10px;"></td>'
                 else:
-                    t1_wins = 0
-                    t2_wins = 0
+                    # Yeni Averaj Motorundan Gerçek Galibi Çek
+                    temp_stats = hesapla_tum_puan_durumu(matches)
+                    t1_wins = 0; t2_wins = 0
+                    t1_puan_info = 0.0; t2_puan_info = 0.0
                     details = []
+                    
                     for _, row in matches.iterrows():
                         w1, w2 = hesapla_mac_kazanani(row)
+                        
+                        brans = str(row.get('Branş', '')).lower()
+                        is_cift = "çift" in brans
+                        format_secimi = st.session_state.grup_formatlari.get(row['Grup'], "3 Maçlık (2 Tek, 1 Çift)")
+                        w_val = 1.5 if (format_secimi == "5 Maçlık (3 Tek, 2 Çift)" and is_cift) else (2.0 if is_cift else 1.0)
+
                         if row['Takım 1'] == t1:
-                            t1_wins += w1
-                            t2_wins += w2
+                            t1_wins += w1; t2_wins += w2
+                            t1_puan_info += w1 * w_val; t2_puan_info += w2 * w_val
                         else:
-                            t1_wins += w2
-                            t2_wins += w1
+                            t1_wins += w2; t2_wins += w1
+                            t1_puan_info += w2 * w_val; t2_puan_info += w1 * w_val
                         
                         fmt = get_formatted_match_score(row, t1)
                         if fmt: details.append(fmt)
@@ -239,9 +247,27 @@ def render_html_matrix(takimlar, df_grup):
                     if t1_wins == 0 and t2_wins == 0 and not details:
                         html += '<td style="border: 1px solid #ddd; padding: 10px;"></td>'
                     else:
-                        main_score = f"<div style='font-size: 18px; font-weight: bold; margin-bottom: 5px;'>{t1_wins} - {t2_wins}</div>"
+                        t1_galibiyet = 0
+                        t2_galibiyet = 0
+                        if not temp_stats.empty:
+                            r1 = temp_stats[temp_stats['Takım'] == t1]
+                            r2 = temp_stats[temp_stats['Takım'] == t2]
+                            if not r1.empty: t1_galibiyet = r1.iloc[0]['Galibiyet']
+                            if not r2.empty: t2_galibiyet = r2.iloc[0]['Galibiyet']
+
+                        # Taç Ekleme ve Averaj Notu
+                        crown1 = "👑 " if t1_galibiyet > t2_galibiyet else ""
+                        crown2 = " 👑" if t2_galibiyet > t1_galibiyet else ""
+                        
+                        puan_str = f"Puan: {t1_puan_info:g} - {t2_puan_info:g}" if (t1_puan_info > 0 or t2_puan_info > 0) else ""
+                        if t1_puan_info == t2_puan_info and (t1_galibiyet > 0 or t2_galibiyet > 0):
+                            puan_str += " (Av.)"
+                        
+                        main_score = f"<div style='font-size: 18px; font-weight: bold; margin-bottom: 2px;'>{crown1}{t1_wins} - {t2_wins}{crown2}</div>"
+                        puan_div = f"<div style='font-size: 10px; color: #d62728; font-weight: bold; margin-bottom: 5px;'>{puan_str}</div>" if puan_str else ""
                         details_html = "<br>".join(details)
-                        html += f'<td style="border: 1px solid #ddd; padding: 10px; vertical-align: top;">{main_score}<div style="font-size: 11px; color: #555; line-height: 1.4;">{details_html}</div></td>'
+                        
+                        html += f'<td style="border: 1px solid #ddd; padding: 10px; vertical-align: top;">{main_score}{puan_div}<div style="font-size: 11px; color: #555; line-height: 1.4;">{details_html}</div></td>'
         html += '</tr>'
     html += '</table>'
     return html
@@ -283,10 +309,11 @@ def generate_matrix_pdf(grup_adi, takimlar, df_grup):
         pdf.ln()
     return bytes(pdf.output())
 
-# KUSURSUZ MATEMATİK MOTORU
+# --- YENİLENMİŞ (AĞIRLIKLI PUAN VE AVERAJ TIE-BREAK) MOTORU ---
 def hesapla_tum_puan_durumu(df_girdi):
     if df_girdi.empty: return pd.DataFrame()
     df = df_girdi.copy()
+    
     def satir_hesapla(row):
         durum = str(row.get('Durum', 'Tamamlandı'))
         if durum == "Takım 1 (W/O)": durum = "Takım 2 Kazandı (W/O)"
@@ -397,9 +424,55 @@ def hesapla_tum_puan_durumu(df_girdi):
     df['T1_Match_Win'] = (df['T1_Set_Skor'] > df['T2_Set_Skor']).astype(int)
     df['T2_Match_Win'] = (df['T2_Set_Skor'] > df['T1_Set_Skor']).astype(int)
     
-    seriler = df.groupby(['Grup', 'Gün', 'Eşleşme', 'Takım 1', 'Takım 2']).agg({'T1_Match_Win': 'sum', 'T2_Match_Win': 'sum', 'T1_Set_Skor': 'sum', 'T2_Set_Skor': 'sum', 'T1_Oyun': 'sum', 'T2_Oyun': 'sum'}).reset_index()
-    seriler['T1_Win'] = (seriler['T1_Match_Win'] > seriler['T2_Match_Win']).astype(int)
-    seriler['T2_Win'] = (seriler['T2_Match_Win'] > seriler['T1_Match_Win']).astype(int)
+    # YENİ EKLENTİ: AĞIRLIKLI PUAN HESABI
+    def get_match_point(row, team_idx):
+        grup = row.get('Grup', '')
+        brans = str(row.get('Branş', '')).lower()
+        is_cift = "çift" in brans
+        format_secimi = st.session_state.grup_formatlari.get(grup, "3 Maçlık (2 Tek, 1 Çift)")
+        
+        if format_secimi == "5 Maçlık (3 Tek, 2 Çift)":
+            weight = 1.5 if is_cift else 1.0
+        else:
+            weight = 2.0 if is_cift else 1.0
+            
+        if team_idx == 1: return weight if row['T1_Match_Win'] > row['T2_Match_Win'] else 0.0
+        else: return weight if row['T2_Match_Win'] > row['T1_Match_Win'] else 0.0
+
+    df['T1_Match_Point'] = df.apply(lambda r: get_match_point(r, 1), axis=1)
+    df['T2_Match_Point'] = df.apply(lambda r: get_match_point(r, 2), axis=1)
+
+    seriler = df.groupby(['Grup', 'Gün', 'Eşleşme', 'Takım 1', 'Takım 2']).agg({
+        'T1_Match_Win': 'sum', 'T2_Match_Win': 'sum', 
+        'T1_Set_Skor': 'sum', 'T2_Set_Skor': 'sum', 
+        'T1_Oyun': 'sum', 'T2_Oyun': 'sum',
+        'T1_Match_Point': 'sum', 'T2_Match_Point': 'sum'
+    }).reset_index()
+    
+    # YENİ EKLENTİ: PUANA DAYALI VE AVERAJ TIE-BREAK'Lİ GALİBİYET HESABI
+    def determine_team_win(r):
+        if r['T1_Match_Win'] == 0 and r['T2_Match_Win'] == 0: return 0, 0
+        if r['T1_Match_Point'] > r['T2_Match_Point']: return 1, 0
+        elif r['T2_Match_Point'] > r['T1_Match_Point']: return 0, 1
+        else:
+            if r['T1_Match_Point'] == 0 and r['T2_Match_Point'] == 0: return 0, 0
+            
+            # Puan Eşitliği Durumunda Set Averajı
+            set_av_t1 = r['T1_Set_Skor'] - r['T2_Set_Skor']
+            set_av_t2 = r['T2_Set_Skor'] - r['T1_Set_Skor']
+            if set_av_t1 > set_av_t2: return 1, 0
+            elif set_av_t2 > set_av_t1: return 0, 1
+            else:
+                # Set Averajı Eşitse Oyun Averajı
+                oyun_av_t1 = r['T1_Oyun'] - r['T2_Oyun']
+                oyun_av_t2 = r['T2_Oyun'] - r['T1_Oyun']
+                if oyun_av_t1 > oyun_av_t2: return 1, 0
+                elif oyun_av_t2 > oyun_av_t1: return 0, 1
+                else: return 0, 0 
+                
+    win_res = seriler.apply(lambda r: determine_team_win(r), axis=1)
+    seriler['T1_Win'] = [x[0] for x in win_res]
+    seriler['T2_Win'] = [x[1] for x in win_res]
     
     t1 = seriler[['Grup', 'Takım 1', 'T1_Win', 'T1_Match_Win', 'T2_Match_Win', 'T1_Set_Skor', 'T2_Set_Skor', 'T1_Oyun', 'T2_Oyun']].rename(columns={'Takım 1': 'Takım'})
     t2 = seriler[['Grup', 'Takım 2', 'T2_Win', 'T2_Match_Win', 'T1_Match_Win', 'T2_Set_Skor', 'T1_Set_Skor', 'T2_Oyun', 'T1_Oyun']].rename(columns={'Takım 2': 'Takım'})
@@ -997,7 +1070,7 @@ else:
         else:
             st.warning("🔒 Skor ve esame giriş paneli dışarıya kapalıdır. Lütfen giriş yapınız.")
 
-    # --- SAYFA 3: PUAN DURUMU (YENİ MATRİS YERİ) ---
+    # --- SAYFA 3: PUAN DURUMU ---
     elif menu_secim == "🏆 3. Puan Durumu":
         if not st.session_state.skor_tablosu.empty:
             gecerli_gruplar_t3 = [g for g in st.session_state.skor_tablosu['Grup'].unique() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama]
@@ -1192,23 +1265,39 @@ else:
             for (saat, tarih, gun, kort, grup, match_gun, eslesme, takim1, takim2), g_df in df_gunluk.groupby(
                 ['Maç Saati', 'Tarih', 'Gün Adı', 'Kort', 'Grup', 'Gün', 'Eşleşme', 'Takım 1', 'Takım 2']
             ):
-                t1_wins = (g_df['Kazanan'] == 'T1').sum()
-                t2_wins = (g_df['Kazanan'] == 'T2').sum()
                 played = (g_df['Canlı Skor'] != 'Oynanmadı').sum()
                 
                 if played == 0:
                     team_score = "Oynanmadı"
                     team_winner = ""
                 else:
-                    team_score = f"{t1_wins}-{t2_wins}"
-                    team_winner = "T1" if t1_wins > t2_wins else ("T2" if t2_wins > t1_wins else "")
+                    t1_match_wins = (g_df['Kazanan'] == 'T1').sum()
+                    t2_match_wins = (g_df['Kazanan'] == 'T2').sum()
+                    team_score = f"{t1_match_wins}-{t2_match_wins}"
                     
-                df_team_summary_list.append({
-                    "Maç Saati": saat, "Tarih": tarih, "Gün Adı": gun, "Kort": kort,
-                    "Grup": grup, "Gün": match_gun, "Branş": "Genel Skor", "Eşleşme": eslesme,
-                    "Takım 1": takim1, "Takım 2": takim2, "T1 Oyuncu": "-", "T2 Oyuncu": "-",
-                    "Canlı Skor": team_score, "Kazanan": team_winner
-                })
+                    # Gerçek galibi Puan Motorundan Çek
+                    eslesen_skorlar = st.session_state.skor_tablosu[
+                        (st.session_state.skor_tablosu['Grup'] == grup) & 
+                        (st.session_state.skor_tablosu['Gün'] == match_gun) & 
+                        (st.session_state.skor_tablosu['Eşleşme'] == eslesme)
+                    ]
+                    
+                    team_winner = ""
+                    if not eslesen_skorlar.empty:
+                        temp_stats = hesapla_tum_puan_durumu(eslesen_skorlar)
+                        if not temp_stats.empty:
+                            t1_row = temp_stats[temp_stats['Takım'] == takim1]
+                            t2_row = temp_stats[temp_stats['Takım'] == takim2]
+                            if not t1_row.empty and not t2_row.empty:
+                                if t1_row.iloc[0]['Galibiyet'] > t2_row.iloc[0]['Galibiyet']: team_winner = "T1"
+                                elif t2_row.iloc[0]['Galibiyet'] > t1_row.iloc[0]['Galibiyet']: team_winner = "T2"
+
+                    df_team_summary_list.append({
+                        "Maç Saati": saat, "Tarih": tarih, "Gün Adı": gun, "Kort": kort,
+                        "Grup": grup, "Gün": match_gun, "Branş": "Genel Skor", "Eşleşme": eslesme,
+                        "Takım 1": takim1, "Takım 2": takim2, "T1 Oyuncu": "-", "T2 Oyuncu": "-",
+                        "Canlı Skor": team_score, "Kazanan": team_winner
+                    })
             df_team_summary = pd.DataFrame(df_team_summary_list)
             
             if st.session_state.admin_mi:
