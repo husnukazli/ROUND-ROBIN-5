@@ -14,6 +14,55 @@ from fpdf import FPDF
 # --- GENEL SAYFA AYARLARI ---
 st.set_page_config(page_title="Tenis Turnuva Otomasyonu", page_icon="🎾", layout="wide", initial_sidebar_state="collapsed")
 
+# --- ROLAND GARROS ÖZEL TEMASI VE CSS ENJEKSİYONU ---
+st.markdown("""
+<style>
+    /* Roland Garros Renk Paleti */
+    :root {
+        --rg-clay: #C85A17; /* Toprak Kiremit */
+        --rg-green: #0B3B24; /* Koyu Orman Yeşili */
+        --rg-sand: #FBF9F6; /* Kum Beji Arka Plan */
+    }
+    
+    /* Arka plan ve metinler */
+    .stApp {
+        background-color: var(--rg-sand);
+    }
+    h1, h2, h3, h4, h5, h6 {
+        color: var(--rg-green) !important;
+        font-weight: 700 !important;
+    }
+    
+    /* Butonlara zarif (Elegant) mobil uygulama görünümü */
+    .stButton > button {
+        border-radius: 12px;
+        border: 2px solid #E8E5DF;
+        background-color: white;
+        color: var(--rg-green);
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
+    .stButton > button:hover {
+        border-color: var(--rg-clay);
+        color: var(--rg-clay);
+        box-shadow: 0 6px 12px rgba(200, 90, 23, 0.15);
+        transform: translateY(-2px);
+    }
+    
+    /* İkonlu Büyük Kartlar İçin Yazı Boyutu Ayarı */
+    .stButton > button p {
+        font-size: 18px !important;
+        font-weight: 600 !important;
+    }
+    
+    /* Seçili (Aktif) Aşama Sekmesi Rengi */
+    div[role="radiogroup"] label[data-baseweb="radio"] div {
+        color: var(--rg-green);
+        font-weight: bold;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 VERI_DOSYASI = "tenis_grup_turnuvasi_veri.json"
 BELGELER_KLASORU = "turnuva_belgeleri"
 
@@ -203,24 +252,23 @@ def get_formatted_match_score(row, target_t1):
     return f"<b>{brans}</b>: {score_str}"
 
 def render_html_matrix(takimlar, df_grup):
-    html = '<table style="width:100%; border-collapse: collapse; text-align:center; font-family: sans-serif; font-size: 14px;">'
-    html += '<tr style="background-color: #f1f1f1;">'
-    html += '<th style="border: 1px solid #ddd; padding: 10px;">Takımlar</th>'
+    html = '<table style="width:100%; border-collapse: collapse; text-align:center; font-family: sans-serif; font-size: 14px; background-color: white;">'
+    html += '<tr style="background-color: var(--rg-sand);">'
+    html += '<th style="border: 1px solid #E8E5DF; padding: 10px; color: var(--rg-green);">Takımlar</th>'
     for t in takimlar:
-        html += f'<th style="border: 1px solid #ddd; padding: 10px; color:#1f77b4;">{t}</th>'
+        html += f'<th style="border: 1px solid #E8E5DF; padding: 10px; color: var(--rg-clay);">{t}</th>'
     html += '</tr>'
 
     for t1 in takimlar:
-        html += f'<tr><td style="border: 1px solid #ddd; padding: 10px; font-weight: bold; background-color: #f9f9f9; color:#1f77b4;">{t1}</td>'
+        html += f'<tr><td style="border: 1px solid #E8E5DF; padding: 10px; font-weight: bold; background-color: var(--rg-sand); color: var(--rg-clay);">{t1}</td>'
         for t2 in takimlar:
             if t1 == t2:
-                html += '<td style="border: 1px solid #ddd; padding: 10px; background-color: #eee;"><b>X</b></td>'
+                html += '<td style="border: 1px solid #E8E5DF; padding: 10px; background-color: #f1f1f1;"><b>X</b></td>'
             else:
                 matches = df_grup[((df_grup['Takım 1'] == t1) & (df_grup['Takım 2'] == t2)) | ((df_grup['Takım 1'] == t2) & (df_grup['Takım 2'] == t1))]
                 if matches.empty:
-                    html += '<td style="border: 1px solid #ddd; padding: 10px;"></td>'
+                    html += '<td style="border: 1px solid #E8E5DF; padding: 10px;"></td>'
                 else:
-                    # Yeni Averaj Motorundan Gerçek Galibi Çek
                     temp_stats = hesapla_tum_puan_durumu(matches)
                     t1_wins = 0; t2_wins = 0
                     t1_puan_info = 0.0; t2_puan_info = 0.0
@@ -245,7 +293,7 @@ def render_html_matrix(takimlar, df_grup):
                         if fmt: details.append(fmt)
 
                     if t1_wins == 0 and t2_wins == 0 and not details:
-                        html += '<td style="border: 1px solid #ddd; padding: 10px;"></td>'
+                        html += '<td style="border: 1px solid #E8E5DF; padding: 10px;"></td>'
                     else:
                         t1_galibiyet = 0
                         t2_galibiyet = 0
@@ -255,7 +303,6 @@ def render_html_matrix(takimlar, df_grup):
                             if not r1.empty: t1_galibiyet = r1.iloc[0]['Galibiyet']
                             if not r2.empty: t2_galibiyet = r2.iloc[0]['Galibiyet']
 
-                        # Taç Ekleme ve Averaj Notu
                         crown1 = "👑 " if t1_galibiyet > t2_galibiyet else ""
                         crown2 = " 👑" if t2_galibiyet > t1_galibiyet else ""
                         
@@ -263,11 +310,11 @@ def render_html_matrix(takimlar, df_grup):
                         if t1_puan_info == t2_puan_info and (t1_galibiyet > 0 or t2_galibiyet > 0):
                             puan_str += " (Av.)"
                         
-                        main_score = f"<div style='font-size: 18px; font-weight: bold; margin-bottom: 2px;'>{crown1}{t1_wins} - {t2_wins}{crown2}</div>"
-                        puan_div = f"<div style='font-size: 10px; color: #d62728; font-weight: bold; margin-bottom: 5px;'>{puan_str}</div>" if puan_str else ""
+                        main_score = f"<div style='font-size: 18px; font-weight: bold; margin-bottom: 2px; color: var(--rg-green);'>{crown1}{t1_wins} - {t2_wins}{crown2}</div>"
+                        puan_div = f"<div style='font-size: 10px; color: var(--rg-clay); font-weight: bold; margin-bottom: 5px;'>{puan_str}</div>" if puan_str else ""
                         details_html = "<br>".join(details)
                         
-                        html += f'<td style="border: 1px solid #ddd; padding: 10px; vertical-align: top;">{main_score}{puan_div}<div style="font-size: 11px; color: #555; line-height: 1.4;">{details_html}</div></td>'
+                        html += f'<td style="border: 1px solid #E8E5DF; padding: 10px; vertical-align: top;">{main_score}{puan_div}<div style="font-size: 11px; color: #666; line-height: 1.4;">{details_html}</div></td>'
         html += '</tr>'
     html += '</table>'
     return html
@@ -424,7 +471,6 @@ def hesapla_tum_puan_durumu(df_girdi):
     df['T1_Match_Win'] = (df['T1_Set_Skor'] > df['T2_Set_Skor']).astype(int)
     df['T2_Match_Win'] = (df['T2_Set_Skor'] > df['T1_Set_Skor']).astype(int)
     
-    # YENİ EKLENTİ: AĞIRLIKLI PUAN HESABI
     def get_match_point(row, team_idx):
         grup = row.get('Grup', '')
         brans = str(row.get('Branş', '')).lower()
@@ -449,7 +495,6 @@ def hesapla_tum_puan_durumu(df_girdi):
         'T1_Match_Point': 'sum', 'T2_Match_Point': 'sum'
     }).reset_index()
     
-    # YENİ EKLENTİ: PUANA DAYALI VE AVERAJ TIE-BREAK'Lİ GALİBİYET HESABI
     def determine_team_win(r):
         if r['T1_Match_Win'] == 0 and r['T2_Match_Win'] == 0: return 0, 0
         if r['T1_Match_Point'] > r['T2_Match_Point']: return 1, 0
@@ -457,13 +502,11 @@ def hesapla_tum_puan_durumu(df_girdi):
         else:
             if r['T1_Match_Point'] == 0 and r['T2_Match_Point'] == 0: return 0, 0
             
-            # Puan Eşitliği Durumunda Set Averajı
             set_av_t1 = r['T1_Set_Skor'] - r['T2_Set_Skor']
             set_av_t2 = r['T2_Set_Skor'] - r['T1_Set_Skor']
             if set_av_t1 > set_av_t2: return 1, 0
             elif set_av_t2 > set_av_t1: return 0, 1
             else:
-                # Set Averajı Eşitse Oyun Averajı
                 oyun_av_t1 = r['T1_Oyun'] - r['T2_Oyun']
                 oyun_av_t2 = r['T2_Oyun'] - r['T1_Oyun']
                 if oyun_av_t1 > oyun_av_t2: return 1, 0
@@ -660,42 +703,42 @@ def eslesmeleri_olustur(grup_adi, takimlar, grup_tipi, format_secimi):
             program.append(satir)
     return program
 
+
 # ==============================================================================
-# ANA SAYFA (DASHBOARD) KONTROL MOTORU
+# GLOBAL AŞAMA SEÇİCİ VE ANA SAYFA (DASHBOARD) KONTROL MOTORU
 # ==============================================================================
+
+# AŞAMA SEÇİCİ: Ana ekranın en üstünde, her sayfadan bağımsız olarak sabit durur.
+c_stage1, c_stage2, c_stage3 = st.columns([1, 2, 1])
+with c_stage2:
+    idx = 0 if st.session_state.aktif_asama == "1. Aşama" else 1
+    yeni_asama = st.radio("🎯 Turnuva Aşaması:", ["1. Aşama", "2. Aşama"], index=idx, horizontal=True, label_visibility="collapsed")
+    if yeni_asama != st.session_state.aktif_asama:
+        st.session_state.aktif_asama = yeni_asama
+        st.rerun()
+st.markdown("---")
+
 def render_big_button(icon, title, target_page):
-    with st.container(border=True):
-        st.markdown(f"<div style='text-align:center; font-size:60px; margin-bottom: 10px;'>{icon}</div>", unsafe_allow_html=True)
-        if st.button(title, use_container_width=True, key=f"btn_{target_page}"):
-            st.session_state.current_page = target_page
-            st.rerun()
+    # \n\n kullanarak butonun dikeyde devasa ve ferah görünmesini sağlıyoruz.
+    if st.button(f"{icon}\n\n{title}", use_container_width=True, key=f"btn_{target_page}"):
+        st.session_state.current_page = target_page
+        st.rerun()
 
 if st.session_state.current_page == "Home":
-    st.markdown("<h2 style='text-align:center;'>🎾 Turnuva Ana Ekranı</h2>", unsafe_allow_html=True)
-    
-    c_stage1, c_stage2, c_stage3 = st.columns([1, 2, 1])
-    with c_stage2:
-        idx = 0 if st.session_state.aktif_asama == "1. Aşama" else 1
-        yeni_asama = st.radio("🎯 Turnuva Aşaması:", ["1. Aşama", "2. Aşama"], index=idx, horizontal=True, label_visibility="collapsed")
-        if yeni_asama != st.session_state.aktif_asama:
-            st.session_state.aktif_asama = yeni_asama
-            st.rerun()
-    
-    st.divider()
+    st.markdown("<h1 style='text-align:center;'>🎾 Turnuva Ana Ekranı</h1><br>", unsafe_allow_html=True)
     
     if st.session_state.admin_mi:
-        st.markdown("<h4 style='text-align:center; color:#1f77b4;'>👨‍⚖️ Başhakem Kontrol Paneli</h4>", unsafe_allow_html=True)
-        st.write("")
+        st.markdown("<h4 style='text-align:center;'>👨‍⚖️ Başhakem Kontrol Paneli</h4><br>", unsafe_allow_html=True)
         c1, c2, c3 = st.columns(3)
-        with c1: render_big_button("👥", "Grup Ayarları", "👥 1. Grup Ayarları")
-        with c2: render_big_button("✍️", "Skor Girişi", "✍️ 2. Skor Girişi")
-        with c3: render_big_button("🏆", "Puan Durumu", "🏆 3. Puan Durumu")
+        with c1: render_big_button("👥", "Grup Ayarları\nve Kadrolar", "👥 1. Grup Ayarları")
+        with c2: render_big_button("✍️", "Skor ve Esame\nGiriş Ekranı", "✍️ 2. Skor Girişi")
+        with c3: render_big_button("🏆", "Puan Durumu\nve Matrisler", "🏆 3. Puan Durumu")
         
         st.write("")
         c4, c5, c6 = st.columns(3)
-        with c4: render_big_button("📅", "Maç Programı", "📅 4. Maç Programı")
-        with c5: render_big_button("📢", "Duyurular", "📢 5. Duyurular")
-        with c6: render_big_button("⚙️", "Yönetim & Dosya", "⚙️ 6. Yönetim & Dosya")
+        with c4: render_big_button("📅", "Maç Programı\nve Fikstür", "📅 4. Maç Programı")
+        with c5: render_big_button("📢", "Duyurular\nve Belgeler", "📢 5. Duyurular")
+        with c6: render_big_button("⚙️", "Gelişmiş Yönetim\nve Dosyalar", "⚙️ 6. Yönetim & Dosya")
         
         st.divider()
         if st.button("🔓 Çıkış Yap (İzleyici Modu)", type="primary"):
@@ -703,12 +746,13 @@ if st.session_state.current_page == "Home":
             st.rerun()
 
     else:
-        c1, c2, c3 = st.columns(3)
-        with c1: render_big_button("🏆", "Puan Durumu & Kadrolar", "🏆 3. Puan Durumu")
-        with c2: render_big_button("📅", "Maç Fikstürü", "📅 4. Maç Programı")
-        with c3: render_big_button("📢", "Duyurular & Belgeler", "📢 5. Duyurular")
+        # ZİYARETÇİ KARTLARI (Birbirinden daha ayrık, geniş ve elegant)
+        c1, spacer1, c2, spacer2, c3 = st.columns([3, 0.5, 3, 0.5, 3])
+        with c1: render_big_button("🏆", "Puan Durumu\nve Takım Kadroları", "🏆 3. Puan Durumu")
+        with c2: render_big_button("📅", "Maç Fikstürü\nve Canlı Skorlar", "📅 4. Maç Programı")
+        with c3: render_big_button("📢", "Duyurular\nve Kural Belgeleri", "📢 5. Duyurular")
         
-        st.divider()
+        st.write("<br><br><br>", unsafe_allow_html=True)
         with st.expander("👨‍⚖️ Yönetici Girişi"):
             girilen_sifre = st.text_input("Şifre:", type="password", key="login_pass")
             if st.button("🔒 Giriş Yap"):
@@ -732,7 +776,7 @@ else:
             st.session_state.current_page = "Home"
             st.rerun()
     with b2:
-        st.markdown(f"<h3 style='margin-top: -5px;'>{menu_secim} ({aktif_asama})</h3>", unsafe_allow_html=True)
+        st.markdown(f"<h3 style='margin-top: -5px;'>{menu_secim}</h3>", unsafe_allow_html=True)
     st.markdown("---")
 
     # --- SAYFA 1: GRUP AYARLARI ---
@@ -920,12 +964,12 @@ else:
                         h_cols = st.columns([2.8, 2.8, 2.6, 1.4, 0.2, 1.4, 0.2, 1.4])
                         
                         t1_isim, t2_isim = row['Takım 1'], row['Takım 2']
-                        h_cols[0].markdown(f"<div style='font-size:14px; font-weight:bold; color:#1f77b4; padding-bottom:5px;'>🛡️ {t1_isim}</div>", unsafe_allow_html=True)
-                        h_cols[1].markdown(f"<div style='font-size:14px; font-weight:bold; color:#1f77b4; padding-bottom:5px;'>🛡️ {t2_isim}</div>", unsafe_allow_html=True)
+                        h_cols[0].markdown(f"<div style='font-size:14px; font-weight:bold; color:var(--rg-green); padding-bottom:5px;'>🛡️ {t1_isim}</div>", unsafe_allow_html=True)
+                        h_cols[1].markdown(f"<div style='font-size:14px; font-weight:bold; color:var(--rg-green); padding-bottom:5px;'>🛡️ {t2_isim}</div>", unsafe_allow_html=True)
                         
-                        h_cols[3].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; color:#1f77b4; border-bottom: 2px solid #1f77b4; padding-bottom: 2px;'>1. SET</div>", unsafe_allow_html=True)
-                        h_cols[5].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; color:#1f77b4; border-bottom: 2px solid #1f77b4; padding-bottom: 2px;'>2. SET</div>", unsafe_allow_html=True)
-                        h_cols[7].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; color:#1f77b4; border-bottom: 2px solid #1f77b4; padding-bottom: 2px;'>3. SET</div>", unsafe_allow_html=True)
+                        h_cols[3].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; color:var(--rg-clay); border-bottom: 2px solid var(--rg-clay); padding-bottom: 2px;'>1. SET</div>", unsafe_allow_html=True)
+                        h_cols[5].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; color:var(--rg-clay); border-bottom: 2px solid var(--rg-clay); padding-bottom: 2px;'>2. SET</div>", unsafe_allow_html=True)
+                        h_cols[7].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; color:var(--rg-clay); border-bottom: 2px solid var(--rg-clay); padding-bottom: 2px;'>3. SET</div>", unsafe_allow_html=True)
 
                         r_cols = st.columns([2.8, 2.8, 2.1, 0.5, 0.7, 0.7, 0.2, 0.7, 0.7, 0.2, 0.7, 0.7])
                         
@@ -1004,67 +1048,80 @@ else:
                         }
                         st.divider()
 
-                eslesme_dict = {}
-                for idx, g_row in form_verileri.items():
-                    row_data = df_gun.loc[idx]
-                    eslesme = row_data["Eşleşme"]
-                    brans = row_data["Branş"]
-                    if eslesme not in eslesme_dict:
-                        eslesme_dict[eslesme] = {"T1": {"isim": row_data["Takım 1"], "secimler": {}}, "T2": {"isim": row_data["Takım 2"], "secimler": {}}}
-                    eslesme_dict[eslesme]["T1"]["secimler"][brans] = g_row["T1_Oyuncu"]
-                    eslesme_dict[eslesme]["T2"]["secimler"][brans] = g_row["T2_Oyuncu"]
-                
-                grup_kadro_dict = st.session_state.takim_kadrolari.get(secilen_grup, {})
-                for eslesme, data in eslesme_dict.items():
-                    for team_key in ["T1", "T2"]:
-                        takim_ismi = data[team_key]["isim"]
-                        havuz = grup_kadro_dict.get(takim_ismi, [])
-                        secimler = data[team_key]["secimler"]
-                        o1 = secimler.get("1. Tekler"); o2 = secimler.get("2. Tekler"); o3 = secimler.get("3. Tekler")
-                        r1 = havuz.index(o1) if o1 in havuz else -1
-                        r2 = havuz.index(o2) if o2 in havuz else -1
-                        r3 = havuz.index(o3) if o3 in havuz else -1
-                        uyarilar = []
-                        if r1 != -1 and r2 != -1 and r1 <= r2: uyarilar.append(f"**2. Tekler** oyuncusu ({o2}), **1. Tekler** oyuncusundan ({o1}) daha üst bir esame sırasına sahip olmalıdır.")
-                        if r2 != -1 and r3 != -1 and r2 <= r3: uyarilar.append(f"**3. Tekler** oyuncusu ({o3}), **2. Tekler** oyuncusundan ({o2}) daha üst bir esame sırasına sahip olmalıdır.")
-                        if r1 != -1 and r3 != -1 and r2 == -1 and r1 <= r3: uyarilar.append(f"**3. Tekler** oyuncusu ({o3}), **1. Tekler** oyuncusundan ({o1}) daha üst bir esame sırasına sahip olmalıdır.")
-                        if uyarilar: st.warning(f"⚠️ **Takım İçi Sıralama Uyarısı ({takim_ismi} | Eşleşme: {eslesme}):**\n\n" + "\n".join([f"- {u}" for u in uyarilar]) + "\n\n*(Kayıt işlemi yapılabilir, bu sadece bilgi uyarısıdır.)*")
-
-                if st.button("✅ Tüm Skorları ve Esameleri Kaydet"):
-                    hata_mesajlari = []
-                    for idx, guncel_row in form_verileri.items():
-                        mac_tanimi = f"{secilen_gun} - {st.session_state.skor_tablosu.loc[idx]['Branş']}"
-                        
-                        s1t1, s1t2 = guncel_row["1.Set T1"], guncel_row["1.Set T2"]
-                        s2t1, s2t2 = guncel_row["2.Set T1"], guncel_row["2.Set T2"]
-                        s3t1, s3t2 = guncel_row["3.Set T1"], guncel_row["3.Set T2"]
-                        durum = guncel_row["Durum"]
-                        
-                        ok1, msg1 = set_gecerli_mi(s1t1, s1t2, durum=durum)
-                        ok2, msg2 = set_gecerli_mi(s2t1, s2t2, durum=durum)
-                        ok3, msg3 = set_gecerli_mi(s3t1, s3t2, is_set3=True, durum=durum)
-                        
-                        if not ok1: hata_mesajlari.append(f"{mac_tanimi} Set 1: {msg1}")
-                        if not ok2: hata_mesajlari.append(f"{mac_tanimi} Set 2: {msg2}")
-                        if not ok3: hata_mesajlari.append(f"{mac_tanimi} Set 3: {msg3}")
-                        
-                        if durum == "Tamamlandı":
-                            if s1t1 > s1t2 and s2t1 > s2t2: 
-                                if s3t1 != 0 or s3t2 != 0:
-                                    hata_mesajlari.append(f"{mac_tanimi}: Maç 2-0 bittiği için 3. sete skor girilemez.")
-                            elif s1t2 > s1t1 and s2t2 > s2t1:
-                                if s3t1 != 0 or s3t2 != 0:
-                                    hata_mesajlari.append(f"{mac_tanimi}: Maç 2-0 bittiği için 3. sete skor girilemez.")
+                    eslesme_dict = {}
+                    for idx, g_row in form_verileri.items():
+                        row_data = df_gun.loc[idx]
+                        eslesme = row_data["Eşleşme"]
+                        brans = row_data["Branş"]
+                        if eslesme not in eslesme_dict:
+                            eslesme_dict[eslesme] = {"T1": {"isim": row_data["Takım 1"], "secimler": {}}, "T2": {"isim": row_data["Takım 2"], "secimler": {}}}
+                        eslesme_dict[eslesme]["T1"]["secimler"][brans] = g_row["T1_Oyuncu"]
+                        eslesme_dict[eslesme]["T2"]["secimler"][brans] = g_row["T2_Oyuncu"]
                     
-                    if hata_mesajlari:
-                        for h in hata_mesajlari: st.error(h)
-                    else:
+                    grup_kadro_dict = st.session_state.takim_kadrolari.get(secilen_grup, {})
+                    for eslesme, data in eslesme_dict.items():
+                        for team_key in ["T1", "T2"]:
+                            takim_ismi = data[team_key]["isim"]
+                            havuz = grup_kadro_dict.get(takim_ismi, [])
+                            secimler = data[team_key]["secimler"]
+                            o1 = secimler.get("1. Tekler"); o2 = secimler.get("2. Tekler"); o3 = secimler.get("3. Tekler")
+                            r1 = havuz.index(o1) if o1 in havuz else -1
+                            r2 = havuz.index(o2) if o2 in havuz else -1
+                            r3 = havuz.index(o3) if o3 in havuz else -1
+                            uyarilar = []
+                            if r1 != -1 and r2 != -1 and r1 <= r2: uyarilar.append(f"**2. Tekler** oyuncusu ({o2}), **1. Tekler** oyuncusundan ({o1}) daha üst bir esame sırasına sahip olmalıdır.")
+                            if r2 != -1 and r3 != -1 and r2 <= r3: uyarilar.append(f"**3. Tekler** oyuncusu ({o3}), **2. Tekler** oyuncusundan ({o2}) daha üst bir esame sırasına sahip olmalıdır.")
+                            if r1 != -1 and r3 != -1 and r2 == -1 and r1 <= r3: uyarilar.append(f"**3. Tekler** oyuncusu ({o3}), **1. Tekler** oyuncusundan ({o1}) daha üst bir esame sırasına sahip olmalıdır.")
+                            if uyarilar: st.warning(f"⚠️ **Takım İçi Sıralama Uyarısı ({takim_ismi} | Eşleşme: {eslesme}):**\n\n" + "\n".join([f"- {u}" for u in uyarilar]) + "\n\n*(Kayıt işlemi yapılabilir, bu sadece bilgi uyarısıdır.)*")
+
+                    if st.button("✅ Tüm Skorları ve Esameleri Kaydet"):
+                        hata_mesajlari = []
                         for idx, guncel_row in form_verileri.items():
-                            for k, v in guncel_row.items():
-                                st.session_state.skor_tablosu.at[idx, k] = v
-                        ortak_veriyi_kaydet()
-                        st.success("Veriler başarıyla işlendi ve kaydedildi!")
-                        st.rerun()
+                            mac_tanimi = f"{secilen_gun} - {st.session_state.skor_tablosu.loc[idx]['Branş']}"
+                            
+                            s1t1, s1t2 = guncel_row["1.Set T1"], guncel_row["1.Set T2"]
+                            s2t1, s2t2 = guncel_row["2.Set T1"], guncel_row["2.Set T2"]
+                            s3t1, s3t2 = guncel_row["3.Set T1"], guncel_row["3.Set T2"]
+                            durum = guncel_row["Durum"]
+                            
+                            ok1, msg1 = set_gecerli_mi(s1t1, s1t2, durum=durum)
+                            ok2, msg2 = set_gecerli_mi(s2t1, s2t2, durum=durum)
+                            ok3, msg3 = set_gecerli_mi(s3t1, s3t2, is_set3=True, durum=durum)
+                            
+                            if not ok1: hata_mesajlari.append(f"{mac_tanimi} Set 1: {msg1}")
+                            if not ok2: hata_mesajlari.append(f"{mac_tanimi} Set 2: {msg2}")
+                            if not ok3: hata_mesajlari.append(f"{mac_tanimi} Set 3: {msg3}")
+                            
+                            if durum == "Tamamlandı":
+                                if s1t1 > s1t2 and s2t1 > s2t2: 
+                                    if s3t1 != 0 or s3t2 != 0:
+                                        hata_mesajlari.append(f"{mac_tanimi}: Maç 2-0 bittiği için 3. sete skor girilemez.")
+                                elif s1t2 > s1t1 and s2t2 > s2t1:
+                                    if s3t1 != 0 or s3t2 != 0:
+                                        hata_mesajlari.append(f"{mac_tanimi}: Maç 2-0 bittiği için 3. sete skor girilemez.")
+                        
+                        if hata_mesajlari:
+                            for h in hata_mesajlari: st.error(h)
+                        else:
+                            for idx, guncel_row in form_verileri.items():
+                                for k, v in guncel_row.items():
+                                    st.session_state.skor_tablosu.at[idx, k] = v
+                            ortak_veriyi_kaydet()
+                            st.success("Veriler başarıyla işlendi ve kaydedildi!")
+                            st.rerun()
+
+                    # YENİ EKLENTİ: Skor Girişi Sonrası Anlık Puan Durumu Barı
+                    st.markdown("---")
+                    with st.expander(f"📊 {secilen_grup} Anlık Puan Durumu (Görüntülemek için tıklayın)"):
+                        df_guncel = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] == secilen_grup].copy()
+                        if not df_guncel.empty:
+                            grup_stats = hesapla_tum_puan_durumu(df_guncel)
+                            if not grup_stats.empty:
+                                grup_df_display = grup_stats.drop(columns=['Grup']).sort_values(by=['Galibiyet', 'Maç Av.', 'Oyun Av.'], ascending=False)
+                                grup_df_display.index = range(1, len(grup_df_display) + 1)
+                                st.dataframe(grup_df_display, use_container_width=True)
+                            else:
+                                st.info("Bu grup için henüz puan durumu oluşmadı.")
             else:
                 st.info("Aktif grup bulunamadı.")
         else:
@@ -1153,6 +1210,7 @@ else:
             else:
                 st.info(f"Bu aşamada henüz maç bulunmuyor.")
 
+        # Misafirler için Takım Kadroları Puan Durumunun Altına Eklendi
         if not st.session_state.admin_mi:
             st.markdown("---")
             st.markdown(f"### 🛡️ Takımlar ve Oyuncu Kadroları ({aktif_asama})")
@@ -1275,7 +1333,6 @@ else:
                     t2_match_wins = (g_df['Kazanan'] == 'T2').sum()
                     team_score = f"{t1_match_wins}-{t2_match_wins}"
                     
-                    # Gerçek galibi Puan Motorundan Çek
                     eslesen_skorlar = st.session_state.skor_tablosu[
                         (st.session_state.skor_tablosu['Grup'] == grup) & 
                         (st.session_state.skor_tablosu['Gün'] == match_gun) & 
