@@ -954,19 +954,8 @@ else:
                         else: st.session_state.skor_tablosu = pd.concat([st.session_state.skor_tablosu, yeni_df], ignore_index=True)
                         ortak_veriyi_kaydet()
                         st.success(f"{aktif_asama} grubu başarıyla oluşturuldu!")
-                    
-            if st.session_state.takim_kadrolari:
-                st.markdown("---")
-                st.markdown(f"### 📁 Mevcut Kayıtlı Gruplar ve Kadrolar ({aktif_asama})")
-                gosterilecek_gruplar_klasor = [g for g in st.session_state.takim_kadrolari.keys() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama]
-                for g_isim in dogal_sirala(gosterilecek_gruplar_klasor):
-                    f_turu = st.session_state.grup_formatlari.get(g_isim, "3 Maçlık (2 Tek, 1 Çift)")
-                    f_kat = st.session_state.grup_kategorileri.get(g_isim, "Erkekler")
-                    with st.expander(f"📁 {g_isim} ({f_kat} | {f_turu})"):
-                        g_kadro = st.session_state.takim_kadrolari[g_isim]
-                        for t_isim in dogal_sirala(list(g_kadro.keys())):
-                            st.markdown(f"**🛡️ {t_isim}**")
-                            st.write(", ".join(g_kadro[t_isim]) if g_kadro[t_isim] else "Oyuncu yok")
+        else:
+            st.warning("🔒 Bu panel dışarıya kapalıdır. Lütfen giriş yapınız.")
 
     # --- SAYFA 2: SKOR GİRİŞİ ---
     elif menu_secim == "✍️ 2. Skor Girişi":
@@ -1253,7 +1242,7 @@ else:
                     f_kat = st.session_state.grup_kategorileri.get(g_isim, "Erkekler")
                     with st.expander(f"📁 {g_isim} ({f_kat} | {f_turu})", expanded=True):
                         g_kadro = st.session_state.takim_kadrolari[g_isim]
-                        kadro_cols = st.columns(3) # Kadroları yan yana 3 sütün halinde şık gösterme
+                        kadro_cols = st.columns(3)
                         for idx, t_isim in enumerate(dogal_sirala(list(g_kadro.keys()))):
                             with kadro_cols[idx % 3]:
                                 st.markdown(f"**🛡️ {t_isim}**")
