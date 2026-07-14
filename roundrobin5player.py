@@ -750,7 +750,6 @@ with top_c2:
 st.markdown("---")
 
 def render_big_button(icon, title, target_page):
-    # Bu format butonun tüm yüzeyinin (emoji dahil) tıklanabilir olmasını sağlar
     if st.button(f"{icon}\n{title}", use_container_width=True, key=f"btn_{target_page}"):
         st.session_state.current_page = target_page
         st.rerun()
@@ -1121,12 +1120,20 @@ else:
                         if not ok3: hata_mesajlari.append(f"{mac_tanimi} Set 3: {msg3}")
                         
                         if durum == "Tamamlandı":
-                            if s1t1 > s1t2 and s2t1 > s2t2: 
+                            t1_s1_kazandi = s1t1 > s1t2
+                            t2_s1_kazandi = s1t2 > s1t1
+                            t1_s2_kazandi = s2t1 > s2t2
+                            t2_s2_kazandi = s2t2 > s2t1
+                            
+                            # Maç 2-0 bittiyse 3. sete skor girilmesini engelle
+                            if (t1_s1_kazandi and t1_s2_kazandi) or (t2_s1_kazandi and t2_s2_kazandi): 
                                 if s3t1 != 0 or s3t2 != 0:
                                     hata_mesajlari.append(f"{mac_tanimi}: Maç 2-0 bittiği için 3. sete skor girilemez.")
-                            elif s1t2 > s1t1 and s2t2 > s2t1:
-                                if s3t1 != 0 or s3t2 != 0:
-                                    hata_mesajlari.append(f"{mac_tanimi}: Maç 2-0 bittiği için 3. sete skor girilemez.")
+                            
+                            # Maç 1-1 bittiyse 3. sete skor girilmesini ZORUNLU kıl
+                            elif (t1_s1_kazandi and t2_s2_kazandi) or (t2_s1_kazandi and t1_s2_kazandi):
+                                if s3t1 == 0 and s3t2 == 0:
+                                    hata_mesajlari.append(f"{mac_tanimi}: Setlerde 1-1 eşitlik var, 3. set skoru girilmelidir.")
                     
                     if hata_mesajlari:
                         for h in hata_mesajlari: st.error(h)
@@ -1662,7 +1669,7 @@ else:
                             c_f1, c_f2, c_f3 = st.columns(3)
                             with c_f1: yeni_kategori = st.radio("🔄 Kategori Değiştir:", kategori_liste, index=kategori_idx, horizontal=True, key="edit_kategori")
                             with c_f2: yeni_grup_tipi = st.radio("🔄 Grup Tipi Değiştir:", tip_liste, index=tip_idx, horizontal=True, key="edit_grup_tipi")
-                            with c_f3: yeni_format = radio("🔄 Müsabaka Formatı Değiştir:", format_liste, index=format_idx, horizontal=True, key="edit_format")
+                            with c_f3: yeni_format = st.radio("🔄 Müsabaka Formatı Değiştir:", format_liste, index=format_idx, horizontal=True, key="edit_format")
                             
                             fikstur_sifirlanacak_mi = (yeni_grup_tipi != tip_liste[tip_idx]) or (yeni_format != mevcut_format)
                             if fikstur_sifirlanacak_mi:
