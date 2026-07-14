@@ -15,7 +15,7 @@ from fpdf import FPDF
 # --- GENEL SAYFA AYARLARI ---
 st.set_page_config(page_title="Tenis Turnuva Otomasyonu", page_icon="🎾", layout="wide", initial_sidebar_state="collapsed")
 
-# --- GÜVENLİK VE GİZLİLİK CSS'İ (RENK TEMASI KALDIRILDI) ---
+# --- GÜVENLİK VE GİZLİLİK CSS'İ (KOYU/AÇIK MOD UYUMLU) ---
 st.markdown("""
 <style>
     /* Gizlilik Ayarları (Streamlit üst/alt menülerini gizleme) */
@@ -26,14 +26,19 @@ st.markdown("""
     header {visibility: hidden !important;}
     footer {visibility: hidden !important;}
     
-    /* Butonları biraz daha belirgin yapalım (Streamlit'in doğal yapısını bozmadan) */
+    /* Buton Animasyonları ve Zarif Çerçeveler */
     .stButton > button {
-        border-radius: 8px;
+        border-radius: 12px;
         transition: all 0.2s ease-in-out;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
     .stButton > button p {
         font-size: 16px !important;
         font-weight: 600 !important;
+    }
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(0,0,0,0.15);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -224,22 +229,21 @@ def get_formatted_match_score(row, target_t1):
     if durum == "Takım 1 Kazandı (Ret.)": score_str += " Ret." if is_t1 else " (Ret.)"
     elif durum == "Takım 2 Kazandı (Ret.)": score_str += " (Ret.)" if is_t1 else " Ret."
 
-    return f"<b>{brans}</b>: {score_str}"
+    return f"<b>{brans}</b>: <span style='opacity: 0.8;'>{score_str}</span>"
 
 def render_html_matrix(takimlar, df_grup):
-    # rgba() renkleri kullanarak hem açık hem koyu modda çalışan şeffaf kenarlıklar ekliyoruz
     html = '<table style="width:100%; border-collapse: collapse; text-align:center; font-family: sans-serif; font-size: 14px;">'
-    html += '<tr>'
-    html += '<th style="border: 1px solid rgba(128,128,128,0.3); padding: 10px; color: #1f77b4;">Takımlar</th>'
+    html += '<tr style="background-color: rgba(128,128,128,0.1);">'
+    html += '<th style="border: 1px solid rgba(128,128,128,0.3); padding: 10px;">Takımlar</th>'
     for t in takimlar:
-        html += f'<th style="border: 1px solid rgba(128,128,128,0.3); padding: 10px; color: #1f77b4;">{t}</th>'
+        html += f'<th style="border: 1px solid rgba(128,128,128,0.3); padding: 10px;">{t}</th>'
     html += '</tr>'
 
     for t1 in takimlar:
-        html += f'<tr><td style="border: 1px solid rgba(128,128,128,0.3); padding: 10px; font-weight: bold; color: #1f77b4;">{t1}</td>'
+        html += f'<tr><td style="border: 1px solid rgba(128,128,128,0.3); padding: 10px; font-weight: bold; background-color: rgba(128,128,128,0.1);">{t1}</td>'
         for t2 in takimlar:
             if t1 == t2:
-                html += '<td style="border: 1px solid rgba(128,128,128,0.3); padding: 10px; background-color: rgba(128,128,128,0.1);"><b>X</b></td>'
+                html += '<td style="border: 1px solid rgba(128,128,128,0.3); padding: 10px; background-color: rgba(128,128,128,0.2);"><b>X</b></td>'
             else:
                 matches = df_grup[((df_grup['Takım 1'] == t1) & (df_grup['Takım 2'] == t2)) | ((df_grup['Takım 1'] == t2) & (df_grup['Takım 2'] == t1))]
                 if matches.empty:
@@ -287,7 +291,7 @@ def render_html_matrix(takimlar, df_grup):
                             puan_str += " (Av.)"
                         
                         main_score = f"<div style='font-size: 18px; font-weight: bold; margin-bottom: 2px;'>{crown1}{t1_wins} - {t2_wins}{crown2}</div>"
-                        puan_div = f"<div style='font-size: 11px; color: #e25822; font-weight: bold; margin-bottom: 5px;'>{puan_str}</div>" if puan_str else ""
+                        puan_div = f"<div style='font-size: 11px; opacity: 0.9; font-weight: bold; margin-bottom: 5px;'>{puan_str}</div>" if puan_str else ""
                         details_html = "<br>".join(details)
                         
                         html += f'<td style="border: 1px solid rgba(128,128,128,0.3); padding: 10px; vertical-align: top;">{main_score}{puan_div}<div style="font-size: 11px; opacity: 0.8; line-height: 1.4;">{details_html}</div></td>'
@@ -590,7 +594,7 @@ if 'mac_programi' in st.session_state:
         if "Kazanan" not in st.session_state.mac_programi.columns:
             st.session_state.mac_programi["Kazanan"] = ""
 
-# --- SAYFADAN ÇIKIŞ GÜVENLİK UYARISI (SADECE BAŞHAKEM) ---
+# --- SAYFADAN ÇIKIŞ GÜVENLİK UYARISI (SADECE BAŞHAKEM İÇİN) ---
 if st.session_state.admin_mi:
     components.html(
         """
@@ -696,33 +700,43 @@ def eslesmeleri_olustur(grup_adi, takimlar, grup_tipi, format_secimi):
     return program
 
 # ==============================================================================
-# GLOBAL AŞAMA SEÇİCİ VE ANA SAYFA (DASHBOARD) KONTROL MOTORU
+# GLOBAL ÜST BAR VE NAVİGASYON MOTORU
 # ==============================================================================
+st.markdown("<div style='margin-top: -15px;'></div>", unsafe_allow_html=True)
+top_c1, top_c2, top_c3 = st.columns([1.5, 3, 2.5])
 
-# ÜST BAR (Aşama Seçici ve Logolar Yan Yana)
-top_c1, top_c2, top_c3 = st.columns([1, 2, 2])
+with top_c1:
+    if st.session_state.current_page != "Home":
+        st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
+        if st.button("🔙 Ana Sayfa", use_container_width=True, type="primary"):
+            st.session_state.current_page = "Home"
+            st.rerun()
 
 with top_c2:
-    idx = 0 if st.session_state.aktif_asama == "1. Aşama" else 1
-    yeni_asama = st.radio("🎯 Turnuva Aşaması:", ["1. Aşama", "2. Aşama"], index=idx, horizontal=True, label_visibility="collapsed")
-    if yeni_asama != st.session_state.aktif_asama:
-        st.session_state.aktif_asama = yeni_asama
-        st.rerun()
+    st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
+    asama_c1, asama_c2 = st.columns(2)
+    with asama_c1:
+        if st.button("1. Aşama", type="primary" if st.session_state.aktif_asama == "1. Aşama" else "secondary", use_container_width=True):
+            st.session_state.aktif_asama = "1. Aşama"
+            st.rerun()
+    with asama_c2:
+        if st.button("2. Aşama", type="primary" if st.session_state.aktif_asama == "2. Aşama" else "secondary", use_container_width=True):
+            st.session_state.aktif_asama = "2. Aşama"
+            st.rerun()
 
 with top_c3:
-    # TTF Logo Base64 Çevrimi
     ttf_logo_html = ""
     if os.path.exists("TTFLOGO.png"):
         with open("TTFLOGO.png", "rb") as f:
             b64 = base64.b64encode(f.read()).decode()
-        ttf_logo_html = f'<img src="data:image/png;base64,{b64}" style="height: 45px; filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.2));" alt="TTF Logo">'
+        ttf_logo_html = f'<img src="data:image/png;base64,{b64}" style="height: 45px; border-radius: 12px; filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.2));" alt="TTF Logo">'
     else:
-        ttf_logo_html = '<div style="background-color: #0B3B24; color: white; padding: 10px 15px; border-radius: 8px; font-weight: bold; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.3s ease;">🇹🇷 TTF</div>'
+        ttf_logo_html = '<div style="background-color: #0B3B24; color: white; padding: 10px 15px; border-radius: 12px; font-weight: bold; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.3s ease;">🇹🇷 TTF</div>'
 
     st.markdown(f"""
-        <div style="display: flex; gap: 10px; justify-content: flex-end; align-items: center; margin-top: 5px;">
+        <div style="display: flex; gap: 10px; justify-content: flex-end; align-items: center; margin-top: 10px;">
             <a href="https://i-kort.ttf.org.tr/" target="_blank" style="text-decoration: none; display: block; width: 100px;">
-                <div style="background-color: #0056b3; color: white; padding: 10px 15px; border-radius: 8px; font-weight: bold; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.3s ease; width: 100%;">
+                <div style="background-color: #0056b3; color: white; padding: 10px 15px; border-radius: 12px; font-weight: bold; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.3s ease; width: 100%;">
                     🎾 i-Kort
                 </div>
             </a>
@@ -731,38 +745,36 @@ with top_c3:
             </a>
         </div>
         <style>
-            a:hover div {{
-                filter: brightness(1.2);
-                transform: translateY(-2px);
-            }}
-            a:hover img {{
-                transform: translateY(-2px) scale(1.05);
-            }}
+            a:hover div {{ filter: brightness(1.2); transform: translateY(-2px); }}
+            a:hover img {{ transform: translateY(-2px) scale(1.05); }}
         </style>
     """, unsafe_allow_html=True)
 
 st.markdown("---")
 
 def render_big_button(icon, title, target_page):
-    if st.button(f"{icon}\n\n{title}", use_container_width=True, key=f"btn_{target_page}"):
-        st.session_state.current_page = target_page
-        st.rerun()
+    with st.container(border=True):
+        st.markdown(f"<div style='text-align:center; font-size: 60px; margin-bottom: 5px;'>{icon}</div>", unsafe_allow_html=True)
+        if st.button(title, use_container_width=True, key=f"btn_{target_page}"):
+            st.session_state.current_page = target_page
+            st.rerun()
 
 if st.session_state.current_page == "Home":
     st.markdown("<h1 style='text-align:center;'>🎾 Turnuva Ana Ekranı</h1><br>", unsafe_allow_html=True)
     
     if st.session_state.admin_mi:
         st.markdown("<h4 style='text-align:center;'>👨‍⚖️ Başhakem Kontrol Paneli</h4><br>", unsafe_allow_html=True)
-        c1, c2, c3 = st.columns(3)
-        with c1: render_big_button("👥", "Grup Ayarları\nve Kadrolar", "👥 1. Grup Ayarları")
-        with c2: render_big_button("✍️", "Skor ve Esame\nGiriş Ekranı", "✍️ 2. Skor Girişi")
-        with c3: render_big_button("🏆", "Puan Durumu\nve Matrisler", "🏆 3. Puan Durumu")
+        c1, c2, c3, c4 = st.columns(4)
+        with c1: render_big_button("👥", "1. Grup Ayarları", "👥 1. Grup Ayarları")
+        with c2: render_big_button("✍️", "2. Skor Girişi", "✍️ 2. Skor Girişi")
+        with c3: render_big_button("🏆", "3. Puan Durumu", "🏆 3. Puan Durumu")
+        with c4: render_big_button("🛡️", "4. Takım Kadroları", "🛡️ 4. Takım Kadroları")
         
         st.write("")
-        c4, c5, c6 = st.columns(3)
-        with c4: render_big_button("📅", "Maç Programı\nve Fikstür", "📅 4. Maç Programı")
-        with c5: render_big_button("📢", "Duyurular\nve Belgeler", "📢 5. Duyurular")
-        with c6: render_big_button("⚙️", "Gelişmiş Yönetim\nve Dosyalar", "⚙️ 6. Yönetim & Dosya")
+        c5, c6, c7 = st.columns(3)
+        with c5: render_big_button("📅", "5. Maç Programı", "📅 5. Maç Programı")
+        with c6: render_big_button("📢", "6. Duyurular", "📢 6. Duyurular")
+        with c7: render_big_button("⚙️", "7. Yönetim & Dosya", "⚙️ 7. Yönetim & Dosya")
         
         st.divider()
         if st.button("🔓 Çıkış Yap (İzleyici Modu)", type="primary"):
@@ -770,10 +782,11 @@ if st.session_state.current_page == "Home":
             st.rerun()
 
     else:
-        c1, spacer1, c2, spacer2, c3 = st.columns([3, 0.5, 3, 0.5, 3])
-        with c1: render_big_button("🏆", "Puan Durumu\nve Takım Kadroları", "🏆 3. Puan Durumu")
-        with c2: render_big_button("📅", "Maç Fikstürü\nve Canlı Skorlar", "📅 4. Maç Programı")
-        with c3: render_big_button("📢", "Duyurular\nve Kural Belgeleri", "📢 5. Duyurular")
+        c1, c2, c3, c4 = st.columns(4)
+        with c1: render_big_button("🏆", "Puan Durumu", "🏆 3. Puan Durumu")
+        with c2: render_big_button("🛡️", "Takım Kadroları", "🛡️ 4. Takım Kadroları")
+        with c3: render_big_button("📅", "Maç Fikstürü", "📅 5. Maç Programı")
+        with c4: render_big_button("📢", "Duyurular", "📢 6. Duyurular")
         
         st.write("<br><br><br>", unsafe_allow_html=True)
         with st.expander("👨‍⚖️ Yönetici Girişi"):
@@ -793,13 +806,7 @@ else:
     menu_secim = st.session_state.current_page
     aktif_asama = st.session_state.aktif_asama
     
-    b1, b2 = st.columns([1, 8])
-    with b1:
-        if st.button("🔙 Ana Sayfa", type="primary"):
-            st.session_state.current_page = "Home"
-            st.rerun()
-    with b2:
-        st.markdown(f"<h3 style='margin-top: -5px;'>{menu_secim}</h3>", unsafe_allow_html=True)
+    st.markdown(f"<h3 style='margin-top: -5px;'>{menu_secim} ({aktif_asama})</h3>", unsafe_allow_html=True)
     st.markdown("---")
 
     # --- SAYFA 1: GRUP AYARLARI ---
@@ -1232,24 +1239,31 @@ else:
             else:
                 st.info(f"Bu aşamada henüz maç bulunmuyor.")
 
-        if not st.session_state.admin_mi:
-            st.markdown("---")
-            st.markdown(f"### 🛡️ Takımlar ve Oyuncu Kadroları ({aktif_asama})")
-            if st.session_state.takim_kadrolari:
-                gosterilecek_gruplar_klasor = [g for g in st.session_state.takim_kadrolari.keys() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama]
+    # --- SAYFA 4: TAKIM KADROLARI (YENİ SEKME) ---
+    elif menu_secim == "🛡️ 4. Takım Kadroları":
+        st.markdown(f"### 🛡️ Takımlar ve Oyuncu Kadroları ({aktif_asama})")
+        if st.session_state.takim_kadrolari:
+            gosterilecek_gruplar_klasor = [g for g in st.session_state.takim_kadrolari.keys() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama]
+            
+            if not gosterilecek_gruplar_klasor:
+                st.info(f"{aktif_asama} için kayıtlı takım bulunmamaktadır.")
+            else:
                 for g_isim in dogal_sirala(gosterilecek_gruplar_klasor):
                     f_turu = st.session_state.grup_formatlari.get(g_isim, "3 Maçlık (2 Tek, 1 Çift)")
                     f_kat = st.session_state.grup_kategorileri.get(g_isim, "Erkekler")
-                    with st.expander(f"📁 {g_isim} ({f_kat} | {f_turu})"):
+                    with st.expander(f"📁 {g_isim} ({f_kat} | {f_turu})", expanded=True):
                         g_kadro = st.session_state.takim_kadrolari[g_isim]
-                        for t_isim in dogal_sirala(list(g_kadro.keys())):
-                            st.markdown(f"**🛡️ {t_isim}**", unsafe_allow_html=True)
-                            st.write(", ".join(g_kadro[t_isim]) if g_kadro[t_isim] else "Oyuncu yok")
-            else:
-                st.info("Kayıtlı takım bulunmamaktadır.")
+                        kadro_cols = st.columns(3) # Kadroları yan yana 3 sütün halinde şık gösterme
+                        for idx, t_isim in enumerate(dogal_sirala(list(g_kadro.keys()))):
+                            with kadro_cols[idx % 3]:
+                                st.markdown(f"**🛡️ {t_isim}**")
+                                st.write(", ".join(g_kadro[t_isim]) if g_kadro[t_isim] else "Oyuncu yok")
+                                st.write("")
+        else:
+            st.info("Kayıtlı takım bulunmamaktadır.")
 
-    # --- SAYFA 4: MAÇ PROGRAMI ---
-    elif menu_secim == "📅 4. Maç Programı":
+    # --- SAYFA 5: MAÇ PROGRAMI ---
+    elif menu_secim == "📅 5. Maç Programı":
         gosterim_sekli = st.radio("👁️ Fikstür ve PDF Gösterim Şekli:", ["Bireysel Maçlar (Tekler/Çiftler Skorları)", "Takım Maçları (Genel Skor)"], horizontal=True)
         is_bireysel = "Bireysel" in gosterim_sekli
         st.markdown("---")
@@ -1520,7 +1534,7 @@ else:
                                 html_rows = ""
                                 for _, row in grup_df.iterrows():
                                     skor = str(row.get('Canlı Skor', 'Oynanmadı'))
-                                    skor_html = f"<span style='color:green; font-weight:bold;'>{skor}</span>" if skor not in ["Oynanmadı", ""] else "<i>Bekleniyor</i>"
+                                    skor_html = f"<span style='color:#28a745; font-weight:bold;'>{skor}</span>" if skor not in ["Oynanmadı", ""] else "<i>Bekleniyor</i>"
                                     t1_o = html.escape(str(row.get('T1 Oyuncu', '')).strip())
                                     t2_o = html.escape(str(row.get('T2 Oyuncu', '')).strip())
                                     
@@ -1531,7 +1545,7 @@ else:
                                 
                                 st.markdown(f"""
                                 <table style="width:100%; border-collapse: collapse; font-family: sans-serif;">
-                                    <tr><th style="border:1px solid rgba(128,128,128,0.3); padding:5px;">Branş</th><th style="border:1px solid rgba(128,128,128,0.3); padding:5px;">Oyuncular</th><th style="border:1px solid rgba(128,128,128,0.3); padding:5px;">Skor</th></tr>
+                                    <tr><th style="border:1px solid rgba(128,128,128,0.3); padding:5px; background-color: rgba(128, 128, 128, 0.1);">Branş</th><th style="border:1px solid rgba(128,128,128,0.3); padding:5px; background-color: rgba(128, 128, 128, 0.1);">Oyuncular</th><th style="border:1px solid rgba(128,128,128,0.3); padding:5px; background-color: rgba(128, 128, 128, 0.1);">Skor</th></tr>
                                     {html_rows}
                                 </table>
                                 """, unsafe_allow_html=True)
@@ -1540,7 +1554,7 @@ else:
                             for (grup_adi, eslesme_adi), grup_df in df_team_summary.groupby(['Grup', 'Eşleşme']):
                                 row = grup_df.iloc[0]
                                 skor = str(row['Canlı Skor'])
-                                skor_html = f"<span style='color:green; font-weight:bold;'>{skor}</span>" if skor != "Oynanmadı" else "<i>Bekleniyor</i>"
+                                skor_html = f"<span style='color:#28a745; font-weight:bold;'>{skor}</span>" if skor != "Oynanmadı" else "<i>Bekleniyor</i>"
                                 t1_n = html.escape(str(row['Takım 1']))
                                 t2_n = html.escape(str(row['Takım 2']))
                                 
@@ -1553,15 +1567,15 @@ else:
                                 with st.expander(expander_title, expanded=st.session_state.expand_all):
                                     st.markdown(f"""
                                     <table style="width:100%; border-collapse: collapse; font-family: sans-serif;">
-                                        <tr><th style="border:1px solid rgba(128,128,128,0.3); padding:5px;">Branş</th><th style="border:1px solid rgba(128,128,128,0.3); padding:5px;">Takımlar</th><th style="border:1px solid rgba(128,128,128,0.3); padding:5px;">Skor</th></tr>
+                                        <tr><th style="border:1px solid rgba(128,128,128,0.3); padding:5px; background-color: rgba(128, 128, 128, 0.1);">Branş</th><th style="border:1px solid rgba(128,128,128,0.3); padding:5px; background-color: rgba(128, 128, 128, 0.1);">Takımlar</th><th style="border:1px solid rgba(128,128,128,0.3); padding:5px; background-color: rgba(128, 128, 128, 0.1);">Skor</th></tr>
                                         {html_rows}
                                     </table>
                                     """, unsafe_allow_html=True)
         else:
             st.info("Gruplar oluşturulmadan maç programı aktif edilemez.")
 
-    # --- SAYFA 5: DUYURULAR ---
-    elif menu_secim == "📢 5. Duyurular":
+    # --- SAYFA 6: DUYURULAR ---
+    elif menu_secim == "📢 6. Duyurular":
         st.subheader("📢 Turnuva Duyuruları ve Belgeler")
         if st.session_state.admin_mi:
             st.markdown("### ✍️ Duyuru Düzenleme (Sadece Başhakem)")
@@ -1613,8 +1627,8 @@ else:
             else:
                 st.write("Sisteme henüz herhangi bir belge yüklenmemiş.")
 
-    # --- SAYFA 6: YÖNETİM & DOSYA İŞLEMLERİ ---
-    elif menu_secim == "⚙️ 6. Yönetim & Dosya":
+    # --- SAYFA 7: YÖNETİM & DOSYA İŞLEMLERİ ---
+    elif menu_secim == "⚙️ 7. Yönetim & Dosya":
         st.subheader(f"⚙️ Gelişmiş Yönetim Paneli ({aktif_asama})")
 
         if st.session_state.admin_mi:
