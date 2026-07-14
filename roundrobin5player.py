@@ -15,18 +15,13 @@ from fpdf import FPDF
 # --- GENEL SAYFA AYARLARI ---
 st.set_page_config(page_title="Tenis Turnuva Otomasyonu", page_icon="🎾", layout="wide", initial_sidebar_state="collapsed")
 
-# --- GÜVENLİK VE GİZLİLİK CSS'İ (KOYU/AÇIK MOD UYUMLU) ---
+# --- GÜVENLİK VE BUTON STİLLERİ (MENÜ ARTIK AÇIK, THEME DEĞİŞTİRİLEBİLİR) ---
 st.markdown("""
 <style>
-    /* Gizlilik Ayarları (Streamlit üst/alt menülerini gizleme) */
-    [data-testid="stToolbar"] {visibility: hidden !important;}
-    [data-testid="stDecoration"] {visibility: hidden !important;}
-    [data-testid="stStatusWidget"] {visibility: hidden !important;}
-    #MainMenu {visibility: hidden !important;}
-    header {visibility: hidden !important;}
+    /* Sadece en alttaki Streamlit reklamını gizliyoruz, üst menü Koyu Mod ayarı için açık bırakıldı */
     footer {visibility: hidden !important;}
     
-    /* Buton Animasyonları ve Zarif Çerçeveler */
+    /* Ana Ekran Devasa Buton Animasyonları */
     .stButton > button {
         border-radius: 12px;
         transition: all 0.2s ease-in-out;
@@ -610,22 +605,115 @@ if st.session_state.admin_mi:
         width=0,
     )
 
+def set_gecerli_mi(t1, t2, is_set3=False, durum="Tamamlandı"):
+    if durum != "Tamamlandı": return True, ""
+    
+    if t1 == 0 and t2 == 0: return True, ""
+    if t1 < 0 or t2 < 0: return False, "Skorlar negatif olamaz."
+    max_s, min_s = max(t1, t2), min(t1, t2)
+    diff = max_s - min_s
+    if is_set3:
+        if max_s >= 10:
+            if max_s == 10 and min_s <= 8: return True, ""
+            elif max_s > 10 and diff == 2: return True, ""
+            else: return False, "Süper Tie-Break kurallarına uymuyor (Örn: 10-8 veya 12-10 olmalıdır)."
+        else:
+            if max_s < 6: return False, "Set en az 6 oyun olmalıdır."
+            if max_s == 6 and diff >= 2: return True, ""
+            if max_s == 7 and (diff == 2 or diff == 1): return True, ""
+            return False, "Geçersiz normal set skoru."
+    else:
+        if max_s < 6: return False, "Set en az 6 oyun olmalıdır."
+        if max_s == 6 and diff >= 2: return True, ""
+        if max_s == 7 and (diff == 2 or diff == 1): return True, ""
+        return False, "Geçersiz set skoru."
+
+def eslesmeleri_olustur(grup_adi, takimlar, grup_tipi, format_secimi):
+    if grup_tipi == "3'lü Grup":
+        base_matches = [
+            {"Gün": "1. Gün", "Eşleşme": "2 ve 3", "Takım 1": takimlar[1], "Takım 2": takimlar[2]},
+            {"Gün": "2. Gün", "Eşleşme": "1 ve 3", "Takım 1": takimlar[0], "Takım 2": takimlar[2]},
+            {"Gün": "3. Gün", "Eşleşme": "1 ve 2", "Takım 1": takimlar[0], "Takım 2": takimlar[1]},
+        ]
+    elif grup_tipi == "4'lü Grup":
+        base_matches = [
+            {"Gün": "1. Gün", "Eşleşme": "1 ve 4", "Takım 1": takimlar[0], "Takım 2": takimlar[3]},
+            {"Gün": "1. Gün", "Eşleşme": "2 ve 3", "Takım 1": takimlar[1], "Takım 2": takimlar[2]},
+            {"Gün": "2. Gün", "Eşleşme": "1 ve 3", "Takım 1": takimlar[0], "Takım 2": takimlar[2]},
+            {"Gün": "2. Gün", "Eşleşme": "2 ve 4", "Takım 1": takimlar[1], "Takım 2": takimlar[3]},
+            {"Gün": "3. Gün", "Eşleşme": "1 ve 2", "Takım 1": takimlar[0], "Takım 2": takimlar[1]},
+            {"Gün": "3. Gün", "Eşleşme": "3 ve 4", "Takım 1": takimlar[2], "Takım 2": takimlar[3]},
+        ]
+    elif grup_tipi == "5'li Grup":
+        base_matches = [
+            {"Gün": "1. Gün", "Eşleşme": "2 ve 5", "Takım 1": takimlar[1], "Takım 2": takimlar[4]},
+            {"Gün": "1. Gün", "Eşleşme": "3 ve 4", "Takım 1": takimlar[2], "Takım 2": takimlar[3]},
+            {"Gün": "2. Gün", "Eşleşme": "1 ve 5", "Takım 1": takimlar[0], "Takım 2": takimlar[4]},
+            {"Gün": "2. Gün", "Eşleşme": "2 ve 3", "Takım 1": takimlar[1], "Takım 2": takimlar[2]},
+            {"Gün": "3. Gün", "Eşleşme": "1 ve 4", "Takım 1": takimlar[0], "Takım 2": takimlar[3]},
+            {"Gün": "3. Gün", "Eşleşme": "3 ve 5", "Takım 1": takimlar[2], "Takım 2": takimlar[4]},
+            {"Gün": "4. Gün", "Eşleşme": "1 ve 3", "Takım 1": takimlar[0], "Takım 2": takimlar[2]},
+            {"Gün": "4. Gün", "Eşleşme": "2 ve 4", "Takım 1": takimlar[1], "Takım 2": takimlar[3]},
+            {"Gün": "5. Gün", "Eşleşme": "1 ve 2", "Takım 1": takimlar[0], "Takım 2": takimlar[1]},
+            {"Gün": "5. Gün", "Eşleşme": "4 ve 5", "Takım 1": takimlar[3], "Takım 2": takimlar[4]},
+        ]
+    else: 
+        base_matches = [
+            {"Gün": "1. Gün", "Eşleşme": "1 ve 6", "Takım 1": takimlar[0], "Takım 2": takimlar[5]},
+            {"Gün": "1. Gün", "Eşleşme": "2 ve 5", "Takım 1": takimlar[1], "Takım 2": takimlar[4]},
+            {"Gün": "1. Gün", "Eşleşme": "3 ve 4", "Takım 1": takimlar[2], "Takım 2": takimlar[3]},
+            {"Gün": "2. Gün", "Eşleşme": "1 ve 5", "Takım 1": takimlar[0], "Takım 2": takimlar[4]},
+            {"Gün": "2. Gün", "Eşleşme": "2 ve 3", "Takım 1": takimlar[1], "Takım 2": takimlar[2]},
+            {"Gün": "2. Gün", "Eşleşme": "4 ve 6", "Takım 1": takimlar[3], "Takım 2": takimlar[5]},
+            {"Gün": "3. Gün", "Eşleşme": "1 ve 4", "Takım 1": takimlar[0], "Takım 2": takimlar[3]},
+            {"Gün": "3. Gün", "Eşleşme": "5 ve 3", "Takım 1": takimlar[4], "Takım 2": takimlar[2]},
+            {"Gün": "3. Gün", "Eşleşme": "2 ve 6", "Takım 1": takimlar[1], "Takım 2": takimlar[5]},
+            {"Gün": "4. Gün", "Eşleşme": "1 ve 3", "Takım 1": takimlar[0], "Takım 2": takimlar[2]},
+            {"Gün": "4. Gün", "Eşleşme": "4 ve 2", "Takım 1": takimlar[3], "Takım 2": takimlar[1]},
+            {"Gün": "4. Gün", "Eşleşme": "5 ve 6", "Takım 1": takimlar[4], "Takım 2": takimlar[5]},
+            {"Gün": "5. Gün", "Eşleşme": "1 ve 2", "Takım 1": takimlar[0], "Takım 2": takimlar[1]},
+            {"Gün": "5. Gün", "Eşleşme": "4 ve 5", "Takım 1": takimlar[3], "Takım 2": takimlar[4]},
+            {"Gün": "5. Gün", "Eşleşme": "3 ve 6", "Takım 1": takimlar[2], "Takım 2": takimlar[5]},
+        ]
+    
+    if format_secimi == "5 Maçlık (3 Tek, 2 Çift)":
+        branslar = ["1. Tekler", "2. Tekler", "3. Tekler", "1. Çiftler", "2. Çiftler"]
+    else:
+        branslar = ["1. Tekler", "2. Tekler", "Çiftler"]
+
+    program = []
+    for m in base_matches:
+        for brans in branslar:
+            satir = m.copy()
+            satir["Branş"] = brans
+            satir["Grup"] = grup_adi
+            satir.update({
+                "T1_Oyuncu": "", "T2_Oyuncu": "",
+                "1.Set T1": 0, "1.Set T2": 0, "2.Set T1": 0, "2.Set T2": 0, "3.Set T1": 0, "3.Set T2": 0, "Durum": "Tamamlandı", "STB": False
+            })
+            program.append(satir)
+    return program
+
 # ==============================================================================
 # GLOBAL ÜST BAR VE NAVİGASYON MOTORU
 # ==============================================================================
-st.markdown("<div style='margin-top: -15px;'></div>", unsafe_allow_html=True)
-top_c1, top_c2, top_c3 = st.columns([1.5, 3, 2.5])
+st.markdown("<div style='margin-top: -25px;'></div>", unsafe_allow_html=True)
 
-with top_c1:
-    if st.session_state.current_page != "Home":
-        st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
-        if st.button("🔙 Ana Sayfa", use_container_width=True, type="primary"):
+# 1. SATIR: Sadece Ana Sayfaya Dön Butonu (Alt sayfalardayken görünür)
+if st.session_state.current_page != "Home":
+    col_back, _ = st.columns([1.5, 8.5])
+    with col_back:
+        if st.button("⬅️ ANA SAYFA", type="secondary", use_container_width=True):
             st.session_state.current_page = "Home"
             st.rerun()
+    st.markdown("<hr style='margin-top: 5px; margin-bottom: 15px;'>", unsafe_allow_html=True)
 
-with top_c2:
+# 2. SATIR: Aşama Seçici ve Logolar
+top_c1, top_c2 = st.columns([4, 3])
+
+with top_c1:
     st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
-    asama_c1, asama_c2 = st.columns(2)
+    asama_c1, asama_c2, _ = st.columns([1.5, 1.5, 3])
     with asama_c1:
         if st.button("1. Aşama", type="primary" if st.session_state.aktif_asama == "1. Aşama" else "secondary", use_container_width=True):
             st.session_state.aktif_asama = "1. Aşama"
@@ -635,7 +723,7 @@ with top_c2:
             st.session_state.aktif_asama = "2. Aşama"
             st.rerun()
 
-with top_c3:
+with top_c2:
     ttf_logo_html = ""
     if os.path.exists("TTFLOGO.png"):
         with open("TTFLOGO.png", "rb") as f:
@@ -645,7 +733,7 @@ with top_c3:
         ttf_logo_html = '<div style="background-color: #0B3B24; color: white; padding: 10px 15px; border-radius: 12px; font-weight: bold; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.3s ease;">🇹🇷 TTF</div>'
 
     st.markdown(f"""
-        <div style="display: flex; gap: 10px; justify-content: flex-end; align-items: center; margin-top: 10px;">
+        <div style="display: flex; gap: 10px; justify-content: flex-end; align-items: center; margin-top: 5px;">
             <a href="https://i-kort.ttf.org.tr/" target="_blank" style="text-decoration: none; display: block; width: 100px;">
                 <div style="background-color: #0056b3; color: white; padding: 10px 15px; border-radius: 12px; font-weight: bold; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.3s ease; width: 100%;">
                     🎾 i-Kort
@@ -655,20 +743,16 @@ with top_c3:
                 {ttf_logo_html}
             </a>
         </div>
-        <style>
-            a:hover div {{ filter: brightness(1.2); transform: translateY(-2px); }}
-            a:hover img {{ transform: translateY(-2px) scale(1.05); }}
-        </style>
     """, unsafe_allow_html=True)
 
 st.markdown("---")
 
 def render_big_button(icon, title, target_page):
-    # Yeni Güvenli ve Devasa Buton Tasarımı
-    st.markdown(f"<div style='text-align:center; font-size: 50px; margin-bottom: -10px; padding-top: 15px;'>{icon}</div>", unsafe_allow_html=True)
-    if st.button(title, use_container_width=True, key=f"btn_{target_page}"):
-        st.session_state.current_page = target_page
-        st.rerun()
+    with st.container(border=True):
+        st.markdown(f"<div style='text-align:center; font-size: 50px; margin-bottom: -10px; padding-top: 15px;'>{icon}</div>", unsafe_allow_html=True)
+        if st.button(title, use_container_width=True, key=f"btn_{target_page}"):
+            st.session_state.current_page = target_page
+            st.rerun()
 
 if st.session_state.current_page == "Home":
     st.markdown("<h1 style='text-align:center;'>🎾 Turnuva Ana Ekranı</h1><br>", unsafe_allow_html=True)
@@ -717,7 +801,7 @@ else:
     menu_secim = st.session_state.current_page
     aktif_asama = st.session_state.aktif_asama
     
-    st.markdown(f"<h3 style='margin-top: -5px;'>{menu_secim} ({aktif_asama})</h3>", unsafe_allow_html=True)
+    st.markdown(f"<h3 style='margin-top: -15px;'>{menu_secim} ({aktif_asama})</h3>", unsafe_allow_html=True)
     st.markdown("---")
 
     # --- SAYFA 1: GRUP AYARLARI ---
@@ -865,6 +949,19 @@ else:
                         else: st.session_state.skor_tablosu = pd.concat([st.session_state.skor_tablosu, yeni_df], ignore_index=True)
                         ortak_veriyi_kaydet()
                         st.success(f"{aktif_asama} grubu başarıyla oluşturuldu!")
+                    
+            if st.session_state.takim_kadrolari:
+                st.markdown("---")
+                st.markdown(f"### 📁 Mevcut Kayıtlı Gruplar ve Kadrolar ({aktif_asama})")
+                gosterilecek_gruplar_klasor = dogal_sirala([g for g in st.session_state.takim_kadrolari.keys() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama])
+                for g_isim in gosterilecek_gruplar_klasor:
+                    f_turu = st.session_state.grup_formatlari.get(g_isim, "3 Maçlık (2 Tek, 1 Çift)")
+                    f_kat = st.session_state.grup_kategorileri.get(g_isim, "Erkekler")
+                    with st.expander(f"📁 {g_isim} ({f_kat} | {f_turu})"):
+                        g_kadro = st.session_state.takim_kadrolari[g_isim]
+                        for t_isim in dogal_sirala(list(g_kadro.keys())):
+                            st.markdown(f"**🛡️ {t_isim}**")
+                            st.write(", ".join(g_kadro[t_isim]) if g_kadro[t_isim] else "Oyuncu yok")
         else:
             st.warning("🔒 Bu panel dışarıya kapalıdır. Lütfen giriş yapınız.")
 
@@ -1071,7 +1168,7 @@ else:
                 gosterilecek_gruplar = mevcut_gruplar if "Tüm Grupları Göster" in secilen_gruplar or len(secilen_gruplar) == 0 else [g for g in secilen_gruplar if g != "Tüm Grupları Göster"]
 
                 pdf_gruplar_data = {}
-                for gp in gosterilecek_gruplar:
+                for gp in dogal_sirala(gosterilecek_gruplar):
                     if gp in mevcut_gruplar:
                         g_kat = st.session_state.grup_kategorileri.get(gp, "Erkekler")
                         st.markdown(f"### 🏆 {gp} Puan Durumu ({g_kat})")
@@ -1139,26 +1236,24 @@ else:
             else:
                 st.info(f"Bu aşamada henüz maç bulunmuyor.")
 
-    # --- SAYFA 4: TAKIM KADROLARI (YENİ SEKME) ---
+    # --- SAYFA 4: TAKIM KADROLARI (DİKEY LİSTE) ---
     elif menu_secim == "🛡️ 4. Takım Kadroları":
         st.markdown(f"### 🛡️ Takımlar ve Oyuncu Kadroları ({aktif_asama})")
         if st.session_state.takim_kadrolari:
-            gosterilecek_gruplar_klasor = [g for g in st.session_state.takim_kadrolari.keys() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama]
+            gosterilecek_gruplar_klasor = dogal_sirala([g for g in st.session_state.takim_kadrolari.keys() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama])
             
             if not gosterilecek_gruplar_klasor:
                 st.info(f"{aktif_asama} için kayıtlı takım bulunmamaktadır.")
             else:
-                for g_isim in dogal_sirala(gosterilecek_gruplar_klasor):
+                for g_isim in gosterilecek_gruplar_klasor:
                     f_turu = st.session_state.grup_formatlari.get(g_isim, "3 Maçlık (2 Tek, 1 Çift)")
                     f_kat = st.session_state.grup_kategorileri.get(g_isim, "Erkekler")
-                    with st.expander(f"📁 {g_isim} ({f_kat} | {f_turu})", expanded=True):
+                    with st.expander(f"📁 {g_isim} ({f_kat} | {f_turu})", expanded=False):
                         g_kadro = st.session_state.takim_kadrolari[g_isim]
-                        kadro_cols = st.columns(3)
-                        for idx, t_isim in enumerate(dogal_sirala(list(g_kadro.keys()))):
-                            with kadro_cols[idx % 3]:
-                                st.markdown(f"**🛡️ {t_isim}**")
-                                st.write(", ".join(g_kadro[t_isim]) if g_kadro[t_isim] else "Oyuncu yok")
-                                st.write("")
+                        for t_isim in dogal_sirala(list(g_kadro.keys())):
+                            st.markdown(f"**🛡️ {t_isim}**")
+                            st.write(", ".join(g_kadro[t_isim]) if g_kadro[t_isim] else "Oyuncu yok")
+                            st.markdown("---")
         else:
             st.info("Kayıtlı takım bulunmamaktadır.")
 
