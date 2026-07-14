@@ -21,15 +21,17 @@ st.markdown("""
     /* Sadece en alttaki Streamlit reklamını gizliyoruz, üst menü Koyu Mod ayarı için açık bırakıldı */
     footer {visibility: hidden !important;}
     
-    /* Ana Ekran Devasa Buton Animasyonları */
+    /* Ana Ekran Gerçek Devasa Buton Stilleri */
     .stButton > button {
         border-radius: 12px;
         transition: all 0.2s ease-in-out;
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        min-height: 80px; /* Buton kutularının yüksek olmasını sağlar */
     }
     .stButton > button p {
-        font-size: 16px !important;
+        font-size: 18px !important;
         font-weight: 600 !important;
+        white-space: pre-wrap !important; /* Alt satıra geçmeye zorlar */
     }
     .stButton > button:hover {
         transform: translateY(-2px);
@@ -748,28 +750,26 @@ with top_c2:
 st.markdown("---")
 
 def render_big_button(icon, title, target_page):
-    with st.container(border=True):
-        st.markdown(f"<div style='text-align:center; font-size: 50px; margin-bottom: -10px; padding-top: 15px;'>{icon}</div>", unsafe_allow_html=True)
-        if st.button(title, use_container_width=True, key=f"btn_{target_page}"):
-            st.session_state.current_page = target_page
-            st.rerun()
+    # Bu format butonun tüm yüzeyinin (emoji dahil) tıklanabilir olmasını sağlar
+    if st.button(f"{icon}\n{title}", use_container_width=True, key=f"btn_{target_page}"):
+        st.session_state.current_page = target_page
+        st.rerun()
 
 if st.session_state.current_page == "Home":
     st.markdown("<h1 style='text-align:center;'>🎾 Turnuva Ana Ekranı</h1><br>", unsafe_allow_html=True)
     
     if st.session_state.admin_mi:
         st.markdown("<h4 style='text-align:center;'>👨‍⚖️ Başhakem Kontrol Paneli</h4><br>", unsafe_allow_html=True)
-        c1, c2, c3, c4 = st.columns(4)
-        with c1: render_big_button("👥", "1. Grup Ayarları", "👥 1. Grup Ayarları")
-        with c2: render_big_button("✍️", "2. Skor Girişi", "✍️ 2. Skor Girişi")
-        with c3: render_big_button("🏆", "3. Puan Durumu", "🏆 3. Puan Durumu")
-        with c4: render_big_button("🛡️", "4. Takım Kadroları", "🛡️ 4. Takım Kadroları")
+        c1, c2, c3 = st.columns(3)
+        with c1: render_big_button("👥", "Grup Ayarları", "👥 Grup Ayarları")
+        with c2: render_big_button("✍️", "Skor Girişi", "✍️ Skor Girişi")
+        with c3: render_big_button("🏆", "Puan Durumu", "🏆 Puan Durumu")
         
         st.write("")
-        c5, c6, c7 = st.columns(3)
-        with c5: render_big_button("📅", "5. Maç Programı", "📅 5. Maç Programı")
-        with c6: render_big_button("📢", "6. Duyurular", "📢 6. Duyurular")
-        with c7: render_big_button("⚙️", "7. Yönetim & Dosya", "⚙️ 7. Yönetim & Dosya")
+        c4, c5, c6 = st.columns(3)
+        with c4: render_big_button("📅", "Maç Programı", "📅 Maç Programı")
+        with c5: render_big_button("📢", "Duyurular", "📢 Duyurular")
+        with c6: render_big_button("⚙️", "Yönetim & Dosya", "⚙️ Yönetim & Dosya")
         
         st.divider()
         if st.button("🔓 Çıkış Yap (İzleyici Modu)", type="primary"):
@@ -778,10 +778,10 @@ if st.session_state.current_page == "Home":
 
     else:
         c1, c2, c3, c4 = st.columns(4)
-        with c1: render_big_button("🏆", "Puan Durumu", "🏆 3. Puan Durumu")
-        with c2: render_big_button("🛡️", "Takım Kadroları", "🛡️ 4. Takım Kadroları")
-        with c3: render_big_button("📅", "Maç Fikstürü", "📅 5. Maç Programı")
-        with c4: render_big_button("📢", "Duyurular", "📢 6. Duyurular")
+        with c1: render_big_button("🛡️", "Takım Kadroları", "🛡️ Takım Kadroları")
+        with c2: render_big_button("🏆", "Puan Durumu", "🏆 Puan Durumu")
+        with c3: render_big_button("📅", "Maç Fikstürü", "📅 Maç Programı")
+        with c4: render_big_button("📢", "Duyurular", "📢 Duyurular")
         
         st.write("<br><br><br>", unsafe_allow_html=True)
         with st.expander("👨‍⚖️ Yönetici Girişi"):
@@ -805,7 +805,7 @@ else:
     st.markdown("---")
 
     # --- SAYFA 1: GRUP AYARLARI ---
-    if menu_secim == "👥 1. Grup Ayarları":
+    if menu_secim == "👥 Grup Ayarları":
         if st.session_state.admin_mi:
             if aktif_asama == "1. Aşama":
                 with st.expander("📥 Excel / CSV'den Takım ve Oyuncu Havuzu Yükle", expanded=False):
@@ -962,11 +962,12 @@ else:
                         for t_isim in dogal_sirala(list(g_kadro.keys())):
                             st.markdown(f"**🛡️ {t_isim}**")
                             st.write(", ".join(g_kadro[t_isim]) if g_kadro[t_isim] else "Oyuncu yok")
+                            st.markdown("---")
         else:
             st.warning("🔒 Bu panel dışarıya kapalıdır. Lütfen giriş yapınız.")
 
     # --- SAYFA 2: SKOR GİRİŞİ ---
-    elif menu_secim == "✍️ 2. Skor Girişi":
+    elif menu_secim == "✍️ Skor Girişi":
         if st.session_state.admin_mi:
             if not st.session_state.skor_tablosu.empty:
                 gecerli_gruplar_t2 = [g for g in st.session_state.skor_tablosu['Grup'].unique() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama]
@@ -1154,7 +1155,7 @@ else:
             st.warning("🔒 Skor ve esame giriş paneli dışarıya kapalıdır. Lütfen giriş yapınız.")
 
     # --- SAYFA 3: PUAN DURUMU ---
-    elif menu_secim == "🏆 3. Puan Durumu":
+    elif menu_secim == "🏆 Puan Durumu":
         if not st.session_state.skor_tablosu.empty:
             gecerli_gruplar_t3 = [g for g in st.session_state.skor_tablosu['Grup'].unique() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama]
             df_asama_t3 = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'].isin(gecerli_gruplar_t3)]
@@ -1237,7 +1238,7 @@ else:
                 st.info(f"Bu aşamada henüz maç bulunmuyor.")
 
     # --- SAYFA 4: TAKIM KADROLARI (DİKEY LİSTE) ---
-    elif menu_secim == "🛡️ 4. Takım Kadroları":
+    elif menu_secim == "🛡️ Takım Kadroları":
         st.markdown(f"### 🛡️ Takımlar ve Oyuncu Kadroları ({aktif_asama})")
         if st.session_state.takim_kadrolari:
             gosterilecek_gruplar_klasor = dogal_sirala([g for g in st.session_state.takim_kadrolari.keys() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama])
@@ -1258,7 +1259,7 @@ else:
             st.info("Kayıtlı takım bulunmamaktadır.")
 
     # --- SAYFA 5: MAÇ PROGRAMI ---
-    elif menu_secim == "📅 5. Maç Programı":
+    elif menu_secim == "📅 Maç Programı":
         gosterim_sekli = st.radio("👁️ Fikstür ve PDF Gösterim Şekli:", ["Bireysel Maçlar (Tekler/Çiftler Skorları)", "Takım Maçları (Genel Skor)"], horizontal=True)
         is_bireysel = "Bireysel" in gosterim_sekli
         st.markdown("---")
@@ -1570,7 +1571,7 @@ else:
             st.info("Gruplar oluşturulmadan maç programı aktif edilemez.")
 
     # --- SAYFA 6: DUYURULAR ---
-    elif menu_secim == "📢 6. Duyurular":
+    elif menu_secim == "📢 Duyurular":
         st.subheader("📢 Turnuva Duyuruları ve Belgeler")
         if st.session_state.admin_mi:
             st.markdown("### ✍️ Duyuru Düzenleme (Sadece Başhakem)")
@@ -1623,7 +1624,7 @@ else:
                 st.write("Sisteme henüz herhangi bir belge yüklenmemiş.")
 
     # --- SAYFA 7: YÖNETİM & DOSYA İŞLEMLERİ ---
-    elif menu_secim == "⚙️ 7. Yönetim & Dosya":
+    elif menu_secim == "⚙️ Yönetim & Dosya":
         st.subheader(f"⚙️ Gelişmiş Yönetim Paneli ({aktif_asama})")
 
         if st.session_state.admin_mi:
@@ -1661,7 +1662,7 @@ else:
                             c_f1, c_f2, c_f3 = st.columns(3)
                             with c_f1: yeni_kategori = st.radio("🔄 Kategori Değiştir:", kategori_liste, index=kategori_idx, horizontal=True, key="edit_kategori")
                             with c_f2: yeni_grup_tipi = st.radio("🔄 Grup Tipi Değiştir:", tip_liste, index=tip_idx, horizontal=True, key="edit_grup_tipi")
-                            with c_f3: yeni_format = st.radio("🔄 Müsabaka Formatı Değiştir:", format_liste, index=format_idx, horizontal=True, key="edit_format")
+                            with c_f3: yeni_format = radio("🔄 Müsabaka Formatı Değiştir:", format_liste, index=format_idx, horizontal=True, key="edit_format")
                             
                             fikstur_sifirlanacak_mi = (yeni_grup_tipi != tip_liste[tip_idx]) or (yeni_format != mevcut_format)
                             if fikstur_sifirlanacak_mi:
