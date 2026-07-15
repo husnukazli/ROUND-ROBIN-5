@@ -15,15 +15,10 @@ from fpdf import FPDF
 # --- GENEL SAYFA AYARLARI ---
 st.set_page_config(page_title="Tenis Turnuva Otomasyonu", page_icon="🎾", layout="wide", initial_sidebar_state="collapsed")
 
-# --- GÜVENLİK VE BUTON STİLLERİ (MENÜ VE GITHUB BUTONLARI GİZLENDİ) ---
+# --- GENEL STİLLER (HER İKİ MOD İÇİN ORTAK) ---
 st.markdown("""
 <style>
-    /* Güvenlik: Streamlit üst/alt menülerini, GitHub ikonlarını ve View Source kısmını tamamen gizleme */
-    [data-testid="stToolbar"] {visibility: hidden !important;}
-    [data-testid="stDecoration"] {visibility: hidden !important;}
-    [data-testid="stStatusWidget"] {visibility: hidden !important;}
-    #MainMenu {visibility: hidden !important;}
-    header {visibility: hidden !important;}
+    /* Sadece en alttaki Streamlit reklamını her zaman gizliyoruz */
     footer {visibility: hidden !important;}
     
     /* Ana Ekran Gerçek Devasa Buton Stilleri */
@@ -31,12 +26,12 @@ st.markdown("""
         border-radius: 12px;
         transition: all 0.2s ease-in-out;
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        min-height: 80px;
+        min-height: 80px; 
     }
     .stButton > button p {
         font-size: 18px !important;
         font-weight: 600 !important;
-        white-space: pre-wrap !important;
+        white-space: pre-wrap !important; 
     }
     .stButton > button:hover {
         transform: translateY(-2px);
@@ -44,6 +39,19 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+
+# --- SADECE MİSAFİR MODU İÇİN GİZLİLİK KALKANI ---
+if not st.session_state.get("admin_mi", False):
+    st.markdown("""
+    <style>
+        /* Misafirler için Streamlit üst menülerini, GitHub ikonlarını ve ayarları tamamen gizleme */
+        [data-testid="stToolbar"] {visibility: hidden !important;}
+        [data-testid="stDecoration"] {visibility: hidden !important;}
+        [data-testid="stStatusWidget"] {visibility: hidden !important;}
+        #MainMenu {visibility: hidden !important;}
+        header {visibility: hidden !important;}
+    </style>
+    """, unsafe_allow_html=True)
 
 VERI_DOSYASI = "tenis_grup_turnuvasi_veri.json"
 BELGELER_KLASORU = "turnuva_belgeleri"
@@ -425,7 +433,7 @@ def hesapla_tum_puan_durumu(df_girdi):
             if t1_s2_win: t1_set += 1
             elif t2_s2_win: t2_set += 1
             else:
-                t2_set += 1; t2_oyun += max(0, (6 if s2_t1 <= 4 else 7) - s2_t1)
+                t2_set += 1; t2_oyun += max(0, (6 if s2_t1 <= 4 else 7) - s2_t2)
                 if t1_set == 1 and t2_set == 1:
                     t2_set += 1; t2_oyun += 1 if is_stb else 6
                 return pd.Series([t1_oyun, t2_oyun, t1_set, t2_set])
