@@ -834,12 +834,15 @@ else:
                 eski_fmt = "3 Maçlık (2 Tek, 1 Çift)"
                 eski_tip_idx = 1 if aktif_asama == "1. Aşama" else 1 # Varsayılan 4'lü
                 mevcut_kadro = {}
+                safe_key = "yeni_grup"
             else:
-                grup_adi = secim_grup_modu
-                eski_kat = st.session_state.grup_kategorileri.get(grup_adi, "Erkekler")
-                eski_fmt = st.session_state.grup_formatlari.get(grup_adi, "3 Maçlık (2 Tek, 1 Çift)")
-                mevcut_kadro = st.session_state.takim_kadrolari.get(grup_adi, {})
+                st.info(f"✏️ Şu an **{secim_grup_modu}** grubunun ayarlarını ve kadrolarını görüntülüyorsunuz. Aşağıdan her şeyi güncelleyebilirsiniz.")
+                grup_adi = st.text_input("Grup Adını Düzenle:", value=secim_grup_modu)
+                eski_kat = st.session_state.grup_kategorileri.get(secim_grup_modu, "Erkekler")
+                eski_fmt = st.session_state.grup_formatlari.get(secim_grup_modu, "3 Maçlık (2 Tek, 1 Çift)")
+                mevcut_kadro = st.session_state.takim_kadrolari.get(secim_grup_modu, {})
                 takim_sayisi = len(mevcut_kadro)
+                safe_key = secim_grup_modu.replace(" ", "_")
                 
                 tip_liste_gecici = ["3'lü Grup", "4'lü Grup", "5'li Grup", "6'lı Grup"] if aktif_asama == "1. Aşama" else ["3'lü Grup", "4'lü Grup"]
                 if takim_sayisi == 3: eski_tip_idx = 0
@@ -847,8 +850,6 @@ else:
                 elif takim_sayisi == 5: eski_tip_idx = 2 if len(tip_liste_gecici) > 2 else 0
                 elif takim_sayisi == 6: eski_tip_idx = 3 if len(tip_liste_gecici) > 3 else 0
                 else: eski_tip_idx = 0
-                
-                st.info(f"✏️ Şu an **{grup_adi}** grubunun ayarlarını ve kadrolarını görüntülüyorsunuz. İsimleri ve kadroları güncelleyebilirsiniz.")
             
             grup_adi_temiz = grup_adi.strip()
             
@@ -860,14 +861,13 @@ else:
 
             col_t1, col_t2, col_t3 = st.columns(3)
             with col_t1:
-                kategori_secimi = st.radio("Kategori:", kategori_liste, index=def_kat_idx, horizontal=True)
+                kategori_secimi = st.radio("Kategori:", kategori_liste, index=def_kat_idx, horizontal=True, key=f"kat_{safe_key}")
             with col_t2:
                 tip_liste = ["3'lü Grup", "4'lü Grup", "5'li Grup", "6'lı Grup"] if aktif_asama == "1. Aşama" else ["3'lü Grup", "4'lü Grup"]
-                grup_tipi = st.radio("Grup Tipi:", tip_liste, index=eski_tip_idx, horizontal=True)
+                grup_tipi = st.radio("Grup Tipi:", tip_liste, index=eski_tip_idx, horizontal=True, key=f"tip_{safe_key}")
             with col_t3:
-                format_secimi = st.radio("Müsabaka Maç Formatı:", format_liste, index=def_fmt_idx, horizontal=True)
+                format_secimi = st.radio("Müsabaka Maç Formatı:", format_liste, index=def_fmt_idx, horizontal=True, key=f"fmt_{safe_key}")
             
-            # Seçili formata göre uyarı:
             fikstur_sifirlanacak_mi = False
             if secim_grup_modu != "➕ Yeni Grup Oluştur (Elle İsim Yaz)":
                 if format_secimi != eski_fmt or int(grup_tipi[0]) != takim_sayisi:
@@ -877,7 +877,6 @@ else:
             havuz_isimleri = ["✏️ Yeni / Listede Olmayan Takım (Elle Gir)"]
             baska_gruplardaki_takimlar = {}
 
-            # Çakışma kontrolü için diğer gruplardaki takımları al (Kendi içindeki takımları hariç tut)
             for g_n, g_k in st.session_state.takim_kadrolari.items():
                 g_kat = st.session_state.grup_kategorileri.get(g_n, "Erkekler")
                 g_asam = st.session_state.grup_asamalari.get(g_n, "1. Aşama")
@@ -935,10 +934,10 @@ else:
                                 def_secim_idx = h_idx
                                 break
 
-                    secim = st.selectbox(f"{i+1}. Takım Seçimi", options=havuz_isimleri, index=def_secim_idx, key=f"sec_takim_{i}", label_visibility="collapsed")
+                    secim = st.selectbox(f"{i+1}. Takım Seçimi", options=havuz_isimleri, index=def_secim_idx, key=f"sec_{safe_key}_{i}", label_visibility="collapsed")
                     
                     if secim == "✏️ Yeni / Listede Olmayan Takım (Elle Gir)":
-                        t_isim = st.text_input("Takım Adı:", value=eski_takim_adi if def_secim_idx==0 else "", key=f"isim_t_{i}", placeholder="Takım Adı Yazın")
+                        t_isim = st.text_input("Takım Adı:", value=eski_takim_adi if def_secim_idx==0 else "", key=f"isim_{safe_key}_{i}", placeholder="Takım Adı Yazın")
                         if def_secim_idx == 0 and eski_takim_adi: def_kadro = "\n".join(mevcut_kadro.get(eski_takim_adi, []))
                         else: def_kadro = ""
                     elif aktif_asama == "2. Aşama":
@@ -963,7 +962,7 @@ else:
                         else:
                             def_kadro = "\n".join(st.session_state.takim_havuzu.get(secim, []))
                     
-                    oyuncular_raw = st.text_area(f"✍️ Kadro (Her satıra bir kişi)", value=def_kadro, key=f"input_kadro_{i}_{secim}", height=150)
+                    oyuncular_raw = st.text_area(f"✍️ Kadro (Her satıra bir kişi)", value=def_kadro, key=f"kadro_{safe_key}_{i}_{secim}", height=150)
                     oyuncu_listesi = [o.strip() for o in oyuncular_raw.split('\n') if o.strip()]
                     if len(oyuncu_listesi) > 10:
                         st.error("Maksimum 10 oyuncu sınırı aşıldı!")
@@ -983,27 +982,40 @@ else:
                 elif not grup_adi_temiz or len(takimlar) != beklenen_sayi or kadro_hata or len(set(takimlar)) != beklenen_sayi:
                     st.error("Lütfen grup adını girin, tüm takımları eksiksiz/farklı doldurun ve kurallara uyun.")
                 else:
-                    if fikstur_sifirlanacak_mi:
-                        st.session_state.skor_tablosu = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] != grup_adi_temiz]
-                        st.session_state.mac_programi = st.session_state.mac_programi[st.session_state.mac_programi['Grup'] != grup_adi_temiz]
+                    is_editing = (secim_grup_modu != "➕ Yeni Grup Oluştur (Elle İsim Yaz)")
+                    eski_isim = secim_grup_modu if is_editing else None
+                    
+                    if is_editing and fikstur_sifirlanacak_mi:
+                        st.session_state.skor_tablosu = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] != eski_isim]
+                        st.session_state.mac_programi = st.session_state.mac_programi[st.session_state.mac_programi['Grup'] != eski_isim]
                         
                         yeni_df = pd.DataFrame(eslesmeleri_olustur(grup_adi_temiz, takimlar, grup_tipi, format_secimi))
                         if st.session_state.skor_tablosu.empty: st.session_state.skor_tablosu = yeni_df
                         else: st.session_state.skor_tablosu = pd.concat([st.session_state.skor_tablosu, yeni_df], ignore_index=True)
                         st.success(f"⚠️ Format değiştiği için {grup_adi_temiz} grubunun fikstürü sıfırlandı ve yeniden oluşturuldu!")
-                    else:
+                    
+                    elif is_editing and not fikstur_sifirlanacak_mi:
+                        if eski_isim != grup_adi_temiz:
+                            st.session_state.skor_tablosu.loc[st.session_state.skor_tablosu['Grup'] == eski_isim, 'Grup'] = grup_adi_temiz
+                            st.session_state.mac_programi.loc[st.session_state.mac_programi['Grup'] == eski_isim, 'Grup'] = grup_adi_temiz
+                        
                         if isim_degisiklikleri:
                             for e_a, y_a in isim_degisiklikleri.items():
                                 st.session_state.skor_tablosu.replace({e_a: y_a}, inplace=True)
                                 st.session_state.mac_programi.replace({e_a: y_a}, inplace=True)
-                                
-                        if grup_adi_temiz not in st.session_state.skor_tablosu['Grup'].values:
-                            yeni_df = pd.DataFrame(eslesmeleri_olustur(grup_adi_temiz, takimlar, grup_tipi, format_secimi))
-                            if st.session_state.skor_tablosu.empty: st.session_state.skor_tablosu = yeni_df
-                            else: st.session_state.skor_tablosu = pd.concat([st.session_state.skor_tablosu, yeni_df], ignore_index=True)
-                            st.success(f"✅ {grup_adi_temiz} grubu başarıyla oluşturuldu!")
-                        else:
-                            st.success("✅ Kadrolar başarıyla güncellendi, eski fikstür skorları korundu.")
+                        st.success("✅ Kadrolar başarıyla güncellendi, eski fikstür skorları korundu.")
+                        
+                    elif not is_editing:
+                        yeni_df = pd.DataFrame(eslesmeleri_olustur(grup_adi_temiz, takimlar, grup_tipi, format_secimi))
+                        if st.session_state.skor_tablosu.empty: st.session_state.skor_tablosu = yeni_df
+                        else: st.session_state.skor_tablosu = pd.concat([st.session_state.skor_tablosu, yeni_df], ignore_index=True)
+                        st.success(f"✅ {grup_adi_temiz} grubu başarıyla oluşturuldu!")
+
+                    if is_editing and eski_isim != grup_adi_temiz:
+                        if eski_isim in st.session_state.takim_kadrolari: del st.session_state.takim_kadrolari[eski_isim]
+                        if eski_isim in st.session_state.grup_formatlari: del st.session_state.grup_formatlari[eski_isim]
+                        if eski_isim in st.session_state.grup_kategorileri: del st.session_state.grup_kategorileri[eski_isim]
+                        if eski_isim in st.session_state.grup_asamalari: del st.session_state.grup_asamalari[eski_isim]
 
                     st.session_state.takim_kadrolari[grup_adi_temiz] = grup_kadrolari
                     st.session_state.grup_formatlari[grup_adi_temiz] = format_secimi
