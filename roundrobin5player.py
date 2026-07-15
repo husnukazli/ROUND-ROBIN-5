@@ -623,95 +623,6 @@ if st.session_state.admin_mi:
         width=0,
     )
 
-def set_gecerli_mi(t1, t2, is_set3=False, durum="Tamamlandı"):
-    if durum != "Tamamlandı": return True, ""
-    
-    if t1 == 0 and t2 == 0: return True, ""
-    if t1 < 0 or t2 < 0: return False, "Skorlar negatif olamaz."
-    max_s, min_s = max(t1, t2), min(t1, t2)
-    diff = max_s - min_s
-    if is_set3:
-        if max_s >= 10:
-            if max_s == 10 and min_s <= 8: return True, ""
-            elif max_s > 10 and diff == 2: return True, ""
-            else: return False, "Süper Tie-Break kurallarına uymuyor (Örn: 10-8 veya 12-10 olmalıdır)."
-        else:
-            if max_s < 6: return False, "Set en az 6 oyun olmalıdır."
-            if max_s == 6 and diff >= 2: return True, ""
-            if max_s == 7 and (diff == 2 or diff == 1): return True, ""
-            return False, "Geçersiz normal set skoru."
-    else:
-        if max_s < 6: return False, "Set en az 6 oyun olmalıdır."
-        if max_s == 6 and diff >= 2: return True, ""
-        if max_s == 7 and (diff == 2 or diff == 1): return True, ""
-        return False, "Geçersiz set skoru."
-
-def eslesmeleri_olustur(grup_adi, takimlar, grup_tipi, format_secimi):
-    if grup_tipi == "3'lü Grup":
-        base_matches = [
-            {"Gün": "1. Gün", "Eşleşme": "2 ve 3", "Takım 1": takimlar[1], "Takım 2": takimlar[2]},
-            {"Gün": "2. Gün", "Eşleşme": "1 ve 3", "Takım 1": takimlar[0], "Takım 2": takimlar[2]},
-            {"Gün": "3. Gün", "Eşleşme": "1 ve 2", "Takım 1": takimlar[0], "Takım 2": takimlar[1]},
-        ]
-    elif grup_tipi == "4'lü Grup":
-        base_matches = [
-            {"Gün": "1. Gün", "Eşleşme": "1 ve 4", "Takım 1": takimlar[0], "Takım 2": takimlar[3]},
-            {"Gün": "1. Gün", "Eşleşme": "2 ve 3", "Takım 1": takimlar[1], "Takım 2": takimlar[2]},
-            {"Gün": "2. Gün", "Eşleşme": "1 ve 3", "Takım 1": takimlar[0], "Takım 2": takimlar[2]},
-            {"Gün": "2. Gün", "Eşleşme": "2 ve 4", "Takım 1": takimlar[1], "Takım 2": takimlar[3]},
-            {"Gün": "3. Gün", "Eşleşme": "1 ve 2", "Takım 1": takimlar[0], "Takım 2": takimlar[1]},
-            {"Gün": "3. Gün", "Eşleşme": "3 ve 4", "Takım 1": takimlar[2], "Takım 2": takimlar[3]},
-        ]
-    elif grup_tipi == "5'li Grup":
-        base_matches = [
-            {"Gün": "1. Gün", "Eşleşme": "2 ve 5", "Takım 1": takimlar[1], "Takım 2": takimlar[4]},
-            {"Gün": "1. Gün", "Eşleşme": "3 ve 4", "Takım 1": takimlar[2], "Takım 2": takimlar[3]},
-            {"Gün": "2. Gün", "Eşleşme": "1 ve 5", "Takım 1": takimlar[0], "Takım 2": takimlar[4]},
-            {"Gün": "2. Gün", "Eşleşme": "2 ve 3", "Takım 1": takimlar[1], "Takım 2": takimlar[2]},
-            {"Gün": "3. Gün", "Eşleşme": "1 ve 4", "Takım 1": takimlar[0], "Takım 2": takimlar[3]},
-            {"Gün": "3. Gün", "Eşleşme": "3 ve 5", "Takım 1": takimlar[2], "Takım 2": takimlar[4]},
-            {"Gün": "4. Gün", "Eşleşme": "1 ve 3", "Takım 1": takimlar[0], "Takım 2": takimlar[2]},
-            {"Gün": "4. Gün", "Eşleşme": "2 ve 4", "Takım 1": takimlar[1], "Takım 2": takimlar[3]},
-            {"Gün": "5. Gün", "Eşleşme": "1 ve 2", "Takım 1": takimlar[0], "Takım 2": takimlar[1]},
-            {"Gün": "5. Gün", "Eşleşme": "4 ve 5", "Takım 1": takimlar[3], "Takım 2": takimlar[4]},
-        ]
-    else: 
-        base_matches = [
-            {"Gün": "1. Gün", "Eşleşme": "1 ve 6", "Takım 1": takimlar[0], "Takım 2": takimlar[5]},
-            {"Gün": "1. Gün", "Eşleşme": "2 ve 5", "Takım 1": takimlar[1], "Takım 2": takimlar[4]},
-            {"Gün": "1. Gün", "Eşleşme": "3 ve 4", "Takım 1": takimlar[2], "Takım 2": takimlar[3]},
-            {"Gün": "2. Gün", "Eşleşme": "1 ve 5", "Takım 1": takimlar[0], "Takım 2": takimlar[4]},
-            {"Gün": "2. Gün", "Eşleşme": "2 ve 3", "Takım 1": takimlar[1], "Takım 2": takimlar[2]},
-            {"Gün": "2. Gün", "Eşleşme": "4 ve 6", "Takım 1": takimlar[3], "Takım 2": takimlar[5]},
-            {"Gün": "3. Gün", "Eşleşme": "1 ve 4", "Takım 1": takimlar[0], "Takım 2": takimlar[3]},
-            {"Gün": "3. Gün", "Eşleşme": "5 ve 3", "Takım 1": takimlar[4], "Takım 2": takimlar[2]},
-            {"Gün": "3. Gün", "Eşleşme": "2 ve 6", "Takım 1": takimlar[1], "Takım 2": takimlar[5]},
-            {"Gün": "4. Gün", "Eşleşme": "1 ve 3", "Takım 1": takimlar[0], "Takım 2": takimlar[2]},
-            {"Gün": "4. Gün", "Eşleşme": "4 ve 2", "Takım 1": takimlar[3], "Takım 2": takimlar[1]},
-            {"Gün": "4. Gün", "Eşleşme": "5 ve 6", "Takım 1": takimlar[4], "Takım 2": takimlar[5]},
-            {"Gün": "5. Gün", "Eşleşme": "1 ve 2", "Takım 1": takimlar[0], "Takım 2": takimlar[1]},
-            {"Gün": "5. Gün", "Eşleşme": "4 ve 5", "Takım 1": takimlar[3], "Takım 2": takimlar[4]},
-            {"Gün": "5. Gün", "Eşleşme": "3 ve 6", "Takım 1": takimlar[2], "Takım 2": takimlar[5]},
-        ]
-    
-    if format_secimi == "5 Maçlık (3 Tek, 2 Çift)":
-        branslar = ["1. Tekler", "2. Tekler", "3. Tekler", "1. Çiftler", "2. Çiftler"]
-    else:
-        branslar = ["1. Tekler", "2. Tekler", "Çiftler"]
-
-    program = []
-    for m in base_matches:
-        for brans in branslar:
-            satir = m.copy()
-            satir["Branş"] = brans
-            satir["Grup"] = grup_adi
-            satir.update({
-                "T1_Oyuncu": "", "T2_Oyuncu": "",
-                "1.Set T1": 0, "1.Set T2": 0, "2.Set T1": 0, "2.Set T2": 0, "3.Set T1": 0, "3.Set T2": 0, "Durum": "Tamamlandı", "STB": False
-            })
-            program.append(satir)
-    return program
-
 # ==============================================================================
 # GLOBAL ÜST BAR VE NAVİGASYON MOTORU
 # ==============================================================================
@@ -905,11 +816,12 @@ else:
                         for sira, row in grup_df.iterrows():
                             takim = row['Takım']
                             if takim not in baska_gruplardaki_takimlar:
-                                if sira == 1: emoji = "🥇"
-                                elif sira == 2: emoji = "🥈"
-                                elif sira == 3: emoji = "🥉"
-                                else: emoji = "🎫"
-                                stage2_havuz.append(f"{emoji} {gp} {sira}.si ({takim})")
+                                # MADALYALAR SİLİNDİ, YERİNE RENKLİ VE GÜVENLİ DAİRELER EKLENDİ
+                                if sira == 1: prefix = "🟢 [ 1. SIRA ]"
+                                elif sira == 2: prefix = "🟡 [ 2. SIRA ]"
+                                elif sira == 3: prefix = "🟠 [ 3. SIRA ]"
+                                else: prefix = "🔴 [ 4. SIRA ]"
+                                stage2_havuz.append(f"{prefix} - {gp} ({takim})")
                 havuz_isimleri += stage2_havuz
             
             beklenen_sayi = int(grup_tipi[0])
