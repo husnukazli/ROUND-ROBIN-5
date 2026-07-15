@@ -63,6 +63,23 @@ if not os.path.exists(BELGELER_KLASORU):
 # SİSTEM FONKSİYONLARI (ORTAK VERİ YAZMA, OKUMA VE PDF)
 # ==============================================================================
 
+# --- YENİ: TEMİZLİK ROBOTU ---
+def temiz_takim_ismi(isim):
+    """
+    İç içe geçmiş madalyaları, renkli yuvarlakları ve "1.si" gibi kalıntıları
+    tamamen temizleyerek takımın asıl saf adını ortaya çıkarır.
+    """
+    t = str(isim).strip()
+    while any(e in t for e in ["🟢", "🔵", "🟡", "🔴", "🥇", "🥈", "🥉", "🎫"]):
+        m = re.match(r'^[🟢🔵🟡🔴🥇🥈🥉🎫].*?\d+\.s[iıuü]\s*\((.*)\)$', t)
+        if m:
+            t = m.group(1).strip()
+        else:
+            for e in ["🟢", "🔵", "🟡", "🔴", "🥇", "🥈", "🥉", "🎫"]:
+                t = t.replace(e, "")
+            t = t.strip()
+    return t
+
 def dogal_sirala(liste):
     def _natural_keys(text):
         return [int(c) if c.isdigit() else c.lower() for c in re.split(r'(\d+)', str(text))]
@@ -611,95 +628,6 @@ if 'mac_programi' in st.session_state:
         if "Kazanan" not in st.session_state.mac_programi.columns:
             st.session_state.mac_programi["Kazanan"] = ""
 
-def set_gecerli_mi(t1, t2, is_set3=False, durum="Tamamlandı"):
-    if durum != "Tamamlandı": return True, ""
-    
-    if t1 == 0 and t2 == 0: return True, ""
-    if t1 < 0 or t2 < 0: return False, "Skorlar negatif olamaz."
-    max_s, min_s = max(t1, t2), min(t1, t2)
-    diff = max_s - min_s
-    if is_set3:
-        if max_s >= 10:
-            if max_s == 10 and min_s <= 8: return True, ""
-            elif max_s > 10 and diff == 2: return True, ""
-            else: return False, "Süper Tie-Break kurallarına uymuyor (Örn: 10-8 veya 12-10 olmalıdır)."
-        else:
-            if max_s < 6: return False, "Set en az 6 oyun olmalıdır."
-            if max_s == 6 and diff >= 2: return True, ""
-            if max_s == 7 and (diff == 2 or diff == 1): return True, ""
-            return False, "Geçersiz normal set skoru."
-    else:
-        if max_s < 6: return False, "Set en az 6 oyun olmalıdır."
-        if max_s == 6 and diff >= 2: return True, ""
-        if max_s == 7 and (diff == 2 or diff == 1): return True, ""
-        return False, "Geçersiz set skoru."
-
-def eslesmeleri_olustur(grup_adi, takimlar, grup_tipi, format_secimi):
-    if grup_tipi == "3'lü Grup":
-        base_matches = [
-            {"Gün": "1. Gün", "Eşleşme": "2 ve 3", "Takım 1": takimlar[1], "Takım 2": takimlar[2]},
-            {"Gün": "2. Gün", "Eşleşme": "1 ve 3", "Takım 1": takimlar[0], "Takım 2": takimlar[2]},
-            {"Gün": "3. Gün", "Eşleşme": "1 ve 2", "Takım 1": takimlar[0], "Takım 2": takimlar[1]},
-        ]
-    elif grup_tipi == "4'lü Grup":
-        base_matches = [
-            {"Gün": "1. Gün", "Eşleşme": "1 ve 4", "Takım 1": takimlar[0], "Takım 2": takimlar[3]},
-            {"Gün": "1. Gün", "Eşleşme": "2 ve 3", "Takım 1": takimlar[1], "Takım 2": takimlar[2]},
-            {"Gün": "2. Gün", "Eşleşme": "1 ve 3", "Takım 1": takimlar[0], "Takım 2": takimlar[2]},
-            {"Gün": "2. Gün", "Eşleşme": "2 ve 4", "Takım 1": takimlar[1], "Takım 2": takimlar[3]},
-            {"Gün": "3. Gün", "Eşleşme": "1 ve 2", "Takım 1": takimlar[0], "Takım 2": takimlar[1]},
-            {"Gün": "3. Gün", "Eşleşme": "3 ve 4", "Takım 1": takimlar[2], "Takım 2": takimlar[3]},
-        ]
-    elif grup_tipi == "5'li Grup":
-        base_matches = [
-            {"Gün": "1. Gün", "Eşleşme": "2 ve 5", "Takım 1": takimlar[1], "Takım 2": takimlar[4]},
-            {"Gün": "1. Gün", "Eşleşme": "3 ve 4", "Takım 1": takimlar[2], "Takım 2": takimlar[3]},
-            {"Gün": "2. Gün", "Eşleşme": "1 ve 5", "Takım 1": takimlar[0], "Takım 2": takimlar[4]},
-            {"Gün": "2. Gün", "Eşleşme": "2 ve 3", "Takım 1": takimlar[1], "Takım 2": takimlar[2]},
-            {"Gün": "3. Gün", "Eşleşme": "1 ve 4", "Takım 1": takimlar[0], "Takım 2": takimlar[3]},
-            {"Gün": "3. Gün", "Eşleşme": "3 ve 5", "Takım 1": takimlar[2], "Takım 2": takimlar[4]},
-            {"Gün": "4. Gün", "Eşleşme": "1 ve 3", "Takım 1": takimlar[0], "Takım 2": takimlar[2]},
-            {"Gün": "4. Gün", "Eşleşme": "2 ve 4", "Takım 1": takimlar[1], "Takım 2": takimlar[3]},
-            {"Gün": "5. Gün", "Eşleşme": "1 ve 2", "Takım 1": takimlar[0], "Takım 2": takimlar[1]},
-            {"Gün": "5. Gün", "Eşleşme": "4 ve 5", "Takım 1": takimlar[3], "Takım 2": takimlar[4]},
-        ]
-    else: 
-        base_matches = [
-            {"Gün": "1. Gün", "Eşleşme": "1 ve 6", "Takım 1": takimlar[0], "Takım 2": takimlar[5]},
-            {"Gün": "1. Gün", "Eşleşme": "2 ve 5", "Takım 1": takimlar[1], "Takım 2": takimlar[4]},
-            {"Gün": "1. Gün", "Eşleşme": "3 ve 4", "Takım 1": takimlar[2], "Takım 2": takimlar[3]},
-            {"Gün": "2. Gün", "Eşleşme": "1 ve 5", "Takım 1": takimlar[0], "Takım 2": takimlar[4]},
-            {"Gün": "2. Gün", "Eşleşme": "2 ve 3", "Takım 1": takimlar[1], "Takım 2": takimlar[2]},
-            {"Gün": "2. Gün", "Eşleşme": "4 ve 6", "Takım 1": takimlar[3], "Takım 2": takimlar[5]},
-            {"Gün": "3. Gün", "Eşleşme": "1 ve 4", "Takım 1": takimlar[0], "Takım 2": takimlar[3]},
-            {"Gün": "3. Gün", "Eşleşme": "5 ve 3", "Takım 1": takimlar[4], "Takım 2": takimlar[2]},
-            {"Gün": "3. Gün", "Eşleşme": "2 ve 6", "Takım 1": takimlar[1], "Takım 2": takimlar[5]},
-            {"Gün": "4. Gün", "Eşleşme": "1 ve 3", "Takım 1": takimlar[0], "Takım 2": takimlar[2]},
-            {"Gün": "4. Gün", "Eşleşme": "4 ve 2", "Takım 1": takimlar[3], "Takım 2": takimlar[1]},
-            {"Gün": "4. Gün", "Eşleşme": "5 ve 6", "Takım 1": takimlar[4], "Takım 2": takimlar[5]},
-            {"Gün": "5. Gün", "Eşleşme": "1 ve 2", "Takım 1": takimlar[0], "Takım 2": takimlar[1]},
-            {"Gün": "5. Gün", "Eşleşme": "4 ve 5", "Takım 1": takimlar[3], "Takım 2": takimlar[4]},
-            {"Gün": "5. Gün", "Eşleşme": "3 ve 6", "Takım 1": takimlar[2], "Takım 2": takimlar[5]},
-        ]
-    
-    if format_secimi == "5 Maçlık (3 Tek, 2 Çift)":
-        branslar = ["1. Tekler", "2. Tekler", "3. Tekler", "1. Çiftler", "2. Çiftler"]
-    else:
-        branslar = ["1. Tekler", "2. Tekler", "Çiftler"]
-
-    program = []
-    for m in base_matches:
-        for brans in branslar:
-            satir = m.copy()
-            satir["Branş"] = brans
-            satir["Grup"] = grup_adi
-            satir.update({
-                "T1_Oyuncu": "", "T2_Oyuncu": "",
-                "1.Set T1": 0, "1.Set T2": 0, "2.Set T1": 0, "2.Set T2": 0, "3.Set T1": 0, "3.Set T2": 0, "Durum": "Tamamlandı", "STB": False
-            })
-            program.append(satir)
-    return program
-
 # --- SAYFADAN ÇIKIŞ GÜVENLİK UYARISI (SADECE BAŞHAKEM İÇİN) ---
 if st.session_state.admin_mi:
     components.html(
@@ -883,17 +811,19 @@ else:
             display_map = {"✏️ Yeni / Listede Olmayan Takım (Elle Gir)": "✏️ Yeni / Listede Olmayan Takım (Elle Gir)"}
             baska_gruplardaki_takimlar = {}
 
+            # Diğer gruplardaki çakışan takımları tespit et
             for g_n, g_k in st.session_state.takim_kadrolari.items():
                 g_kat = st.session_state.grup_kategorileri.get(g_n, "Erkekler")
                 g_asam = st.session_state.grup_asamalari.get(g_n, "1. Aşama")
                 if g_n != grup_adi_temiz and g_kat == kategori_secimi and g_asam == aktif_asama:
-                    for t_n in g_k.keys(): baska_gruplardaki_takimlar[t_n] = g_n
+                    for t_n in g_k.keys(): baska_gruplardaki_takimlar[temiz_takim_ismi(t_n)] = g_n
             
             if aktif_asama == "1. Aşama":
-                musait_havuz = dogal_sirala([t for t in st.session_state.takim_havuzu.keys() if t not in baska_gruplardaki_takimlar])
+                musait_havuz = dogal_sirala([t for t in st.session_state.takim_havuzu.keys() if temiz_takim_ismi(t) not in baska_gruplardaki_takimlar])
                 for t in musait_havuz:
-                    havuz_isimleri.append(t)
-                    display_map[t] = t
+                    temiz_t = temiz_takim_ismi(t)
+                    havuz_isimleri.append(temiz_t)
+                    display_map[temiz_t] = t
             else:
                 stage1_gruplar = []
                 for g in st.session_state.takim_kadrolari.keys():
@@ -910,7 +840,9 @@ else:
                         grup_df = stats_s1[stats_s1['Grup'] == gp].sort_values(by=['Galibiyet', 'Maç Av.', 'Oyun Av.'], ascending=False)
                         grup_df.index = range(1, len(grup_df) + 1)
                         for sira, row in grup_df.iterrows():
-                            takim = row['Takım']
+                            takim_ham = str(row['Takım'])
+                            takim = temiz_takim_ismi(takim_ham)
+                            
                             if takim not in baska_gruplardaki_takimlar:
                                 if sira == 1: emoji = "🟢"
                                 elif sira == 2: emoji = "🔵"
@@ -934,21 +866,22 @@ else:
                 with cols[i]:
                     st.markdown(f"**{i+1}. Takım**")
                     eski_takim_adi = mevcut_takim_isimleri[i] if i < len(mevcut_takim_isimleri) else ""
+                    clean_eski_takim_adi = temiz_takim_ismi(eski_takim_adi)
                     
+                    current_options = havuz_isimleri.copy()
                     def_secim_idx = 0
                     
-                    # Eski takım havuzda yoksa listeye zorla ve temiz bir şekilde ekle
-                    if eski_takim_adi:
-                        if eski_takim_adi in havuz_isimleri:
-                            def_secim_idx = havuz_isimleri.index(eski_takim_adi)
+                    if clean_eski_takim_adi:
+                        if clean_eski_takim_adi in current_options:
+                            def_secim_idx = current_options.index(clean_eski_takim_adi)
                         else:
-                            havuz_isimleri.append(eski_takim_adi)
-                            display_map[eski_takim_adi] = eski_takim_adi
-                            def_secim_idx = len(havuz_isimleri) - 1
+                            current_options.append(clean_eski_takim_adi)
+                            display_map[clean_eski_takim_adi] = clean_eski_takim_adi
+                            def_secim_idx = len(current_options) - 1
 
                     secim = st.selectbox(
                         f"{i+1}. Takım Seçimi", 
-                        options=havuz_isimleri, 
+                        options=current_options, 
                         index=def_secim_idx, 
                         format_func=lambda x: display_map.get(x, x), 
                         key=f"sec_{safe_key}_{i}", 
@@ -956,29 +889,27 @@ else:
                     )
                     
                     if secim == "✏️ Yeni / Listede Olmayan Takım (Elle Gir)":
-                        t_isim = st.text_input("Takım Adı:", value=eski_takim_adi if def_secim_idx==0 else "", key=f"isim_{safe_key}_{i}", placeholder="Takım Adı Yazın")
+                        t_isim = st.text_input("Takım Adı:", value=clean_eski_takim_adi if def_secim_idx==0 else "", key=f"isim_{safe_key}_{i}", placeholder="Takım Adı Yazın")
                     else:
-                        t_isim = secim
+                        t_isim = temiz_takim_ismi(secim)
                         
-                    # YENİ 3 AŞAMALI AKILLI KADRO ARAMA MOTORU
+                    # AKILLI KADRO ARAMA MOTORU
                     def_kadro = ""
                     
-                    # 1. Eski kadroda var mı?
-                    if t_isim == eski_takim_adi:
-                        mevcut_k = mevcut_kadro.get(eski_takim_adi, [])
-                        if mevcut_k and mevcut_k != ["Belirtilmedi"]:
-                            def_kadro = "\n".join(mevcut_k)
-                            
-                    # 2. Tüm gruplarda tarama yap
+                    if t_isim == clean_eski_takim_adi and clean_eski_takim_adi != "":
+                        # Eski sözlükte kirli adıyla kalmış olabilir, onu kontrol ederek al
+                        def_kadro = "\n".join(mevcut_kadro.get(eski_takim_adi, []))
+                        
                     if not def_kadro and t_isim:
+                        # Tüm sistemdeki diğer grupları tara (1. Aşamadan kadroyu şıp diye bulur)
                         for g_n, g_k in st.session_state.takim_kadrolari.items():
-                            if t_isim in g_k:
-                                k_list = g_k[t_isim]
-                                if k_list and k_list != ["Belirtilmedi"]:
-                                    def_kadro = "\n".join(k_list)
+                            for k_isim, k_oyuncular in g_k.items():
+                                if temiz_takim_ismi(k_isim) == t_isim:
+                                    if k_oyuncular and k_oyuncular != ["Belirtilmedi"]:
+                                        def_kadro = "\n".join(k_oyuncular)
                                     break
-                                    
-                    # 3. Ana havuzda ara
+                            if def_kadro: break
+                            
                     if not def_kadro and t_isim:
                         h_list = st.session_state.takim_havuzu.get(t_isim, [])
                         if h_list:
@@ -997,7 +928,11 @@ else:
                             isim_degisiklikleri[eski_takim_adi] = t_isim
 
             if st.button("🚀 Grubu Kaydet / Güncelle", type="primary"):
-                cakisan_takimlar = [t for t in takimlar if t in baska_gruplardaki_takimlar]
+                cakisan_takimlar = []
+                for t in takimlar:
+                    if t in baska_gruplardaki_takimlar:
+                        cakisan_takimlar.append(t)
+                        
                 if cakisan_takimlar:
                     hata_detay = ", ".join([f"'{t}' ({baska_gruplardaki_takimlar[t]})" for t in cakisan_takimlar])
                     st.error(f"⚠️ Hata: Girdiğiniz takım(lar) {kategori_secimi} kategorisinde ({aktif_asama}) zaten başka gruplarda kayıtlı!\nÇakışanlar: {hata_detay}")
@@ -1330,7 +1265,7 @@ else:
                 
                 st.markdown("---")
                 with st.expander("⚖️ Gelişmiş Averaj ve Mini Lig Hesaplayıcı"):
-                    st.info("ℹ️ Üçlü veya dörtlü averaj kilitlenmelerinde bir grup ve sadece averaja dahil edilecek takımları seçin. Sistem, dışarıdaki takımlarla oynanan maçları yoksayarak yepyeni Mini Lig oluşturur.")
+                    st.info("ℹ️ Üçlü veya dörtlü averaj kilitlenmelerinde bir grup ve sadece averaja dahil edilecek takımları seçin. Sistem, dışarıdaki takımlarla oynanan maçları yoksayarak yepyeni bir Mini Lig oluşturur.")
                     
                     avg_gruplar = dogal_sirala(list(df_asama_t3['Grup'].unique()))
                     sec_avg_grup = st.selectbox("Averaj Hesaplanacak Grubu Seçin:", ["Seçiniz"] + avg_gruplar, key="avg_grup_sec")
