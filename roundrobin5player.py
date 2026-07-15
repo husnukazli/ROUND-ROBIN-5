@@ -611,22 +611,6 @@ if 'mac_programi' in st.session_state:
         if "Kazanan" not in st.session_state.mac_programi.columns:
             st.session_state.mac_programi["Kazanan"] = ""
 
-# --- SAYFADAN ÇIKIŞ GÜVENLİK UYARISI (SADECE BAŞHAKEM İÇİN) ---
-if st.session_state.admin_mi:
-    components.html(
-        """
-        <script>
-        const parentWindow = window.parent || window;
-        parentWindow.addEventListener("beforeunload", function (e) {
-            e.preventDefault();
-            e.returnValue = '';
-        });
-        </script>
-        """,
-        height=0,
-        width=0,
-    )
-
 def set_gecerli_mi(t1, t2, is_set3=False, durum="Tamamlandı"):
     if durum != "Tamamlandı": return True, ""
     
@@ -715,6 +699,22 @@ def eslesmeleri_olustur(grup_adi, takimlar, grup_tipi, format_secimi):
             })
             program.append(satir)
     return program
+
+# --- SAYFADAN ÇIKIŞ GÜVENLİK UYARISI (SADECE BAŞHAKEM İÇİN) ---
+if st.session_state.admin_mi:
+    components.html(
+        """
+        <script>
+        const parentWindow = window.parent || window;
+        parentWindow.addEventListener("beforeunload", function (e) {
+            e.preventDefault();
+            e.returnValue = '';
+        });
+        </script>
+        """,
+        height=0,
+        width=0,
+    )
 
 # ==============================================================================
 # GLOBAL ÜST BAR VE NAVİGASYON MOTORU
@@ -935,43 +935,54 @@ else:
                     st.markdown(f"**{i+1}. Takım**")
                     eski_takim_adi = mevcut_takim_isimleri[i] if i < len(mevcut_takim_isimleri) else ""
                     
-                    current_options = havuz_isimleri.copy()
                     def_secim_idx = 0
                     
+                    # Eski takım havuzda yoksa listeye zorla ve temiz bir şekilde ekle
                     if eski_takim_adi:
-                        if eski_takim_adi in current_options:
-                            def_secim_idx = current_options.index(eski_takim_adi)
+                        if eski_takim_adi in havuz_isimleri:
+                            def_secim_idx = havuz_isimleri.index(eski_takim_adi)
                         else:
-                            # Eğer takım henüz 1. aşama maçlarını bitirmediyse veya elle yazıldıysa listeye kendini zorla ekler
-                            current_options.append(eski_takim_adi)
+                            havuz_isimleri.append(eski_takim_adi)
                             display_map[eski_takim_adi] = eski_takim_adi
-                            def_secim_idx = len(current_options) - 1
+                            def_secim_idx = len(havuz_isimleri) - 1
 
-                    # SIHİRLİ KISIM: Seçim format_func sayesinde her zaman "Takım X" şeklinde döner!
-                    secim = st.selectbox(f"{i+1}. Takım Seçimi", options=current_options, index=def_secim_idx, format_func=lambda x: display_map.get(x, x), key=f"sec_{safe_key}_{i}", label_visibility="collapsed")
+                    secim = st.selectbox(
+                        f"{i+1}. Takım Seçimi", 
+                        options=havuz_isimleri, 
+                        index=def_secim_idx, 
+                        format_func=lambda x: display_map.get(x, x), 
+                        key=f"sec_{safe_key}_{i}", 
+                        label_visibility="collapsed"
+                    )
                     
                     if secim == "✏️ Yeni / Listede Olmayan Takım (Elle Gir)":
                         t_isim = st.text_input("Takım Adı:", value=eski_takim_adi if def_secim_idx==0 else "", key=f"isim_{safe_key}_{i}", placeholder="Takım Adı Yazın")
-                        if def_secim_idx == 0 and eski_takim_adi: 
-                            def_kadro = "\n".join(mevcut_kadro.get(eski_takim_adi, []))
-                        else: 
-                            def_kadro = ""
-                    elif aktif_asama == "2. Aşama":
-                        t_isim = secim
-                        if t_isim == eski_takim_adi:
-                            def_kadro = "\n".join(mevcut_kadro.get(eski_takim_adi, []))
-                        else:
-                            def_kadro = ""
-                            for g_n, g_k in st.session_state.takim_kadrolari.items():
-                                if st.session_state.grup_asamalari.get(g_n, "1. Aşama") == "1. Aşama" and t_isim in g_k:
-                                    def_kadro = "\n".join(g_k[t_isim])
-                                    break
                     else:
                         t_isim = secim
-                        if t_isim == eski_takim_adi:
-                            def_kadro = "\n".join(mevcut_kadro.get(eski_takim_adi, []))
-                        else:
-                            def_kadro = "\n".join(st.session_state.takim_havuzu.get(secim, []))
+                        
+                    # YENİ 3 AŞAMALI AKILLI KADRO ARAMA MOTORU
+                    def_kadro = ""
+                    
+                    # 1. Eski kadroda var mı?
+                    if t_isim == eski_takim_adi:
+                        mevcut_k = mevcut_kadro.get(eski_takim_adi, [])
+                        if mevcut_k and mevcut_k != ["Belirtilmedi"]:
+                            def_kadro = "\n".join(mevcut_k)
+                            
+                    # 2. Tüm gruplarda tarama yap
+                    if not def_kadro and t_isim:
+                        for g_n, g_k in st.session_state.takim_kadrolari.items():
+                            if t_isim in g_k:
+                                k_list = g_k[t_isim]
+                                if k_list and k_list != ["Belirtilmedi"]:
+                                    def_kadro = "\n".join(k_list)
+                                    break
+                                    
+                    # 3. Ana havuzda ara
+                    if not def_kadro and t_isim:
+                        h_list = st.session_state.takim_havuzu.get(t_isim, [])
+                        if h_list:
+                            def_kadro = "\n".join(h_list)
                     
                     oyuncular_raw = st.text_area(f"✍️ Kadro (Her satıra bir kişi)", value=def_kadro, key=f"kadro_{safe_key}_{i}_{secim}", height=150)
                     oyuncu_listesi = [o.strip() for o in oyuncular_raw.split('\n') if o.strip()]
@@ -1319,7 +1330,7 @@ else:
                 
                 st.markdown("---")
                 with st.expander("⚖️ Gelişmiş Averaj ve Mini Lig Hesaplayıcı"):
-                    st.info("ℹ️ Üçlü veya dörtlü averaj kilitlenmelerinde bir grup ve sadece averaja dahil edilecek takımları seçin. Sistem, dışarıdaki takımlarla oynanan maçları yoksayarak yepyeni bir Mini Lig oluşturur.")
+                    st.info("ℹ️ Üçlü veya dörtlü averaj kilitlenmelerinde bir grup ve sadece averaja dahil edilecek takımları seçin. Sistem, dışarıdaki takımlarla oynanan maçları yoksayarak yepyeni Mini Lig oluşturur.")
                     
                     avg_gruplar = dogal_sirala(list(df_asama_t3['Grup'].unique()))
                     sec_avg_grup = st.selectbox("Averaj Hesaplanacak Grubu Seçin:", ["Seçiniz"] + avg_gruplar, key="avg_grup_sec")
