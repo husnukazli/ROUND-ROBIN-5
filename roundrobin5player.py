@@ -183,6 +183,7 @@ def hesapla_mac_kazanani(row):
     elif durum == "Takım 1 (Ret.)": durum = "Takım 2 Kazandı (Ret.)"
     elif durum == "Takım 2 (Ret.)": durum = "Takım 1 Kazandı (Ret.)"
 
+    if durum == "Çift Taraflı W/O": return (0, 0)
     if durum == "Takım 1 Kazandı (W/O)" or durum == "Takım 1 Kazandı (Ret.)": return (1, 0)
     if durum == "Takım 2 Kazandı (W/O)" or durum == "Takım 2 Kazandı (Ret.)": return (0, 1)
     
@@ -213,6 +214,8 @@ def get_formatted_match_score(row, target_t1):
 
     brans = str(row['Branş']).replace("1. Tekler", "1.Tek").replace("2. Tekler", "2.Tek").replace("3. Tekler", "3.Tek").replace("1. Çiftler", "1.Çift").replace("2. Çiftler", "2.Çift").replace("Çiftler", "Çift")
 
+    if durum == "Çift Taraflı W/O":
+        return f"<b>{brans}</b>: <span style='opacity: 0.8;'>Çift Taraflı W/O</span>"
     if durum == "Takım 1 Kazandı (W/O)": 
         score_str = "W/O (Galip)" if is_t1 else "W/O (Mağlup)"
         return f"<b>{brans}</b>: {score_str}"
@@ -360,6 +363,7 @@ def hesapla_tum_puan_durumu(df_girdi):
 
         is_stb = bool(row.get('STB', False))
 
+        if durum == "Çift Taraflı W/O": return pd.Series([0, 0, 0, 0])
         if durum == "Takım 1 Kazandı (W/O)": return pd.Series([12, 0, 2, 0])
         if durum == "Takım 2 Kazandı (W/O)": return pd.Series([0, 12, 0, 2])
 
@@ -433,7 +437,7 @@ def hesapla_tum_puan_durumu(df_girdi):
             if t1_s2_win: t1_set += 1
             elif t2_s2_win: t2_set += 1
             else:
-                t2_set += 1; t2_oyun += max(0, (6 if s2_t1 <= 4 else 7) - s2_t2)
+                t2_set += 1; t2_oyun += max(0, (6 if s2_t1 <= 4 else 7) - s2_t1)
                 if t1_set == 1 and t2_set == 1:
                     t2_set += 1; t2_oyun += 1 if is_stb else 6
                 return pd.Series([t1_oyun, t2_oyun, t1_set, t2_set])
@@ -606,6 +610,95 @@ if 'mac_programi' in st.session_state:
             st.session_state.mac_programi["T1 Oyuncu"] = ""; st.session_state.mac_programi["T2 Oyuncu"] = ""
         if "Kazanan" not in st.session_state.mac_programi.columns:
             st.session_state.mac_programi["Kazanan"] = ""
+
+def set_gecerli_mi(t1, t2, is_set3=False, durum="Tamamlandı"):
+    if durum != "Tamamlandı": return True, ""
+    
+    if t1 == 0 and t2 == 0: return True, ""
+    if t1 < 0 or t2 < 0: return False, "Skorlar negatif olamaz."
+    max_s, min_s = max(t1, t2), min(t1, t2)
+    diff = max_s - min_s
+    if is_set3:
+        if max_s >= 10:
+            if max_s == 10 and min_s <= 8: return True, ""
+            elif max_s > 10 and diff == 2: return True, ""
+            else: return False, "Süper Tie-Break kurallarına uymuyor (Örn: 10-8 veya 12-10 olmalıdır)."
+        else:
+            if max_s < 6: return False, "Set en az 6 oyun olmalıdır."
+            if max_s == 6 and diff >= 2: return True, ""
+            if max_s == 7 and (diff == 2 or diff == 1): return True, ""
+            return False, "Geçersiz normal set skoru."
+    else:
+        if max_s < 6: return False, "Set en az 6 oyun olmalıdır."
+        if max_s == 6 and diff >= 2: return True, ""
+        if max_s == 7 and (diff == 2 or diff == 1): return True, ""
+        return False, "Geçersiz set skoru."
+
+def eslesmeleri_olustur(grup_adi, takimlar, grup_tipi, format_secimi):
+    if grup_tipi == "3'lü Grup":
+        base_matches = [
+            {"Gün": "1. Gün", "Eşleşme": "2 ve 3", "Takım 1": takimlar[1], "Takım 2": takimlar[2]},
+            {"Gün": "2. Gün", "Eşleşme": "1 ve 3", "Takım 1": takimlar[0], "Takım 2": takimlar[2]},
+            {"Gün": "3. Gün", "Eşleşme": "1 ve 2", "Takım 1": takimlar[0], "Takım 2": takimlar[1]},
+        ]
+    elif grup_tipi == "4'lü Grup":
+        base_matches = [
+            {"Gün": "1. Gün", "Eşleşme": "1 ve 4", "Takım 1": takimlar[0], "Takım 2": takimlar[3]},
+            {"Gün": "1. Gün", "Eşleşme": "2 ve 3", "Takım 1": takimlar[1], "Takım 2": takimlar[2]},
+            {"Gün": "2. Gün", "Eşleşme": "1 ve 3", "Takım 1": takimlar[0], "Takım 2": takimlar[2]},
+            {"Gün": "2. Gün", "Eşleşme": "2 ve 4", "Takım 1": takimlar[1], "Takım 2": takimlar[3]},
+            {"Gün": "3. Gün", "Eşleşme": "1 ve 2", "Takım 1": takimlar[0], "Takım 2": takimlar[1]},
+            {"Gün": "3. Gün", "Eşleşme": "3 ve 4", "Takım 1": takimlar[2], "Takım 2": takimlar[3]},
+        ]
+    elif grup_tipi == "5'li Grup":
+        base_matches = [
+            {"Gün": "1. Gün", "Eşleşme": "2 ve 5", "Takım 1": takimlar[1], "Takım 2": takimlar[4]},
+            {"Gün": "1. Gün", "Eşleşme": "3 ve 4", "Takım 1": takimlar[2], "Takım 2": takimlar[3]},
+            {"Gün": "2. Gün", "Eşleşme": "1 ve 5", "Takım 1": takimlar[0], "Takım 2": takimlar[4]},
+            {"Gün": "2. Gün", "Eşleşme": "2 ve 3", "Takım 1": takimlar[1], "Takım 2": takimlar[2]},
+            {"Gün": "3. Gün", "Eşleşme": "1 ve 4", "Takım 1": takimlar[0], "Takım 2": takimlar[3]},
+            {"Gün": "3. Gün", "Eşleşme": "3 ve 5", "Takım 1": takimlar[2], "Takım 2": takimlar[4]},
+            {"Gün": "4. Gün", "Eşleşme": "1 ve 3", "Takım 1": takimlar[0], "Takım 2": takimlar[2]},
+            {"Gün": "4. Gün", "Eşleşme": "2 ve 4", "Takım 1": takimlar[1], "Takım 2": takimlar[3]},
+            {"Gün": "5. Gün", "Eşleşme": "1 ve 2", "Takım 1": takimlar[0], "Takım 2": takimlar[1]},
+            {"Gün": "5. Gün", "Eşleşme": "4 ve 5", "Takım 1": takimlar[3], "Takım 2": takimlar[4]},
+        ]
+    else: 
+        base_matches = [
+            {"Gün": "1. Gün", "Eşleşme": "1 ve 6", "Takım 1": takimlar[0], "Takım 2": takimlar[5]},
+            {"Gün": "1. Gün", "Eşleşme": "2 ve 5", "Takım 1": takimlar[1], "Takım 2": takimlar[4]},
+            {"Gün": "1. Gün", "Eşleşme": "3 ve 4", "Takım 1": takimlar[2], "Takım 2": takimlar[3]},
+            {"Gün": "2. Gün", "Eşleşme": "1 ve 5", "Takım 1": takimlar[0], "Takım 2": takimlar[4]},
+            {"Gün": "2. Gün", "Eşleşme": "2 ve 3", "Takım 1": takimlar[1], "Takım 2": takimlar[2]},
+            {"Gün": "2. Gün", "Eşleşme": "4 ve 6", "Takım 1": takimlar[3], "Takım 2": takimlar[5]},
+            {"Gün": "3. Gün", "Eşleşme": "1 ve 4", "Takım 1": takimlar[0], "Takım 2": takimlar[3]},
+            {"Gün": "3. Gün", "Eşleşme": "5 ve 3", "Takım 1": takimlar[4], "Takım 2": takimlar[2]},
+            {"Gün": "3. Gün", "Eşleşme": "2 ve 6", "Takım 1": takimlar[1], "Takım 2": takimlar[5]},
+            {"Gün": "4. Gün", "Eşleşme": "1 ve 3", "Takım 1": takimlar[0], "Takım 2": takimlar[2]},
+            {"Gün": "4. Gün", "Eşleşme": "4 ve 2", "Takım 1": takimlar[3], "Takım 2": takimlar[1]},
+            {"Gün": "4. Gün", "Eşleşme": "5 ve 6", "Takım 1": takimlar[4], "Takım 2": takimlar[5]},
+            {"Gün": "5. Gün", "Eşleşme": "1 ve 2", "Takım 1": takimlar[0], "Takım 2": takimlar[1]},
+            {"Gün": "5. Gün", "Eşleşme": "4 ve 5", "Takım 1": takimlar[3], "Takım 2": takimlar[4]},
+            {"Gün": "5. Gün", "Eşleşme": "3 ve 6", "Takım 1": takimlar[2], "Takım 2": takimlar[5]},
+        ]
+    
+    if format_secimi == "5 Maçlık (3 Tek, 2 Çift)":
+        branslar = ["1. Tekler", "2. Tekler", "3. Tekler", "1. Çiftler", "2. Çiftler"]
+    else:
+        branslar = ["1. Tekler", "2. Tekler", "Çiftler"]
+
+    program = []
+    for m in base_matches:
+        for brans in branslar:
+            satir = m.copy()
+            satir["Branş"] = brans
+            satir["Grup"] = grup_adi
+            satir.update({
+                "T1_Oyuncu": "", "T2_Oyuncu": "",
+                "1.Set T1": 0, "1.Set T2": 0, "2.Set T1": 0, "2.Set T2": 0, "3.Set T1": 0, "3.Set T2": 0, "Durum": "Tamamlandı", "STB": False
+            })
+            program.append(satir)
+    return program
 
 # --- SAYFADAN ÇIKIŞ GÜVENLİK UYARISI (SADECE BAŞHAKEM İÇİN) ---
 if st.session_state.admin_mi:
@@ -966,7 +1059,7 @@ else:
                                 t2_oyuncu_str = t2_secim_raw if t2_secim_raw != "Seçiniz" else ""
                         
                         with r_cols[2]:
-                            durum_opts = ["Tamamlandı", "Takım 1 Kazandı (W/O)", "Takım 2 Kazandı (W/O)", "Takım 1 Kazandı (Ret.)", "Takım 2 Kazandı (Ret.)"]
+                            durum_opts = ["Tamamlandı", "Takım 1 Kazandı (W/O)", "Takım 2 Kazandı (W/O)", "Takım 1 Kazandı (Ret.)", "Takım 2 Kazandı (Ret.)", "Çift Taraflı W/O"]
                             mevcut_durum = str(row.get('Durum', 'Tamamlandı'))
                             if mevcut_durum == "Takım 1 (W/O)": mevcut_durum = "Takım 2 Kazandı (W/O)"
                             elif mevcut_durum == "Takım 2 (W/O)": mevcut_durum = "Takım 1 Kazandı (W/O)"
@@ -1247,7 +1340,10 @@ else:
                     st.session_state.mac_programi.at[idx, "T1 Oyuncu"] = t1_o
                     st.session_state.mac_programi.at[idx, "T2 Oyuncu"] = t2_o
                     
-                    if durum == "Takım 1 Kazandı (W/O)":
+                    if durum == "Çift Taraflı W/O":
+                        st.session_state.mac_programi.at[idx, "Canlı Skor"] = "Çift Taraflı W/O"
+                        st.session_state.mac_programi.at[idx, "Kazanan"] = ""
+                    elif durum == "Takım 1 Kazandı (W/O)":
                         st.session_state.mac_programi.at[idx, "Canlı Skor"] = "W/O"
                         st.session_state.mac_programi.at[idx, "Kazanan"] = "T1"
                     elif durum == "Takım 2 Kazandı (W/O)":
@@ -1479,8 +1575,8 @@ else:
                                 """, unsafe_allow_html=True)
                     else:
                         if not df_team_summary.empty:
-                            for (grup_adi, eslesme_adi), grup_df in df_team_summary.groupby(['Grup', 'Eşleşme']):
-                                row = grup_df.iloc[0]
+                            for (grup_adi, eslesme_adi), df_grup_t in df_team_summary.groupby(['Grup', 'Eşleşme']):
+                                row = df_grup_t.iloc[0]
                                 skor = str(row['Canlı Skor'])
                                 skor_html = f"<span style='color:#28a745; font-weight:bold;'>{skor}</span>" if skor != "Oynanmadı" else "<i>Bekleniyor</i>"
                                 t1_n = html.escape(str(row['Takım 1']))
