@@ -116,7 +116,6 @@ def get_proportional_widths(pdf, df, usable_width=190):
     total_w = sum(col_widths)
     return [w * (usable_width / total_w) for w in col_widths]
 
-# --- GÜVENLİ PDF BYTE ÇEVİRİCİSİ (HATA ÇÖZÜCÜ) ---
 def get_pdf_bytes(pdf):
     out = pdf.output(dest='S')
     return out.encode('latin-1') if isinstance(out, str) else bytes(out)
@@ -516,7 +515,6 @@ def hesapla_tum_puan_durumu(df_girdi):
     seriler['T1_Win'] = [x[0] for x in win_res]
     seriler['T2_Win'] = [x[1] for x in win_res]
     
-    # Oynanan Maç (Takım Eşleşmesi) Hesaplaması
     seriler['Oynanan'] = seriler.apply(lambda r: 1 if r['T1_Win'] + r['T2_Win'] > 0 or r['T1_Oyun'] + r['T2_Oyun'] > 0 else 0, axis=1)
     
     t1 = seriler[['Grup', 'Takım 1', 'Oynanan', 'T1_Win', 'T1_Match_Win', 'T2_Match_Win', 'T1_Set_Skor', 'T2_Set_Skor', 'T1_Oyun', 'T2_Oyun']].rename(columns={'Takım 1': 'Takım'})
@@ -531,7 +529,6 @@ def hesapla_tum_puan_durumu(df_girdi):
     tum_stats['Oyun Av.'] = tum_stats['Aldığı Oyun'] - tum_stats['Verdiği Oyun']
     return tum_stats
 
-# --- YENİ BAŞHAKEM MANUEL SIRALAMA MOTORU ---
 def sirala_grup_df(grup_df, gp):
     if gp in st.session_state.grup_siralamalari and st.session_state.grup_siralamalari[gp]:
         manuel_sira = st.session_state.grup_siralamalari[gp]
@@ -554,7 +551,8 @@ def ortak_veriyi_kaydet():
         "duyuru_metni": st.session_state.get("duyuru_metni", ""),
         "takim_havuzu": st.session_state.get("takim_havuzu", {}),
         "grup_siralamalari": st.session_state.get("grup_siralamalari", {}),
-        "grup_tamamlandi": st.session_state.get("grup_tamamlandi", {})
+        "grup_tamamlandi": st.session_state.get("grup_tamamlandi", {}),
+        "grup_yas_gruplari": st.session_state.get("grup_yas_gruplari", {})
     }
     with open(VERI_DOSYASI, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
@@ -586,10 +584,10 @@ def ortak_veriyi_yukle():
             st.session_state.takim_havuzu = data.get("takim_havuzu", {})
             st.session_state.grup_siralamalari = data.get("grup_siralamalari", {})
             st.session_state.grup_tamamlandi = data.get("grup_tamamlandi", {})
+            st.session_state.grup_yas_gruplari = data.get("grup_yas_gruplari", {})
         except Exception:
             pass 
 
-# --- GÖRÜNMEZ ANKARA-İSTANBUL KURTARMA ROBOTU ---
 def ankara_istanbul_kurtarma():
     degisiklik_var = False
     grup_hedef = "35 ERKEK 3. GRUP"
@@ -643,6 +641,7 @@ if "takim_havuzu" not in st.session_state: st.session_state.takim_havuzu = {}
 if "takim_kadrolari" not in st.session_state: st.session_state.takim_kadrolari = {}
 if "grup_siralamalari" not in st.session_state: st.session_state.grup_siralamalari = {}
 if "grup_tamamlandi" not in st.session_state: st.session_state.grup_tamamlandi = {}
+if "grup_yas_gruplari" not in st.session_state: st.session_state.grup_yas_gruplari = {}
 
 if "current_page" not in st.session_state: st.session_state.current_page = "Home"
 if "aktif_asama" not in st.session_state: st.session_state.aktif_asama = "1. Aşama"
@@ -669,7 +668,6 @@ if 'mac_programi' in st.session_state:
         if "Kazanan" not in st.session_state.mac_programi.columns:
             st.session_state.mac_programi["Kazanan"] = ""
 
-# --- SAYFADAN ÇIKIŞ GÜVENLİK UYARISI (SADECE BAŞHAKEM İÇİN) ---
 if st.session_state.admin_mi:
     components.html(
         """
@@ -709,7 +707,11 @@ def set_gecerli_mi(t1, t2, is_set3=False, durum="Tamamlandı"):
         return False, "Geçersiz set skoru."
 
 def eslesmeleri_olustur(grup_adi, takimlar, grup_tipi, format_secimi):
-    if grup_tipi == "3'lü Grup":
+    if grup_tipi == "2'li Grup":
+        base_matches = [
+            {"Gün": "1. Gün", "Eşleşme": "1 ve 2", "Takım 1": takimlar[0], "Takım 2": takimlar[1]}
+        ]
+    elif grup_tipi == "3'lü Grup":
         base_matches = [
             {"Gün": "1. Gün", "Eşleşme": "2 ve 3", "Takım 1": takimlar[1], "Takım 2": takimlar[2]},
             {"Gün": "2. Gün", "Eşleşme": "1 ve 3", "Takım 1": takimlar[0], "Takım 2": takimlar[2]},
@@ -899,20 +901,33 @@ else:
                             ortak_veriyi_kaydet(); st.rerun()
                 st.markdown("---")
             
-            col_t1, col_t2, col_t3 = st.columns(3)
+            # --- YENİ 4'LÜ SÜTUN YAPISI VE YAŞ SEÇİCİ ---
+            yas_secenekleri = ["Yaş Belirtme"] + [f"{i}+" for i in range(30, 85, 5)]
+            col_y, col_t1, col_t2, col_t3 = st.columns(4)
+            
+            with col_y:
+                yas_secimi = st.selectbox("Yaş Grubu:", yas_secenekleri)
             with col_t1:
                 kategori_secimi = st.radio("Kategori:", ["Erkekler", "Kadınlar"], horizontal=True)
             with col_t2:
                 if aktif_asama == "1. Aşama":
                     grup_tipi_liste = ["3'lü Grup", "4'lü Grup", "5'li Grup", "6'lı Grup"]
                 else:
-                    grup_tipi_liste = ["3'lü Grup", "4'lü Grup"]
+                    grup_tipi_liste = ["2'li Grup", "3'lü Grup", "4'lü Grup"]
                 grup_tipi = st.radio("Grup Tipi:", grup_tipi_liste, horizontal=True)
             with col_t3:
-                format_secimi = st.radio("Müsabaka Maç Formatı:", ["3 Maçlık (2 Tek, 1 Çift)", "5 Maçlık (3 Tek, 2 Çift)"], horizontal=True)
+                format_secimi = st.radio("Müsabaka Formatı:", ["3 Maçlık (2 Tek, 1 Çift)", "5 Maçlık (3 Tek, 2 Çift)"], horizontal=True)
             
-            grup_adi = st.text_input("Grup Adı:", placeholder="Örn: 35+ Erkekler A Grubu" if aktif_asama == "1. Aşama" else "Örn: 35+ Birinciler Grubu")
-            grup_adi_temiz = grup_adi.strip()
+            grup_adi_raw = st.text_input("Grup Özel Adı (Örn: A Grubu, 1. Grup, Şampiyonluk Grubu):", placeholder="Sadece grubun harfini veya numarasını yazın")
+            
+            # --- OTOMATİK İSİMLENDİRME MOTORU ---
+            if yas_secimi != "Yaş Belirtme":
+                tam_grup_adi = f"{yas_secimi} {kategori_secimi} {grup_adi_raw.strip()}".strip()
+            else:
+                tam_grup_adi = f"{kategori_secimi} {grup_adi_raw.strip()}".strip()
+            
+            st.markdown(f"<div style='margin-top:-10px; margin-bottom:15px; font-size:14px; color:#555;'>📌 <b>Oluşacak Tam Grup Adı:</b> <span style='color:#000;'>{tam_grup_adi}</span></div>", unsafe_allow_html=True)
+            grup_adi_temiz = tam_grup_adi
             
             havuz_isimleri = ["✏️ Yeni / Listede Olmayan Takım (Elle Gir)"]
             baska_gruplardaki_takimlar = {}
@@ -945,10 +960,9 @@ else:
                 stage2_havuz = []
                 if not stats_s1.empty:
                     for gp in dogal_sirala(list(stats_s1['Grup'].unique())):
-                        # --- YENİ: SADECE TAMAMLANAN GRUPLAR HAVUZA DÜŞER ---
                         if st.session_state.grup_tamamlandi.get(gp, False):
                             grup_df = stats_s1[stats_s1['Grup'] == gp].copy()
-                            grup_df = sirala_grup_df(grup_df, gp) # Manuel sıralama varsa ona göre dizer
+                            grup_df = sirala_grup_df(grup_df, gp) 
                             for sira, row in grup_df.iterrows():
                                 takim = row['Takım']
                                 if takim not in baska_gruplardaki_takimlar:
@@ -958,7 +972,8 @@ else:
                 if not stage2_havuz:
                     st.info("ℹ️ 2. Aşama havuzu şu an boş. Bunun sebebi 1. Aşama'da 'Maçları Tamamlandı' olarak işaretlenmiş hiçbir grup olmamasıdır. Lütfen önce 'Puan Durumu' sekmesinden biten grupları kilitleyip onaylayın.")
             
-            if grup_tipi == "3'lü Grup": beklenen_sayi = 3
+            if grup_tipi == "2'li Grup": beklenen_sayi = 2
+            elif grup_tipi == "3'lü Grup": beklenen_sayi = 3
             elif grup_tipi == "4'lü Grup": beklenen_sayi = 4
             elif grup_tipi == "5'li Grup": beklenen_sayi = 5
             else: beklenen_sayi = 6
@@ -966,9 +981,9 @@ else:
             st.markdown(f"### 🛡️ Takım ve Kadro Seçimi ({beklenen_sayi} Takım)")
             takimlar = []; grup_kadrolari = {}; kadro_hata = False
             
-            cols = st.columns(beklenen_sayi)
+            cols = st.columns(beklenen_sayi if beklenen_sayi < 5 else 4)
             for i in range(beklenen_sayi):
-                with cols[i]:
+                with cols[i % len(cols)]:
                     st.markdown(f"**{i+1}. Takım**")
                     secim = st.selectbox(f"{i+1}. Takım Seçimi", options=havuz_isimleri, key=f"sec_takim_{i}", label_visibility="collapsed")
                     
@@ -1004,13 +1019,14 @@ else:
                 if cakisan_takimlar:
                     hata_detay = ", ".join([f"'{t}' ({baska_gruplardaki_takimlar[t]})" for t in cakisan_takimlar])
                     st.error(f"⚠️ Hata: Girdiğiniz takım(lar) {kategori_secimi} kategorisinde ({aktif_asama}) zaten kayıtlı!\nÇakışanlar: {hata_detay}")
-                elif not grup_adi or len(takimlar) != beklenen_sayi or kadro_hata or len(set(takimlar)) != beklenen_sayi:
-                    st.error("Lütfen grup adını girin, tüm takımları eksiksiz/farklı doldurun ve kurallara uyun.")
+                elif not grup_adi_raw or len(takimlar) != beklenen_sayi or kadro_hata or len(set(takimlar)) != beklenen_sayi:
+                    st.error("Lütfen grup özel adını girin, tüm takımları eksiksiz/farklı doldurun ve kurallara uyun.")
                 else:
                     st.session_state.takim_kadrolari[grup_adi_temiz] = grup_kadrolari
                     st.session_state.grup_formatlari[grup_adi_temiz] = format_secimi
                     st.session_state.grup_kategorileri[grup_adi_temiz] = kategori_secimi
                     st.session_state.grup_asamalari[grup_adi_temiz] = aktif_asama
+                    st.session_state.grup_yas_gruplari[grup_adi_temiz] = yas_secimi
                     
                     if not st.session_state.skor_tablosu.empty and grup_adi_temiz in st.session_state.skor_tablosu['Grup'].unique():
                         ortak_veriyi_kaydet()
@@ -1263,7 +1279,6 @@ else:
                         with tab1:
                             st.dataframe(grup_df, use_container_width=True)
                             
-                            # --- YENİ UYARILAR (İZLEYİCİLER VE HAKEMLER İÇİN) ---
                             if st.session_state.grup_tamamlandi.get(gp, False):
                                 st.success("✅ Bu grubun maçları tamamlanmış ve sıralaması kilitlenmiştir.")
                                 
@@ -1281,7 +1296,6 @@ else:
                             matris_pdf_bytes = generate_matrix_pdf(gp, matris_takimlar, df_gp_matches)
                             st.download_button(label="📥 Matrisi İndir (PDF - Sade Görünüm)", data=matris_pdf_bytes, file_name=f"matris_{gp}.pdf", mime="application/pdf", key=f"mat_pdf_{gp}")
                         
-                        # --- YENİ BAŞHAKEM SIRALAMA VE KİLİT PANELİ ---
                         if st.session_state.admin_mi:
                             with st.expander(f"🛠️ {gp} - Başhakem Sıralama ve Onay Paneli", expanded=False):
                                 mevcut_takimlar = grup_df['Takım'].tolist()
@@ -1774,13 +1788,13 @@ else:
                             
                             m_kadrolar = st.session_state.takim_kadrolari.get(sec_g, {})
                             mevcut_takim_sayisi = len(m_kadrolar)
-                            tip_liste = ["3'lü Grup", "4'lü Grup", "5'li Grup", "6'lı Grup"] if aktif_asama == "1. Aşama" else ["3'lü Grup", "4'lü Grup"]
+                            tip_liste = ["3'lü Grup", "4'lü Grup", "5'li Grup", "6'lı Grup"] if aktif_asama == "1. Aşama" else ["2'li Grup", "3'lü Grup", "4'lü Grup"]
                             
-                            if mevcut_takim_sayisi == 3: tip_idx = 0
-                            elif mevcut_takim_sayisi == 4: tip_idx = 1
-                            elif mevcut_takim_sayisi == 5: tip_idx = 2 if len(tip_liste) > 2 else 0
-                            elif mevcut_takim_sayisi == 6: tip_idx = 3 if len(tip_liste) > 3 else 0
-                            else: tip_idx = 0
+                            tip_idx = 0
+                            for i_opt, opt in enumerate(tip_liste):
+                                if str(mevcut_takim_sayisi) in opt:
+                                    tip_idx = i_opt
+                                    break
                             
                             mevcut_format = st.session_state.grup_formatlari.get(sec_g, "3 Maçlık (2 Tek, 1 Çift)")
                             format_liste = ["3 Maçlık (2 Tek, 1 Çift)", "5 Maçlık (3 Tek, 2 Çift)"]
@@ -1789,11 +1803,18 @@ else:
                             mevcut_kategori = st.session_state.grup_kategorileri.get(sec_g, "Erkekler")
                             kategori_liste = ["Erkekler", "Kadınlar"]
                             kategori_idx = kategori_liste.index(mevcut_kategori) if mevcut_kategori in kategori_liste else 0
+                            
+                            mevcut_yas = st.session_state.grup_yas_gruplari.get(sec_g, "Yaş Belirtme")
+                            yas_liste = ["Yaş Belirtme"] + [f"{i}+" for i in range(30, 85, 5)]
+                            yas_idx = yas_liste.index(mevcut_yas) if mevcut_yas in yas_liste else 0
 
-                            c_f1, c_f2, c_f3 = st.columns(3)
-                            with c_f1: yeni_kategori = st.radio("🔄 Kategori Değiştir:", kategori_liste, index=kategori_idx, horizontal=True, key="edit_kategori")
-                            with c_f2: yeni_grup_tipi = st.radio("🔄 Grup Tipi Değiştir:", tip_liste, index=tip_idx, horizontal=True, key="edit_grup_tipi")
-                            with c_f3: yeni_format = st.radio("🔄 Müsabaka Formatı Değiştir:", format_liste, index=format_idx, horizontal=True, key="edit_format")
+                            c_y, c_f1, c_f2, c_f3 = st.columns(4)
+                            with c_y: yeni_yas = st.selectbox("🔄 Yaş Grubu:", yas_liste, index=yas_idx, key="edit_yas")
+                            with c_f1: yeni_kategori = st.radio("🔄 Kategori:", kategori_liste, index=kategori_idx, horizontal=True, key="edit_kategori")
+                            with c_f2: yeni_grup_tipi = st.radio("🔄 Grup Tipi:", tip_liste, index=tip_idx, horizontal=True, key="edit_grup_tipi")
+                            with c_f3: yeni_format = st.radio("🔄 Müsabaka Formatı:", format_liste, index=format_idx, horizontal=True, key="edit_format")
+                            
+                            st.caption("💡 Not: Yaş grubunu veya kategoriyi değiştirirseniz, sistem karışıklığını önlemek için yukarıdaki 'Grup Adı' içindeki metni de elle düzeltmeyi unutmayın.")
                             
                             fikstur_sifirlanacak_mi = (yeni_grup_tipi != tip_liste[tip_idx]) or (yeni_format != mevcut_format)
                             if fikstur_sifirlanacak_mi:
@@ -1840,6 +1861,7 @@ else:
                                         st.session_state.grup_formatlari[g_hedef] = yeni_format
                                         st.session_state.grup_kategorileri[g_hedef] = yeni_kategori
                                         st.session_state.grup_asamalari[g_hedef] = aktif_asama
+                                        st.session_state.grup_yas_gruplari[g_hedef] = yeni_yas
                                         
                                         if sec_g != g_hedef:
                                             if sec_g in st.session_state.takim_kadrolari: del st.session_state.takim_kadrolari[sec_g]
@@ -1848,6 +1870,7 @@ else:
                                             if sec_g in st.session_state.grup_asamalari: del st.session_state.grup_asamalari[sec_g]
                                             if sec_g in st.session_state.grup_siralamalari: st.session_state.grup_siralamalari[g_hedef] = st.session_state.grup_siralamalari.pop(sec_g)
                                             if sec_g in st.session_state.grup_tamamlandi: st.session_state.grup_tamamlandi[g_hedef] = st.session_state.grup_tamamlandi.pop(sec_g)
+                                            if sec_g in st.session_state.grup_yas_gruplari: st.session_state.grup_yas_gruplari[g_hedef] = st.session_state.grup_yas_gruplari.pop(sec_g)
                                             
                                         yeni_takim_listesi = list(yeni_k_yapisi.keys())
                                         yeni_df = pd.DataFrame(eslesmeleri_olustur(g_hedef, yeni_takim_listesi, yeni_grup_tipi, yeni_format))
@@ -1861,6 +1884,7 @@ else:
                                         st.session_state.takim_kadrolari[sec_g] = yeni_k_yapisi
                                         st.session_state.grup_kategorileri[sec_g] = yeni_kategori
                                         st.session_state.grup_asamalari[sec_g] = aktif_asama
+                                        st.session_state.grup_yas_gruplari[sec_g] = yeni_yas
                                         
                                         if isim_degisiklikleri:
                                             mask_s = st.session_state.skor_tablosu['Grup'] == sec_g
@@ -1880,6 +1904,7 @@ else:
                                             if sec_g in st.session_state.grup_asamalari: st.session_state.grup_asamalari[g_hedef] = st.session_state.grup_asamalari.pop(sec_g)
                                             if sec_g in st.session_state.grup_siralamalari: st.session_state.grup_siralamalari[g_hedef] = st.session_state.grup_siralamalari.pop(sec_g)
                                             if sec_g in st.session_state.grup_tamamlandi: st.session_state.grup_tamamlandi[g_hedef] = st.session_state.grup_tamamlandi.pop(sec_g)
+                                            if sec_g in st.session_state.grup_yas_gruplari: st.session_state.grup_yas_gruplari[g_hedef] = st.session_state.grup_yas_gruplari.pop(sec_g)
                                         
                                         ortak_veriyi_kaydet()
                                         st.success("Takım ve kadro bilgileri başarıyla güncellendi!")
@@ -1904,6 +1929,7 @@ else:
                         if secilen_sil_grup in st.session_state.grup_asamalari: del st.session_state.grup_asamalari[secilen_sil_grup]
                         if secilen_sil_grup in st.session_state.grup_siralamalari: del st.session_state.grup_siralamalari[secilen_sil_grup]
                         if secilen_sil_grup in st.session_state.grup_tamamlandi: del st.session_state.grup_tamamlandi[secilen_sil_grup]
+                        if secilen_sil_grup in st.session_state.grup_yas_gruplari: del st.session_state.grup_yas_gruplari[secilen_sil_grup]
                         
                         ortak_veriyi_kaydet()
                         st.success(f"'{secilen_sil_grup}' grubu sistemden başarıyla silindi!")
@@ -1926,7 +1952,8 @@ else:
                     "duyuru_metni": st.session_state.duyuru_metni,
                     "takim_havuzu": st.session_state.get("takim_havuzu", {}),
                     "grup_siralamalari": st.session_state.get("grup_siralamalari", {}),
-                    "grup_tamamlandi": st.session_state.get("grup_tamamlandi", {})
+                    "grup_tamamlandi": st.session_state.get("grup_tamamlandi", {}),
+                    "grup_yas_gruplari": st.session_state.get("grup_yas_gruplari", {})
                 }
                 zaman_damgasi = datetime.datetime.now().strftime("%d_%m_%Y_%H%M")
                 yedek_adi = f"turnuva_yedek_{zaman_damgasi}.json"
@@ -1946,6 +1973,7 @@ else:
                         st.session_state.takim_havuzu = d.get("takim_havuzu", {})
                         st.session_state.grup_siralamalari = d.get("grup_siralamalari", {})
                         st.session_state.grup_tamamlandi = d.get("grup_tamamlandi", {})
+                        st.session_state.grup_yas_gruplari = d.get("grup_yas_gruplari", {})
                         ortak_veriyi_kaydet()
                         st.success("Yedek başarıyla yüklendi!")
                         st.rerun()
