@@ -116,6 +116,11 @@ def get_proportional_widths(pdf, df, usable_width=190):
     total_w = sum(col_widths)
     return [w * (usable_width / total_w) for w in col_widths]
 
+# --- GÜVENLİ PDF BYTE ÇEVİRİCİSİ (HATA ÇÖZÜCÜ) ---
+def get_pdf_bytes(pdf):
+    out = pdf.output(dest='S')
+    return out.encode('latin-1') if isinstance(out, str) else bytes(out)
+
 def generate_pdf(df, baslik):
     pdf = FPDF(orientation='P', unit='mm', format='A4')
     pdf.add_page()
@@ -146,7 +151,7 @@ def generate_pdf(df, baslik):
                     
                 pdf_cell_fit(pdf, col_widths[i], 8, text, is_bold=is_bold)
             pdf.ln()
-    return bytes(pdf.output())
+    return get_pdf_bytes(pdf)
 
 def generate_combined_standings_pdf(gruplar_dict):
     pdf = FPDF(orientation='P', unit='mm', format='A4')
@@ -173,7 +178,7 @@ def generate_combined_standings_pdf(gruplar_dict):
                     pdf_cell_fit(pdf, col_widths[i], 8, str(item), is_bold=False)
                 pdf.ln()
         pdf.ln(5)
-    return bytes(pdf.output())
+    return get_pdf_bytes(pdf)
 
 # --- MATRİS VE HESAPLAMA İÇİN YARDIMCI MOTORLAR ---
 def hesapla_mac_kazanani(row):
@@ -347,7 +352,7 @@ def generate_matrix_pdf(grup_adi, takimlar, df_grup):
             val = matrix.at[t1, t2]
             pdf_cell_fit(pdf, col_width, 8, val, is_bold=False)
         pdf.ln()
-    return bytes(pdf.output())
+    return get_pdf_bytes(pdf)
 
 # --- YENİLENMİŞ (AĞIRLIKLI PUAN, OYNANAN MAÇ VE AVERAJ) MOTORU ---
 def hesapla_tum_puan_durumu(df_girdi):
@@ -766,7 +771,6 @@ if st.session_state.current_page != "Home":
     st.markdown("<hr style='margin-top: 5px; margin-bottom: 15px;'>", unsafe_allow_html=True)
 
 top_c1, top_c2 = st.columns([4, 3])
-
 with top_c1:
     st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
     asama_c1, asama_c2, _ = st.columns([1.5, 1.5, 3])
@@ -800,7 +804,6 @@ with top_c2:
             </a>
         </div>
     """, unsafe_allow_html=True)
-
 st.markdown("---")
 
 def render_big_button(icon, title, target_page):
@@ -810,32 +813,27 @@ def render_big_button(icon, title, target_page):
 
 if st.session_state.current_page == "Home":
     st.markdown("<h1 style='text-align:center;'>🎾 Turnuva Ana Ekranı</h1><br>", unsafe_allow_html=True)
-    
     if st.session_state.admin_mi:
         st.markdown("<h4 style='text-align:center;'>👨‍⚖️ Başhakem Kontrol Paneli</h4><br>", unsafe_allow_html=True)
         c1, c2, c3 = st.columns(3)
         with c1: render_big_button("👥", "Grup Ayarları", "👥 Grup Ayarları")
         with c2: render_big_button("✍️", "Skor Girişi", "✍️ Skor Girişi")
         with c3: render_big_button("🏆", "Puan Durumu", "🏆 Puan Durumu")
-        
         st.write("")
         c4, c5, c6 = st.columns(3)
         with c4: render_big_button("📅", "Maç Programı", "📅 Maç Programı")
         with c5: render_big_button("📢", "Duyurular", "📢 Duyurular")
         with c6: render_big_button("⚙️", "Yönetim & Dosya", "⚙️ Yönetim & Dosya")
-        
         st.divider()
         if st.button("🔓 Çıkış Yap (İzleyici Modu)", type="primary"):
             st.session_state.admin_mi = False
             st.rerun()
-
     else:
         c1, c2, c3, c4 = st.columns(4)
         with c1: render_big_button("🛡️", "Takım Kadroları", "🛡️ Takım Kadroları")
         with c2: render_big_button("🏆", "Puan Durumu", "🏆 Puan Durumu")
         with c3: render_big_button("📅", "Maç Fikstürü", "📅 Maç Programı")
         with c4: render_big_button("📢", "Duyurular", "📢 Duyurular")
-        
         st.write("<br><br><br>", unsafe_allow_html=True)
         with st.expander("👨‍⚖️ Yönetici Girişi"):
             girilen_sifre = st.text_input("Şifre:", type="password", key="login_pass")
@@ -844,8 +842,7 @@ if st.session_state.current_page == "Home":
                     st.session_state.admin_mi = True
                     st.success("Giriş Başarılı!")
                     st.rerun()
-                else:
-                    st.error("❌ Hatalı Şifre!")
+                else: st.error("❌ Hatalı Şifre!")
 
 # ==============================================================================
 # ALT SAYFALARIN İÇERİKLERİ
@@ -1851,7 +1848,9 @@ else:
                     "duyuru_metni": st.session_state.duyuru_metni,
                     "takim_havuzu": st.session_state.get("takim_havuzu", {})
                 }
-                st.download_button("📥 Turnuva Veritabanını İndir (.json)", data=json.dumps(export_data, ensure_ascii=False, indent=4), file_name="tenis_grup_turnuva_yedek.json", mime="application/json")
+                zaman_damgasi = datetime.datetime.now().strftime("%d_%m_%Y_%H%M")
+                yedek_adi = f"turnuva_yedek_{zaman_damgasi}.json"
+                st.download_button("📥 Turnuva Veritabanını İndir (.json)", data=json.dumps(export_data, ensure_ascii=False, indent=4), file_name=yedek_adi, mime="application/json")
             with c_ld:
                 up_file = st.file_uploader("Geri Yüklemek İçin Yedek Dosyası Seçin:", type=["json"])
                 if up_file is not None and st.button("📤 Seçilen Yedeği Sisteme Entegre Et"):
