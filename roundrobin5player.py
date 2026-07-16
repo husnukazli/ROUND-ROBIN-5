@@ -214,7 +214,7 @@ def get_formatted_match_score(row, target_t1):
 
     brans = str(row['Branş']).replace("1. Tekler", "1.Tek").replace("2. Tekler", "2.Tek").replace("3. Tekler", "3.Tek").replace("1. Çiftler", "1.Çift").replace("2. Çiftler", "2.Çift").replace("Çiftler", "Çift")
 
-    if durum == "Çift Taraflı W/O":
+    if durum == "Çift Taraflı W/O": 
         return f"<b>{brans}</b>: <span style='opacity: 0.8;'>Çift Taraflı W/O</span>"
     if durum == "Takım 1 Kazandı (W/O)": 
         score_str = "W/O (Galip)" if is_t1 else "W/O (Mağlup)"
@@ -568,6 +568,41 @@ def ortak_veriyi_yukle():
         except Exception:
             pass 
 
+# --- GÖRÜNMEZ ANKARA-İSTANBUL KURTARMA ROBOTU ---
+# Bu kod, geçmişte yanlışlıkla bozulan veritabanını ilk açılışta sessizce onarır.
+def ankara_istanbul_kurtarma():
+    degisiklik_var = False
+    grup_hedef = "35 ERKEK 3. GRUP"
+    
+    if not st.session_state.skor_tablosu.empty:
+        mask_s = st.session_state.skor_tablosu['Grup'] == grup_hedef
+        for idx, row in st.session_state.skor_tablosu[mask_s].iterrows():
+            if row['Eşleşme'] == "1 ve 3" and row['Takım 1'] == "İstanbul" and row['Takım 2'] == "İstanbul":
+                st.session_state.skor_tablosu.at[idx, 'Takım 1'] = "Ankara"
+                degisiklik_var = True
+            elif row['Eşleşme'] == "1 ve 2" and row['Takım 1'] == "İstanbul" and row['Takım 2'] == "Eskişehir":
+                st.session_state.skor_tablosu.at[idx, 'Takım 1'] = "Ankara"
+                degisiklik_var = True
+
+    if not st.session_state.mac_programi.empty:
+        mask_m = st.session_state.mac_programi['Grup'] == grup_hedef
+        for idx, row in st.session_state.mac_programi[mask_m].iterrows():
+            if row['Eşleşme'] == "1 ve 3" and row['Takım 1'] == "İstanbul" and row['Takım 2'] == "İstanbul":
+                st.session_state.mac_programi.at[idx, 'Takım 1'] = "Ankara"
+                degisiklik_var = True
+            elif row['Eşleşme'] == "1 ve 2" and row['Takım 1'] == "İstanbul" and row['Takım 2'] == "Eskişehir":
+                st.session_state.mac_programi.at[idx, 'Takım 1'] = "Ankara"
+                degisiklik_var = True
+                
+    if grup_hedef in st.session_state.takim_kadrolari:
+        kadrolar = st.session_state.takim_kadrolari[grup_hedef]
+        if "İstanbul" in kadrolar and "Ankara" not in kadrolar:
+            st.session_state.takim_kadrolari[grup_hedef]["Ankara"] = st.session_state.takim_havuzu.get("Ankara", ["Belirtilmedi"])
+            degisiklik_var = True
+            
+    if degisiklik_var:
+        ortak_veriyi_kaydet()
+
 def show_pdf(file_path):
     with open(file_path, "rb") as f:
         base64_pdf = base64.b64encode(f.read()).decode('utf-8')
@@ -593,6 +628,7 @@ if "aktif_asama" not in st.session_state: st.session_state.aktif_asama = "1. Aş
 if 'skor_tablosu' not in st.session_state:
     if os.path.exists(VERI_DOSYASI):
         ortak_veriyi_yukle()
+        ankara_istanbul_kurtarma() # --- SİSTEMİ ONARAN ROBOT BURADA ÇALIŞIR ---
     else:
         st.session_state.skor_tablosu = pd.DataFrame(columns=["Grup", "Gün", "Eşleşme", "Branş", "Takım 1", "Takım 2", "T1_Oyuncu", "T2_Oyuncu", "1.Set T1", "1.Set T2", "2.Set T1", "2.Set T2", "3.Set T1", "3.Set T2", "Durum", "STB"])
         st.session_state.mac_programi = pd.DataFrame(columns=["Maç Saati", "Tarih", "Gün Adı", "Kort", "Grup", "Gün", "Branş", "Eşleşme", "Takım 1", "Takım 2", "T1 Oyuncu", "T2 Oyuncu", "Canlı Skor", "Kazanan"])
@@ -610,6 +646,22 @@ if 'mac_programi' in st.session_state:
             st.session_state.mac_programi["T1 Oyuncu"] = ""; st.session_state.mac_programi["T2 Oyuncu"] = ""
         if "Kazanan" not in st.session_state.mac_programi.columns:
             st.session_state.mac_programi["Kazanan"] = ""
+
+# --- SAYFADAN ÇIKIŞ GÜVENLİK UYARISI (SADECE BAŞHAKEM İÇİN) ---
+if st.session_state.admin_mi:
+    components.html(
+        """
+        <script>
+        const parentWindow = window.parent || window;
+        parentWindow.addEventListener("beforeunload", function (e) {
+            e.preventDefault();
+            e.returnValue = '';
+        });
+        </script>
+        """,
+        height=0,
+        width=0,
+    )
 
 def set_gecerli_mi(t1, t2, is_set3=False, durum="Tamamlandı"):
     if durum != "Tamamlandı": return True, ""
@@ -700,28 +752,11 @@ def eslesmeleri_olustur(grup_adi, takimlar, grup_tipi, format_secimi):
             program.append(satir)
     return program
 
-# --- SAYFADAN ÇIKIŞ GÜVENLİK UYARISI (SADECE BAŞHAKEM İÇİN) ---
-if st.session_state.admin_mi:
-    components.html(
-        """
-        <script>
-        const parentWindow = window.parent || window;
-        parentWindow.addEventListener("beforeunload", function (e) {
-            e.preventDefault();
-            e.returnValue = '';
-        });
-        </script>
-        """,
-        height=0,
-        width=0,
-    )
-
 # ==============================================================================
 # GLOBAL ÜST BAR VE NAVİGASYON MOTORU
 # ==============================================================================
 st.markdown("<div style='margin-top: -25px;'></div>", unsafe_allow_html=True)
 
-# 1. SATIR: Sadece Ana Sayfaya Dön Butonu (Alt sayfalardayken görünür)
 if st.session_state.current_page != "Home":
     col_back, _ = st.columns([1.5, 8.5])
     with col_back:
@@ -730,7 +765,6 @@ if st.session_state.current_page != "Home":
             st.rerun()
     st.markdown("<hr style='margin-top: 5px; margin-bottom: 15px;'>", unsafe_allow_html=True)
 
-# 2. SATIR: Aşama Seçici ve Logolar
 top_c1, top_c2 = st.columns([4, 3])
 
 with top_c1:
@@ -1758,9 +1792,13 @@ else:
                                         st.session_state.grup_asamalari[sec_g] = aktif_asama
                                         
                                         if isim_degisiklikleri:
+                                            mask_s = st.session_state.skor_tablosu['Grup'] == sec_g
+                                            mask_m = st.session_state.mac_programi['Grup'] == sec_g
                                             for e_a, y_a in isim_degisiklikleri.items():
-                                                st.session_state.skor_tablosu.replace({e_a: y_a}, inplace=True)
-                                                st.session_state.mac_programi.replace({e_a: y_a}, inplace=True)
+                                                st.session_state.skor_tablosu.loc[mask_s, 'Takım 1'] = st.session_state.skor_tablosu.loc[mask_s, 'Takım 1'].replace(e_a, y_a)
+                                                st.session_state.skor_tablosu.loc[mask_s, 'Takım 2'] = st.session_state.skor_tablosu.loc[mask_s, 'Takım 2'].replace(e_a, y_a)
+                                                st.session_state.mac_programi.loc[mask_m, 'Takım 1'] = st.session_state.mac_programi.loc[mask_m, 'Takım 1'].replace(e_a, y_a)
+                                                st.session_state.mac_programi.loc[mask_m, 'Takım 2'] = st.session_state.mac_programi.loc[mask_m, 'Takım 2'].replace(e_a, y_a)
                                         
                                         if g_hedef != sec_g:
                                             st.session_state.skor_tablosu.loc[st.session_state.skor_tablosu['Grup'] == sec_g, 'Grup'] = g_hedef
