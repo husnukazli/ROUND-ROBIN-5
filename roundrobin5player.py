@@ -550,6 +550,8 @@ def ortak_veriyi_kaydet():
         "grup_asamalari": st.session_state.get("grup_asamalari", {}),
         "duyuru_metni": st.session_state.get("duyuru_metni", ""),
         "takim_havuzu": st.session_state.get("takim_havuzu", {}),
+        "havuz_kategorileri": st.session_state.get("havuz_kategorileri", {}),
+        "havuz_yas_gruplari": st.session_state.get("havuz_yas_gruplari", {}),
         "grup_siralamalari": st.session_state.get("grup_siralamalari", {}),
         "grup_tamamlandi": st.session_state.get("grup_tamamlandi", {}),
         "grup_yas_gruplari": st.session_state.get("grup_yas_gruplari", {})
@@ -582,6 +584,8 @@ def ortak_veriyi_yukle():
             st.session_state.grup_asamalari = data.get("grup_asamalari", {})
             st.session_state.duyuru_metni = data.get("duyuru_metni", "")
             st.session_state.takim_havuzu = data.get("takim_havuzu", {})
+            st.session_state.havuz_kategorileri = data.get("havuz_kategorileri", {})
+            st.session_state.havuz_yas_gruplari = data.get("havuz_yas_gruplari", {})
             st.session_state.grup_siralamalari = data.get("grup_siralamalari", {})
             st.session_state.grup_tamamlandi = data.get("grup_tamamlandi", {})
             st.session_state.grup_yas_gruplari = data.get("grup_yas_gruplari", {})
@@ -589,37 +593,7 @@ def ortak_veriyi_yukle():
             pass 
 
 def ankara_istanbul_kurtarma():
-    degisiklik_var = False
-    grup_hedef = "35 ERKEK 3. GRUP"
-    
-    if not st.session_state.skor_tablosu.empty:
-        mask_s = st.session_state.skor_tablosu['Grup'] == grup_hedef
-        for idx, row in st.session_state.skor_tablosu[mask_s].iterrows():
-            if row['Eşleşme'] == "1 ve 3" and row['Takım 1'] == "İstanbul" and row['Takım 2'] == "İstanbul":
-                st.session_state.skor_tablosu.at[idx, 'Takım 1'] = "Ankara"
-                degisiklik_var = True
-            elif row['Eşleşme'] == "1 ve 2" and row['Takım 1'] == "İstanbul" and row['Takım 2'] == "Eskişehir":
-                st.session_state.skor_tablosu.at[idx, 'Takım 1'] = "Ankara"
-                degisiklik_var = True
-
-    if not st.session_state.mac_programi.empty:
-        mask_m = st.session_state.mac_programi['Grup'] == grup_hedef
-        for idx, row in st.session_state.mac_programi[mask_m].iterrows():
-            if row['Eşleşme'] == "1 ve 3" and row['Takım 1'] == "İstanbul" and row['Takım 2'] == "İstanbul":
-                st.session_state.mac_programi.at[idx, 'Takım 1'] = "Ankara"
-                degisiklik_var = True
-            elif row['Eşleşme'] == "1 ve 2" and row['Takım 1'] == "İstanbul" and row['Takım 2'] == "Eskişehir":
-                st.session_state.mac_programi.at[idx, 'Takım 1'] = "Ankara"
-                degisiklik_var = True
-                
-    if grup_hedef in st.session_state.takim_kadrolari:
-        kadrolar = st.session_state.takim_kadrolari[grup_hedef]
-        if "İstanbul" in kadrolar and "Ankara" not in kadrolar:
-            st.session_state.takim_kadrolari[grup_hedef]["Ankara"] = st.session_state.takim_havuzu.get("Ankara", ["Belirtilmedi"])
-            degisiklik_var = True
-            
-    if degisiklik_var:
-        ortak_veriyi_kaydet()
+    pass
 
 def show_pdf(file_path):
     with open(file_path, "rb") as f:
@@ -638,7 +612,8 @@ if "grup_kategorileri" not in st.session_state: st.session_state.grup_kategorile
 if "grup_asamalari" not in st.session_state: st.session_state.grup_asamalari = {}
 if "duyuru_metni" not in st.session_state: st.session_state.duyuru_metni = ""
 if "takim_havuzu" not in st.session_state: st.session_state.takim_havuzu = {}
-if "takim_kadrolari" not in st.session_state: st.session_state.takim_kadrolari = {}
+if "havuz_kategorileri" not in st.session_state: st.session_state.havuz_kategorileri = {}
+if "havuz_yas_gruplari" not in st.session_state: st.session_state.havuz_yas_gruplari = {}
 if "grup_siralamalari" not in st.session_state: st.session_state.grup_siralamalari = {}
 if "grup_tamamlandi" not in st.session_state: st.session_state.grup_tamamlandi = {}
 if "grup_yas_gruplari" not in st.session_state: st.session_state.grup_yas_gruplari = {}
@@ -875,10 +850,17 @@ else:
 
     # --- SAYFA 1: GRUP AYARLARI ---
     if menu_secim == "👥 Grup Ayarları":
+        yas_secenekleri = ["Yaş Belirtme"] + [f"{i}+" for i in range(30, 85, 5)]
+        
         if st.session_state.admin_mi:
             if aktif_asama == "1. Aşama":
-                with st.expander("📥 Excel / CSV'den Takım ve Oyuncu Havuzu Yükle", expanded=False):
-                    st.info("ℹ️ İpucu: Excel'de sütun başlıklarına 'Takım Adı', altındaki satırlara o takımın oyuncularını yazarak dosya yükleyebilirsiniz.")
+                with st.expander("📥 Akıllı Havuz: Excel / CSV'den Takım Yükle", expanded=False):
+                    st.info("ℹ️ Excel'de sütun başlıklarına 'Takım Adı', altındaki satırlara oyuncuları yazın. Yüklemeden önce bu dosyanın hangi kategori ve yaş grubuna ait olduğunu aşağıdan seçin.")
+                    
+                    c_up1, c_up2 = st.columns(2)
+                    with c_up1: up_yas = st.selectbox("Yüklenecek Dosyanın Yaş Grubu:", yas_secenekleri, key="up_yas")
+                    with c_up2: up_kat = st.radio("Yüklenecek Dosyanın Kategorisi:", ["Erkekler", "Kadınlar"], horizontal=True, key="up_kat")
+                    
                     uploaded_file = st.file_uploader("Takım listesini yükleyin (.xlsx veya .csv)", type=["csv", "xlsx"])
                     if uploaded_file:
                         try:
@@ -888,21 +870,26 @@ else:
                             for col in df_havuz.columns:
                                 if not "Unnamed" in str(col):
                                     oyuncular = df_havuz[col].dropna().astype(str).tolist()
-                                    yeni_havuz[str(col).strip()] = [o.strip() for o in oyuncular if o.strip()]
+                                    t_adi = str(col).strip()
+                                    if t_adi:
+                                        yeni_havuz[t_adi] = [o.strip() for o in oyuncular if o.strip()]
+                                        st.session_state.havuz_kategorileri[t_adi] = up_kat
+                                        st.session_state.havuz_yas_gruplari[t_adi] = up_yas
                             st.session_state.takim_havuzu.update(yeni_havuz)
                             ortak_veriyi_kaydet()
-                            st.success(f"✅ Başarılı! {len(yeni_havuz)} takım sisteme kaydedildi.")
+                            st.success(f"✅ Başarılı! {len(yeni_havuz)} takım '{up_yas} {up_kat}' etiketiyle sisteme kaydedildi.")
                         except Exception as e:
                             st.error(f"Dosya okuma hatası: {e}. Lütfen formatın doğru olduğundan emin olun.")
+                    
                     if st.session_state.takim_havuzu:
                         st.write(f"📊 Sistemde şu an **{len(st.session_state.takim_havuzu)}** hazır takım bulunuyor.")
                         if st.button("🗑️ Takım Havuzunu Temizle"):
                             st.session_state.takim_havuzu = {}
+                            st.session_state.havuz_kategorileri = {}
+                            st.session_state.havuz_yas_gruplari = {}
                             ortak_veriyi_kaydet(); st.rerun()
                 st.markdown("---")
             
-            # --- YENİ 4'LÜ SÜTUN YAPISI VE YAŞ SEÇİCİ ---
-            yas_secenekleri = ["Yaş Belirtme"] + [f"{i}+" for i in range(30, 85, 5)]
             col_y, col_t1, col_t2, col_t3 = st.columns(4)
             
             with col_y:
@@ -916,17 +903,18 @@ else:
                     grup_tipi_liste = ["2'li Grup", "3'lü Grup", "4'lü Grup"]
                 grup_tipi = st.radio("Grup Tipi:", grup_tipi_liste, horizontal=True)
             with col_t3:
-                format_secimi = st.radio("Müsabaka Formatı:", ["3 Maçlık (2 Tek, 1 Çift)", "5 Maçlık (3 Tek, 2 Çift)"], horizontal=True)
+                format_secimi = st.radio("Müsabaka Maç Formatı:", ["3 Maçlık (2 Tek, 1 Çift)", "5 Maçlık (3 Tek, 2 Çift)"], horizontal=True)
             
             grup_adi_raw = st.text_input("Grup Özel Adı (Örn: A Grubu, 1. Grup, Şampiyonluk Grubu):", placeholder="Sadece grubun harfini veya numarasını yazın")
             
-            # --- OTOMATİK İSİMLENDİRME MOTORU ---
             if yas_secimi != "Yaş Belirtme":
                 tam_grup_adi = f"{yas_secimi} {kategori_secimi} {grup_adi_raw.strip()}".strip()
             else:
                 tam_grup_adi = f"{kategori_secimi} {grup_adi_raw.strip()}".strip()
             
-            st.markdown(f"<div style='margin-top:-10px; margin-bottom:15px; font-size:14px; color:#555;'>📌 <b>Oluşacak Tam Grup Adı:</b> <span style='color:#000;'>{tam_grup_adi}</span></div>", unsafe_allow_html=True)
+            if grup_adi_raw.strip() != "":
+                st.markdown(f"<div style='margin-top:-10px; margin-bottom:15px; font-size:14px; color:#555;'>📌 <b>Oluşacak Tam Grup Adı:</b> <span style='color:#000;'>{tam_grup_adi}</span></div>", unsafe_allow_html=True)
+                
             grup_adi_temiz = tam_grup_adi
             
             havuz_isimleri = ["✏️ Yeni / Listede Olmayan Takım (Elle Gir)"]
@@ -936,22 +924,34 @@ else:
                 for g_n, g_k in st.session_state.takim_kadrolari.items():
                     g_kat = st.session_state.grup_kategorileri.get(g_n, "Erkekler")
                     g_asam = st.session_state.grup_asamalari.get(g_n, "1. Aşama")
-                    if g_n != grup_adi_temiz and g_kat == kategori_secimi and g_asam == "1. Aşama":
+                    g_yas = st.session_state.grup_yas_gruplari.get(g_n, "Yaş Belirtme")
+                    
+                    if g_n != grup_adi_temiz and g_kat == kategori_secimi and g_yas == yas_secimi and g_asam == "1. Aşama":
                         for t_n in g_k.keys(): baska_gruplardaki_takimlar[t_n] = g_n
-                musait_havuz = dogal_sirala([t for t in st.session_state.takim_havuzu.keys() if t not in baska_gruplardaki_takimlar])
+                        
+                musait_havuz = dogal_sirala([
+                    t for t in st.session_state.takim_havuzu.keys() 
+                    if t not in baska_gruplardaki_takimlar
+                    and st.session_state.havuz_kategorileri.get(t, "Erkekler") == kategori_secimi
+                    and st.session_state.havuz_yas_gruplari.get(t, "Yaş Belirtme") == yas_secimi
+                ])
                 havuz_isimleri += musait_havuz
             else:
                 for g_n, g_k in st.session_state.takim_kadrolari.items():
                     g_kat = st.session_state.grup_kategorileri.get(g_n, "Erkekler")
                     g_asam = st.session_state.grup_asamalari.get(g_n, "1. Aşama")
-                    if g_n != grup_adi_temiz and g_kat == kategori_secimi and g_asam == "2. Aşama":
+                    g_yas = st.session_state.grup_yas_gruplari.get(g_n, "Yaş Belirtme")
+                    
+                    if g_n != grup_adi_temiz and g_kat == kategori_secimi and g_yas == yas_secimi and g_asam == "2. Aşama":
                         for t_n in g_k.keys(): baska_gruplardaki_takimlar[t_n] = g_n
                 
                 stage1_gruplar = []
                 for g in st.session_state.takim_kadrolari.keys():
                     k = st.session_state.grup_kategorileri.get(g, "Erkekler")
                     a = st.session_state.grup_asamalari.get(g, "1. Aşama")
-                    if k == kategori_secimi and a == "1. Aşama":
+                    y = st.session_state.grup_yas_gruplari.get(g, "Yaş Belirtme")
+                    
+                    if k == kategori_secimi and y == yas_secimi and a == "1. Aşama":
                         stage1_gruplar.append(g)
                         
                 df_s1 = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'].isin(stage1_gruplar)]
@@ -970,7 +970,7 @@ else:
                 havuz_isimleri += stage2_havuz
                 
                 if not stage2_havuz:
-                    st.info("ℹ️ 2. Aşama havuzu şu an boş. Bunun sebebi 1. Aşama'da 'Maçları Tamamlandı' olarak işaretlenmiş hiçbir grup olmamasıdır. Lütfen önce 'Puan Durumu' sekmesinden biten grupları kilitleyip onaylayın.")
+                    st.info(f"ℹ️ 2. Aşama havuzu şu an boş. Bunun sebebi 1. Aşama'da '{yas_secimi} {kategori_secimi}' için 'Maçları Tamamlandı' olarak kilitlenmiş hiçbir grup olmamasıdır.")
             
             if grup_tipi == "2'li Grup": beklenen_sayi = 2
             elif grup_tipi == "3'lü Grup": beklenen_sayi = 3
@@ -1018,10 +1018,16 @@ else:
                 cakisan_takimlar = [t for t in takimlar if t in baska_gruplardaki_takimlar]
                 if cakisan_takimlar:
                     hata_detay = ", ".join([f"'{t}' ({baska_gruplardaki_takimlar[t]})" for t in cakisan_takimlar])
-                    st.error(f"⚠️ Hata: Girdiğiniz takım(lar) {kategori_secimi} kategorisinde ({aktif_asama}) zaten kayıtlı!\nÇakışanlar: {hata_detay}")
+                    st.error(f"⚠️ Hata: Girdiğiniz takım(lar) {yas_secimi} {kategori_secimi} kategorisinde ({aktif_asama}) zaten kayıtlı!\nÇakışanlar: {hata_detay}")
                 elif not grup_adi_raw or len(takimlar) != beklenen_sayi or kadro_hata or len(set(takimlar)) != beklenen_sayi:
                     st.error("Lütfen grup özel adını girin, tüm takımları eksiksiz/farklı doldurun ve kurallara uyun.")
                 else:
+                    for t_n, o_list in grup_kadrolari.items():
+                        if t_n not in st.session_state.takim_havuzu:
+                            st.session_state.takim_havuzu[t_n] = o_list
+                            st.session_state.havuz_kategorileri[t_n] = kategori_secimi
+                            st.session_state.havuz_yas_gruplari[t_n] = yas_secimi
+                    
                     st.session_state.takim_kadrolari[grup_adi_temiz] = grup_kadrolari
                     st.session_state.grup_formatlari[grup_adi_temiz] = format_secimi
                     st.session_state.grup_kategorileri[grup_adi_temiz] = kategori_secimi
@@ -1045,7 +1051,9 @@ else:
                 for g_isim in gosterilecek_gruplar_klasor:
                     f_turu = st.session_state.grup_formatlari.get(g_isim, "3 Maçlık (2 Tek, 1 Çift)")
                     f_kat = st.session_state.grup_kategorileri.get(g_isim, "Erkekler")
-                    with st.expander(f"📁 {g_isim} ({f_kat} | {f_turu})"):
+                    f_yas = st.session_state.grup_yas_gruplari.get(g_isim, "Yaş Belirtme")
+                    
+                    with st.expander(f"📁 {g_isim} ({f_yas} | {f_kat} | {f_turu})"):
                         g_kadro = st.session_state.takim_kadrolari[g_isim]
                         for t_isim in dogal_sirala(list(g_kadro.keys())):
                             st.markdown(f"**🛡️ {t_isim}**")
@@ -1266,7 +1274,10 @@ else:
                 for gp in dogal_sirala(gosterilecek_gruplar):
                     if gp in mevcut_gruplar:
                         g_kat = st.session_state.grup_kategorileri.get(gp, "Erkekler")
-                        st.markdown(f"### 🏆 {gp} Puan Durumu ({g_kat})")
+                        g_yas = st.session_state.grup_yas_gruplari.get(gp, "Yaş Belirtme")
+                        baslik_ek = f" ({g_yas} {g_kat})" if g_yas != "Yaş Belirtme" else f" ({g_kat})"
+                        
+                        st.markdown(f"### 🏆 {gp} Puan Durumu{baslik_ek}")
                         
                         grup_df = tum_stats[tum_stats['Grup'] == gp].drop(columns=['Grup'])
                         grup_df = sirala_grup_df(grup_df, gp)
@@ -1391,7 +1402,9 @@ else:
                 for g_isim in gosterilecek_gruplar_klasor:
                     f_turu = st.session_state.grup_formatlari.get(g_isim, "3 Maçlık (2 Tek, 1 Çift)")
                     f_kat = st.session_state.grup_kategorileri.get(g_isim, "Erkekler")
-                    with st.expander(f"📁 {g_isim} ({f_kat} | {f_turu})", expanded=False):
+                    f_yas = st.session_state.grup_yas_gruplari.get(g_isim, "Yaş Belirtme")
+                    
+                    with st.expander(f"📁 {g_isim} ({f_yas} | {f_kat} | {f_turu})", expanded=False):
                         g_kadro = st.session_state.takim_kadrolari[g_isim]
                         for t_isim in dogal_sirala(list(g_kadro.keys())):
                             st.markdown(f"**🛡️ {t_isim}**")
@@ -1951,6 +1964,8 @@ else:
                     "grup_asamalari": st.session_state.get("grup_asamalari", {}),
                     "duyuru_metni": st.session_state.duyuru_metni,
                     "takim_havuzu": st.session_state.get("takim_havuzu", {}),
+                    "havuz_kategorileri": st.session_state.get("havuz_kategorileri", {}),
+                    "havuz_yas_gruplari": st.session_state.get("havuz_yas_gruplari", {}),
                     "grup_siralamalari": st.session_state.get("grup_siralamalari", {}),
                     "grup_tamamlandi": st.session_state.get("grup_tamamlandi", {}),
                     "grup_yas_gruplari": st.session_state.get("grup_yas_gruplari", {})
@@ -1971,6 +1986,8 @@ else:
                         st.session_state.grup_asamalari = d.get("grup_asamalari", {})
                         st.session_state.duyuru_metni = d.get("duyuru_metni", "")
                         st.session_state.takim_havuzu = d.get("takim_havuzu", {})
+                        st.session_state.havuz_kategorileri = d.get("havuz_kategorileri", {})
+                        st.session_state.havuz_yas_gruplari = d.get("havuz_yas_gruplari", {})
                         st.session_state.grup_siralamalari = d.get("grup_siralamalari", {})
                         st.session_state.grup_tamamlandi = d.get("grup_tamamlandi", {})
                         st.session_state.grup_yas_gruplari = d.get("grup_yas_gruplari", {})
