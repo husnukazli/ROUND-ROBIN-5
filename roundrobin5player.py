@@ -23,6 +23,20 @@ st.markdown("""
     
     /* İçerik boşluğunu ayarlıyoruz */
     .block-container { padding-top: 1rem; padding-bottom: 2rem; }
+    
+    /* Ana Sayfadaki Dev Butonların Stili */
+    .dev-buton .stButton > button {
+        border-radius: 12px;
+        min-height: 80px !important; 
+        font-size: 18px !important;
+        font-weight: 600 !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        transition: all 0.2s ease-in-out;
+    }
+    .dev-buton .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -725,21 +739,6 @@ if 'mac_programi' in st.session_state:
         if "Kazanan" not in st.session_state.mac_programi.columns:
             st.session_state.mac_programi["Kazanan"] = ""
 
-if st.session_state.admin_mi:
-    components.html(
-        """
-        <script>
-        const parentWindow = window.parent || window;
-        parentWindow.addEventListener("beforeunload", function (e) {
-            e.preventDefault();
-            e.returnValue = '';
-        });
-        </script>
-        """,
-        height=0,
-        width=0,
-    )
-
 def render_big_button(icon, title, target_page):
     if st.button(f"{icon}\n{title}", use_container_width=True, key=f"btn_{target_page}"):
         st.session_state.current_page = target_page
@@ -748,60 +747,45 @@ def render_big_button(icon, title, target_page):
 # ==============================================================================
 # YÜZER (STICKY) NAVBAR CSS VE KONTEYNERİ (ALT SAYFALAR İÇİN)
 # ==============================================================================
-# Hamburger menünün görünür olup olmamasına göre yapışma (sticky) yüksekliğini ayarlıyoruz
-if st.session_state.get("admin_mi", False):
-    sticky_top = "2.875rem" # Hamburger menü görünürken Streamlit header'ının altına yapışır
-else:
-    sticky_top = "0rem"     # Misafir modunda header gizli olduğu için en üste yapışır
-
-st.markdown(f"""
+# Sadece Alt Sayfalarda Navigasyonu Sabitleyecek CSS
+st.markdown("""
 <style>
-    /* Sadece stVerticalBlock'un ilk çocuğunu (nav_container) hedefleyip sabitliyoruz */
-    div[data-testid="stVerticalBlock"] > div:first-child {{
+    /* İlk dikey bloğu (nav_container) tepeye yapıştır */
+    div[data-testid="stVerticalBlock"] > div:first-child {
         position: -webkit-sticky;
         position: sticky;
-        top: {sticky_top};
+        top: 0px;
         z-index: 999;
         padding-top: 10px;
-        padding-bottom: 5px;
-        margin-bottom: 10px;
-        border-bottom: 1px solid rgba(128, 128, 128, 0.2);
-        background-color: var(--background-color);
-    }}
+        padding-bottom: 10px;
+        margin-bottom: 15px;
+        border-bottom: 1px solid rgba(128,128,128,0.2);
+    }
     
-    /* Navbar içindeki butonları daraltıyoruz (Devasa butonlar sadece Ana Sayfa'da kalacak) */
-    div[data-testid="stVerticalBlock"] > div:first-child .stButton > button {{
-        min-height: 32px !important;
-        padding: 2px 8px !important;
+    /* Temaya göre katı arka plan rengi (Üst üste binmeyi engeller) */
+    @media (prefers-color-scheme: light) {
+        div[data-testid="stVerticalBlock"] > div:first-child { background-color: #ffffff; }
+    }
+    @media (prefers-color-scheme: dark) {
+        div[data-testid="stVerticalBlock"] > div:first-child { background-color: #0e1117; }
+    }
+    
+    /* Yüzer banttaki menü butonlarını küçük/daraltılmış tut */
+    div[data-testid="stVerticalBlock"] > div:first-child .stButton > button {
+        min-height: 35px !important;
+        height: 35px !important;
+        padding: 0px 5px !important;
         border-radius: 6px !important;
-        font-size: 13px !important;
-    }}
+        font-size: 14px !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# Navbar'ı tüm sayfalarda en üste koyuyoruz (Ana sayfa dâhil, ama ana sayfada sekmeleri göstermiyoruz)
 nav_container = st.container()
 
 with nav_container:
     if st.session_state.current_page != "Home":
-        # Alt sayfalardayken Yüzer Navbar İçeriği
-        c_st1, c_st2, c_space, c_logos = st.columns([1.5, 1.5, 6, 2])
-        with c_st1:
-            if st.button("1. Aşama", type="primary" if st.session_state.aktif_asama == "1. Aşama" else "secondary", use_container_width=True):
-                st.session_state.aktif_asama = "1. Aşama"; st.rerun()
-        with c_st2:
-            if st.button("2. Aşama", type="primary" if st.session_state.aktif_asama == "2. Aşama" else "secondary", use_container_width=True):
-                st.session_state.aktif_asama = "2. Aşama"; st.rerun()
-        with c_logos:
-            st.markdown("""
-                <div style="display: flex; gap: 8px; justify-content: flex-end; align-items: center; margin-top: 2px;">
-                    <a href="https://i-kort.ttf.org.tr/" target="_blank" style="text-decoration: none;">
-                        <div style="background-color: #0056b3; color: white; padding: 4px 8px; border-radius: 6px; font-weight: bold; font-size:12px;">🎾 i-Kort</div>
-                    </a>
-                </div>
-            """, unsafe_allow_html=True)
-            
-        st.write("") 
+        # SADECE ALT SAYFALAR: Yalnızca sekmeler yüzer olarak görünür
         if st.session_state.admin_mi:
             menu_items = ["🏠 Ana Sayfa", "👥 Grup Ayarları", "✍️ Skor Girişi", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular", "⚙️ Yönetim"]
         else:
@@ -817,7 +801,7 @@ with nav_container:
                     st.session_state.current_page = "Home" if menu == "🏠 Ana Sayfa" else target_menu
                     st.rerun()
     else:
-        # Ana sayfadaysak Navbar alanını sadece logoları ve aşama seçicileri göstermek için kullanıyoruz (Daraltılmış yatay sekmeler yok)
+        # ANA SAYFA: Aşama Seçiciler (Sol) & Logolar (Sağ) sadece burada görünür
         c_st1, c_st2, c_space, c_logos = st.columns([1.5, 1.5, 6, 2])
         with c_st1:
             if st.button("1. Aşama", type="primary" if st.session_state.aktif_asama == "1. Aşama" else "secondary", use_container_width=True):
@@ -826,36 +810,27 @@ with nav_container:
             if st.button("2. Aşama", type="primary" if st.session_state.aktif_asama == "2. Aşama" else "secondary", use_container_width=True):
                 st.session_state.aktif_asama = "2. Aşama"; st.rerun()
         with c_logos:
-            st.markdown("""
+            ttf_logo_html = ""
+            if os.path.exists("TTFLOGO.png"):
+                with open("TTFLOGO.png", "rb") as f: b64 = base64.b64encode(f.read()).decode()
+                ttf_logo_html = f'<img src="data:image/png;base64,{b64}" style="height: 28px; border-radius: 6px; filter: drop-shadow(0px 1px 2px rgba(0,0,0,0.2));" alt="TTF Logo">'
+            else:
+                ttf_logo_html = '<div style="background-color: #0B3B24; color: white; padding: 4px 8px; border-radius: 6px; font-weight: bold; font-size:12px;">🇹🇷 TTF</div>'
+
+            st.markdown(f"""
                 <div style="display: flex; gap: 8px; justify-content: flex-end; align-items: center; margin-top: 2px;">
                     <a href="https://i-kort.ttf.org.tr/" target="_blank" style="text-decoration: none;">
                         <div style="background-color: #0056b3; color: white; padding: 4px 8px; border-radius: 6px; font-weight: bold; font-size:12px;">🎾 i-Kort</div>
                     </a>
+                    <a href="https://www.ttf.org.tr/" target="_blank">{ttf_logo_html}</a>
                 </div>
             """, unsafe_allow_html=True)
 
-
 # ==============================================================================
-# ANA SAYFA GÖRÜNÜMÜ (DEV BUTONLAR SADECE BURADA)
+# ANA SAYFA GÖRÜNÜMÜ (DEV BUTONLAR İÇERİĞİ)
 # ==============================================================================
 if st.session_state.current_page == "Home":
-    st.markdown("""
-    <style>
-        /* Ana sayfadaki büyük menü butonları */
-        .block-container .stButton > button {
-            border-radius: 12px;
-            min-height: 80px; 
-            font-size: 18px !important;
-            font-weight: 600 !important;
-        }
-        /* Yüzer banttaki butonları devasa yapmaktan koru */
-        div[data-testid="stVerticalBlock"] > div:first-child .stButton > button {
-            min-height: 32px !important;
-            font-size: 13px !important;
-        }
-    </style>
-    """, unsafe_allow_html=True)
-    
+    st.markdown("<div class='dev-buton'>", unsafe_allow_html=True)
     st.markdown("<h1 style='text-align:center;'>🎾 Turnuva Ana Ekranı</h1><br>", unsafe_allow_html=True)
     if st.session_state.admin_mi:
         st.markdown("<h4 style='text-align:center;'>👨‍⚖️ Başhakem Kontrol Paneli</h4><br>", unsafe_allow_html=True)
@@ -887,6 +862,7 @@ if st.session_state.current_page == "Home":
                     st.success("Giriş Başarılı!")
                     st.rerun()
                 else: st.error("❌ Hatalı Şifre!")
+    st.markdown("</div>", unsafe_allow_html=True)
 
 # ==============================================================================
 # ALT SAYFALARIN İÇERİKLERİ
