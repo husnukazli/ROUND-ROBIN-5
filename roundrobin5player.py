@@ -16,13 +16,27 @@ from fpdf import FPDF
 st.set_page_config(page_title="Tenis Turnuva Otomasyonu", page_icon="🎾", layout="wide", initial_sidebar_state="collapsed")
 
 # --- GENEL STİLLER (HER İKİ MOD İÇİN ORTAK) ---
-# DİKKAT: Devasa buton stili buradan kaldırıldı, sadece Ana Sayfaya özel hale getirildi!
 st.markdown("""
 <style>
-    /* Sadece en alttaki Streamlit reklamını ve üst boşluğu her zaman gizliyoruz */
+    /* Sadece en alttaki Streamlit reklamını her zaman gizliyoruz */
     footer {visibility: hidden !important;}
-    header[data-testid="stHeader"] { display: none !important; }
-    .block-container { padding-top: 1rem; padding-bottom: 2rem; }
+    
+    /* Ana Ekran Gerçek Devasa Buton Stilleri */
+    .stButton > button {
+        border-radius: 12px;
+        transition: all 0.2s ease-in-out;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        min-height: 80px; 
+    }
+    .stButton > button p {
+        font-size: 18px !important;
+        font-weight: 600 !important;
+        white-space: pre-wrap !important; 
+    }
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -30,6 +44,7 @@ st.markdown("""
 if not st.session_state.get("admin_mi", False):
     st.markdown("""
     <style>
+        /* Misafirler için Streamlit üst menülerini, GitHub ikonlarını ve ayarları tamamen gizleme */
         [data-testid="stToolbar"] {visibility: hidden !important;}
         [data-testid="stDecoration"] {visibility: hidden !important;}
         [data-testid="stStatusWidget"] {visibility: hidden !important;}
@@ -710,7 +725,7 @@ else:
     with nav_container:
         st.markdown("""
         <style>
-            /* Yüzer (Sticky) Navigasyon Bandı - Katı Arka Planlı */
+            /* Yüzer (Sticky) Navigasyon Bandı - Temaya Duyarlı Arka Plan */
             div[data-testid="stVerticalBlock"] > div:first-child {
                 position: -webkit-sticky;
                 position: sticky;
@@ -720,14 +735,7 @@ else:
                 padding-bottom: 5px;
                 margin-bottom: 10px;
                 border-bottom: 1px solid rgba(128, 128, 128, 0.2);
-            }
-            
-            /* Temaya duyarlı katı arka plan (Üst üste binmeyi engeller) */
-            @media (prefers-color-scheme: light) {
-                div[data-testid="stVerticalBlock"] > div:first-child { background-color: #ffffff; }
-            }
-            @media (prefers-color-scheme: dark) {
-                div[data-testid="stVerticalBlock"] > div:first-child { background-color: #0e1117; }
+                background-color: var(--background-color);
             }
             
             /* Alt sayfalardaki navigasyon ve menü butonlarını daralt */
