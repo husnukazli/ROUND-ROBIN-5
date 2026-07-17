@@ -873,13 +873,11 @@ else:
                     uploaded_file = st.file_uploader("Takım listesini yükleyin (.xlsx veya .csv)", type=["csv", "xlsx"])
                     if uploaded_file:
                         try:
-                            # GELİŞMİŞ PANDAS SNIFFER (Virgül/Noktalı Virgül Karmaşasını Çözer)
                             if uploaded_file.name.endswith('.csv'):
                                 df_havuz = pd.read_csv(uploaded_file, sep=None, engine='python', header=None, dtype=str)
                             else: 
                                 df_havuz = pd.read_excel(uploaded_file, header=None, dtype=str)
                             
-                            # Kullanıcının seçtiği Satır/Sütun düzenini ayarlar
                             if "Satırlarda" in dosya_duzeni:
                                 df_havuz = df_havuz.set_index(0).T
                             else:
@@ -889,32 +887,35 @@ else:
                             yeni_havuz = {}
                             for col in df_havuz.columns:
                                 t_adi = str(col).strip()
-                                # Hayalet boşlukları (NaN) temizleme ve geçerli takım adlarını filtreleme
                                 if t_adi and t_adi.lower() != 'nan' and "unnamed" not in t_adi.lower() and "takım adı" not in t_adi.lower() and "takim adi" not in t_adi.lower():
                                     oyuncular = df_havuz[col].dropna().astype(str).tolist()
                                     temiz_oyuncular = [o.strip() for o in oyuncular if o.strip() and o.strip().lower() != 'nan']
                                     
                                     if temiz_oyuncular:
                                         yeni_havuz[t_adi] = temiz_oyuncular
-                                        st.session_state.havuz_kategorileri[t_adi] = up_kat
-                                        st.session_state.havuz_yas_gruplari[t_adi] = up_yas
                             
-                            # YENİ EKLENEN ÖNİZLEME TABLOSU
+                            # EKRAN YENİLEME KAOSUNU ENGELLEYEN ONAY MEKANİZMASI
                             st.markdown("#### 👀 Sisteme Kaydedilecek Dosya Önizlemesi")
-                            st.write(f"Sistem dosyada toplam **{len(yeni_havuz)} takım** tespit etti. Eğer aşağıdaki tabloda Takım Adı ve Kadrosu birbirine girmiş görünüyorsa, yukarıdaki 'Dosya Düzeni' seçeneğini değiştirin.")
                             preview_df = pd.DataFrame([{"Takım Adı": k, "Sistemin Okuduğu Kadro": ", ".join(v)} for k, v in yeni_havuz.items()])
                             st.dataframe(preview_df, use_container_width=True)
                             
-                            st.session_state.takim_havuzu.update(yeni_havuz)
-                            ortak_veriyi_kaydet()
-                            st.success(f"✅ Başarılı! Takımlar '{up_yas} {up_kat}' etiketiyle sisteme hatasız kaydedildi.")
+                            st.warning("⚠️ **Lütfen Dikkat:** Yukarıdaki listeyi kontrol edin. Her şey doğruysa aşağıdaki 'Havuza Kaydet' butonuna basın. Dosyayı yüklemiş olmanız henüz kaydedildiği anlamına gelmez!")
+                            
+                            if st.button("✅ Önizlemeyi Onayla ve Havuza Kaydet", type="primary"):
+                                for t_adi, temiz_oyuncular in yeni_havuz.items():
+                                    st.session_state.havuz_kategorileri[t_adi] = up_kat
+                                    st.session_state.havuz_yas_gruplari[t_adi] = up_yas
+                                    
+                                st.session_state.takim_havuzu.update(yeni_havuz)
+                                ortak_veriyi_kaydet()
+                                st.success(f"✅ Başarılı! Takımlar '{up_yas} {up_kat}' etiketiyle sisteme güvenle kaydedildi.")
+                                
                         except Exception as e:
                             st.error(f"Dosya okuma hatası: {e}. Lütfen formatın doğru olduğundan emin olun.")
                     
                     if st.session_state.takim_havuzu:
                         st.write(f"📊 Sistemde şu an **{len(st.session_state.takim_havuzu)}** hazır takım bulunuyor.")
                         
-                        # HAVUZ GÖRÜNTÜLEME VE TEKLİ SİLME ALANI
                         with st.expander("👀 Havuzdaki Takımları Gör ve Yönet", expanded=False):
                             for t_isim, oyuncular in list(st.session_state.takim_havuzu.items()):
                                 kategori = st.session_state.havuz_kategorileri.get(t_isim, "Bilinmiyor")
