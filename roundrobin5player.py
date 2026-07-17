@@ -53,8 +53,11 @@ if not st.session_state.get("admin_mi", False):
     </style>
     """, unsafe_allow_html=True)
 
-VERI_DOSYASI = "tenis_grup_turnuvasi_veri.json"
-BELGELER_KLASORU = "turnuva_belgeleri"
+# --- SABİT KLASÖR YOLU AYARI ---
+SISTEM_KLASORU = os.path.dirname(os.path.abspath(__file__))
+
+VERI_DOSYASI = os.path.join(SISTEM_KLASORU, "tenis_grup_turnuvasi_veri.json")
+BELGELER_KLASORU = os.path.join(SISTEM_KLASORU, "turnuva_belgeleri")
 
 if not os.path.exists(BELGELER_KLASORU):
     os.makedirs(BELGELER_KLASORU)
