@@ -16,13 +16,11 @@ from fpdf import FPDF
 st.set_page_config(page_title="Tenis Turnuva Otomasyonu", page_icon="🎾", layout="wide", initial_sidebar_state="collapsed")
 
 # --- GENEL STİLLER ---
-# Sistemi bozan, tavanı yutan ve üst üste bindiren tüm zorlama CSS'ler SİLİNDİ!
 st.markdown("""
 <style>
-    /* Sadece Streamlit'in en alttaki "Made with Streamlit" reklamını gizler */
     footer {visibility: hidden !important;}
+    .block-container { padding-top: 1rem; padding-bottom: 2rem; }
     
-    /* Ana Sayfadaki Dev Butonların Stili */
     .dev-buton .stButton > button {
         border-radius: 12px;
         min-height: 80px !important; 
@@ -42,7 +40,6 @@ st.markdown("""
 if not st.session_state.get("admin_mi", False):
     st.markdown("""
     <style>
-        /* Misafirler için sağ üstteki ayarlar menüsünü gizler */
         [data-testid="stToolbar"] {visibility: hidden !important;}
     </style>
     """, unsafe_allow_html=True)
@@ -681,9 +678,6 @@ def ortak_veriyi_yukle():
         except Exception:
             pass 
 
-def ankara_istanbul_kurtarma():
-    pass
-
 def show_pdf(file_path):
     with open(file_path, "rb") as f:
         base64_pdf = base64.b64encode(f.read()).decode('utf-8')
@@ -714,7 +708,6 @@ if "aktif_asama" not in st.session_state: st.session_state.aktif_asama = "1. Aş
 if 'skor_tablosu' not in st.session_state:
     if os.path.exists(VERI_DOSYASI):
         ortak_veriyi_yukle()
-        ankara_istanbul_kurtarma() 
     else:
         st.session_state.skor_tablosu = pd.DataFrame(columns=["Grup", "Gün", "Eşleşme", "Branş", "Takım 1", "Takım 2", "T1_Oyuncu", "T2_Oyuncu", "1.Set T1", "1.Set T2", "2.Set T1", "2.Set T2", "3.Set T1", "3.Set T2", "Durum", "STB"])
         st.session_state.mac_programi = pd.DataFrame(columns=["Maç Saati", "Tarih", "Gün Adı", "Kort", "Grup", "Gün", "Branş", "Eşleşme", "Takım 1", "Takım 2", "T1 Oyuncu", "T2 Oyuncu", "Canlı Skor", "Kazanan"])
@@ -770,10 +763,10 @@ with st.sidebar:
             st.rerun()
 
 # ==============================================================================
-# ÜST BÖLÜM VE ANA SAYFA (Aşama Seçici ve Logolar Sadece Ana Sayfada)
+# ANA SAYFA GÖRÜNÜMÜ (1. AŞAMA VE LOGOLAR SADECE BURADA)
 # ==============================================================================
 if st.session_state.current_page == "Home":
-    # --- ANA SAYFA ÜST BÖLÜMÜ (Aşama Seçiciler ve Logolar) ---
+    # Sadece Ana Sayfanın en tepesinde duran logolar ve aşama seçiciler
     c_st1, c_st2, c_space, c_logos = st.columns([1.5, 1.5, 6, 3])
     with c_st1:
         if st.button("1. Aşama", type="primary" if st.session_state.aktif_asama == "1. Aşama" else "secondary", use_container_width=True, key="top_1"):
@@ -800,7 +793,7 @@ if st.session_state.current_page == "Home":
     
     st.markdown("<hr style='margin-top: 5px; margin-bottom: 15px;'>", unsafe_allow_html=True)
 
-    # --- ANA SAYFA DEV BUTONLARI ---
+    # Dev Butonlar
     st.markdown("<div class='dev-buton'>", unsafe_allow_html=True)
     st.markdown("<h1 style='text-align:center;'>🎾 Turnuva Ana Ekranı</h1><br>", unsafe_allow_html=True)
     
@@ -838,30 +831,14 @@ if st.session_state.current_page == "Home":
     st.markdown("</div>", unsafe_allow_html=True)
 
 # ==============================================================================
-# ALT SAYFALARIN İÇERİKLERİ (Yüzer Değil, Orijinal Sekmeli Yapı)
+# ALT SAYFALARIN İÇERİKLERİ
 # ==============================================================================
 else:
     menu_secim = st.session_state.current_page
     aktif_asama = st.session_state.aktif_asama
     
-    # Alt sayfalarda üst kısımdaki yatay sekmeler (Yüzmez, sadece sayfanın tepesinde durur)
-    if st.session_state.admin_mi:
-        menu_items = ["🏠 Ana Sayfa", "👥 Grup Ayarları", "✍️ Skor Girişi", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular", "⚙️ Yönetim"]
-    else:
-        menu_items = ["🏠 Ana Sayfa", "🛡️ Takım Kadroları", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular"]
-
-    nav_cols = st.columns(len(menu_items))
-    for i, menu in enumerate(menu_items):
-        with nav_cols[i]:
-            target_menu = "⚙️ Yönetim & Dosya" if menu == "⚙️ Yönetim" else menu
-            is_active = (st.session_state.current_page == target_menu)
-            btn_type = "primary" if is_active else "secondary"
-            if st.button(menu, type=btn_type, use_container_width=True, key=f"nav_top_{menu}"):
-                st.session_state.current_page = "Home" if menu == "🏠 Ana Sayfa" else target_menu
-                st.rerun()
-
-    st.markdown("---")
     st.markdown(f"<h3 style='margin-top: -10px;'>{menu_secim} ({aktif_asama})</h3>", unsafe_allow_html=True)
+    st.markdown("---")
 
     # --- SAYFA 1: GRUP AYARLARI ---
     if menu_secim == "👥 Grup Ayarları":
@@ -2011,6 +1988,71 @@ else:
                         st.rerun()
             else:
                 st.info(f"{aktif_asama} için silinecek herhangi bir grup bulunmuyor.")
+
+            st.markdown("---")
+            st.markdown("### 🧪 Otomatik Test Simülasyonu (Stres Testi)")
+            with st.expander("🤖 Sahte Turnuva Üret ve Sistemi Sına", expanded=False):
+                st.warning("⚠️ **DİKKAT:** Bu işlem MEVCUT TÜM VERİLERİ (Maçlar, Gruplar) SİLER ve averaj/kural testleri için 2 adet sahte grup ekler. Yedek almadan kullanmayın!")
+                if st.button("🚀 Simülasyonu Başlat (W/O, Ret, STB, 3'lü Averaj)"):
+                    st.session_state.skor_tablosu = pd.DataFrame(columns=["Grup", "Gün", "Eşleşme", "Branş", "Takım 1", "Takım 2", "T1_Oyuncu", "T2_Oyuncu", "1.Set T1", "1.Set T2", "2.Set T1", "2.Set T2", "3.Set T1", "3.Set T2", "Durum", "STB"])
+                    st.session_state.mac_programi = pd.DataFrame(columns=["Maç Saati", "Tarih", "Gün Adı", "Kort", "Grup", "Gün", "Branş", "Eşleşme", "Takım 1", "Takım 2", "T1 Oyuncu", "T2 Oyuncu", "Canlı Skor", "Kazanan"])
+                    st.session_state.takim_kadrolari = {}
+                    st.session_state.grup_formatlari = {}
+                    st.session_state.grup_asamalari = {}
+                    st.session_state.grup_kategorileri = {}
+                    st.session_state.grup_yas_gruplari = {}
+                    
+                    # GRUP 1: 3'lü Averaj Testi
+                    grup1 = "TEST 1 (Averaj Kilitlenmesi)"
+                    st.session_state.grup_formatlari[grup1] = "3 Maçlık (2 Tek, 1 Çift)"
+                    st.session_state.grup_asamalari[grup1] = "1. Aşama"
+                    st.session_state.grup_kategorileri[grup1] = "Erkekler"
+                    st.session_state.grup_yas_gruplari[grup1] = "Yaş Belirtme"
+                    st.session_state.takim_kadrolari[grup1] = {"A Takımı": [], "B Takımı": [], "C Takımı": []}
+                    
+                    df1 = pd.DataFrame(eslesmeleri_olustur(grup1, ["A Takımı", "B Takımı", "C Takımı"], "3'lü Grup", "3 Maçlık (2 Tek, 1 Çift)"))
+                    
+                    # A vs B (A wins 2-1)
+                    df1.loc[(df1['Takım 1']=='A Takımı') & (df1['Takım 2']=='B Takımı') & (df1['Branş']=='1. Tekler'), ['1.Set T1', '1.Set T2', '2.Set T1', '2.Set T2']] = [6,0, 6,0]
+                    df1.loc[(df1['Takım 1']=='A Takımı') & (df1['Takım 2']=='B Takımı') & (df1['Branş']=='2. Tekler'), ['1.Set T1', '1.Set T2', '2.Set T1', '2.Set T2']] = [0,6, 0,6]
+                    df1.loc[(df1['Takım 1']=='A Takımı') & (df1['Takım 2']=='B Takımı') & (df1['Branş']=='Çiftler'), ['1.Set T1', '1.Set T2', '2.Set T1', '2.Set T2']] = [6,4, 6,4]
+                    
+                    # B vs C (B wins 2-1)
+                    df1.loc[(df1['Takım 1']=='B Takımı') & (df1['Takım 2']=='C Takımı') & (df1['Branş']=='1. Tekler'), ['1.Set T1', '1.Set T2', '2.Set T1', '2.Set T2']] = [6,0, 6,0]
+                    df1.loc[(df1['Takım 1']=='B Takımı') & (df1['Takım 2']=='C Takımı') & (df1['Branş']=='2. Tekler'), ['1.Set T1', '1.Set T2', '2.Set T1', '2.Set T2']] = [0,6, 0,6]
+                    df1.loc[(df1['Takım 1']=='B Takımı') & (df1['Takım 2']=='C Takımı') & (df1['Branş']=='Çiftler'), ['1.Set T1', '1.Set T2', '2.Set T1', '2.Set T2']] = [6,3, 6,3]
+                    
+                    # A vs C (C wins 2-1)
+                    df1.loc[(df1['Takım 1']=='A Takımı') & (df1['Takım 2']=='C Takımı') & (df1['Branş']=='1. Tekler'), ['1.Set T1', '1.Set T2', '2.Set T1', '2.Set T2']] = [0,6, 0,6]
+                    df1.loc[(df1['Takım 1']=='A Takımı') & (df1['Takım 2']=='C Takımı') & (df1['Branş']=='2. Tekler'), ['1.Set T1', '1.Set T2', '2.Set T1', '2.Set T2']] = [6,0, 6,0]
+                    df1.loc[(df1['Takım 1']=='A Takımı') & (df1['Takım 2']=='C Takımı') & (df1['Branş']=='Çiftler'), ['1.Set T1', '1.Set T2', '2.Set T1', '2.Set T2']] = [2,6, 2,6]
+
+                    # GRUP 2: Uç Durum Testi
+                    grup2 = "TEST 2 (W/O, Ret, STB)"
+                    st.session_state.grup_formatlari[grup2] = "3 Maçlık (2 Tek, 1 Çift)"
+                    st.session_state.grup_asamalari[grup2] = "1. Aşama"
+                    st.session_state.grup_kategorileri[grup2] = "Kadınlar"
+                    st.session_state.grup_yas_gruplari[grup2] = "Yaş Belirtme"
+                    st.session_state.takim_kadrolari[grup2] = {"X Takımı": [], "Y Takımı": [], "Z Takımı": []}
+                    
+                    df2 = pd.DataFrame(eslesmeleri_olustur(grup2, ["X Takımı", "Y Takımı", "Z Takımı"], "3'lü Grup", "3 Maçlık (2 Tek, 1 Çift)"))
+                    
+                    # X vs Y -> X wins by W/O entirely
+                    df2.loc[(df2['Takım 1']=='X Takımı') & (df2['Takım 2']=='Y Takımı'), 'Durum'] = 'Takım 1 Kazandı (W/O)'
+                    
+                    # Y vs Z -> Mixed conditions
+                    idx_1 = df2[(df2['Takım 1']=='Y Takımı') & (df2['Takım 2']=='Z Takımı') & (df2['Branş']=='1. Tekler')].index
+                    df2.loc[idx_1, ['1.Set T1', '1.Set T2', '2.Set T1', '2.Set T2', '3.Set T1', '3.Set T2', 'STB']] = [6,4, 4,6, 10,8, True]
+                    
+                    idx_2 = df2[(df2['Takım 1']=='Y Takımı') & (df2['Takım 2']=='Z Takımı') & (df2['Branş']=='2. Tekler')].index
+                    df2.loc[idx_2, ['1.Set T1', '1.Set T2', 'Durum']] = [2,5, 'Takım 2 Kazandı (Ret.)']
+                    
+                    idx_3 = df2[(df2['Takım 1']=='Y Takımı') & (df2['Takım 2']=='Z Takımı') & (df2['Branş']=='Çiftler')].index
+                    df2.loc[idx_3, 'Durum'] = 'Çift Taraflı W/O'
+                    
+                    st.session_state.skor_tablosu = pd.concat([df1, df2], ignore_index=True)
+                    ortak_veriyi_kaydet()
+                    st.success("✅ Test Senaryosu Yüklendi! Lütfen 'Puan Durumu' sekmesine geçerek A/B/C averajlarını ve X/Y/Z W/O kural işleyişini kontrol ediniz.")
 
             st.markdown("---")
 
