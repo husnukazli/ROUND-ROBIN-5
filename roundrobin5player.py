@@ -859,59 +859,86 @@ else:
         if st.session_state.admin_mi:
             if aktif_asama == "1. Aşama":
                 with st.expander("📥 Akıllı Havuz: Excel / CSV'den Takım Yükle", expanded=False):
-                    st.info("ℹ️ Excel'de sütun başlıklarına 'Takım Adı', altındaki satırlara oyuncuları yazın. Yüklemeden önce bu dosyanın hangi kategori ve yaş grubuna ait olduğunu aşağıdan seçin.")
+                    st.info("ℹ️ Excel dosyanızın düzenini seçin ve yükleyin. Seçtiğiniz yaş ve kategori etiketleriyle sisteme işlenecektir.")
                     
                     c_up1, c_up2 = st.columns(2)
                     with c_up1: up_yas = st.selectbox("Yüklenecek Dosyanın Yaş Grubu:", yas_secenekleri, key="up_yas")
                     with c_up2: up_kat = st.radio("Yüklenecek Dosyanın Kategorisi:", ["Erkekler", "Kadınlar"], horizontal=True, key="up_kat")
                     
+                    dosya_duzeni = st.radio("Excel/CSV İçindeki Dosya Düzeni (Çok Önemli):", [
+                        "⬇️ Sütunlarda (1. Satır Takım Adı, Altındaki Satırlar Oyuncular)", 
+                        "➡️ Satırlarda (1. Sütun Takım Adı, Yanındaki Sütunlar Oyuncular)"
+                    ])
+                    
                     uploaded_file = st.file_uploader("Takım listesini yükleyin (.xlsx veya .csv)", type=["csv", "xlsx"])
                     if uploaded_file:
                         try:
-                            # --- 1. CSV AYIRICI VE TÜRKÇE FORMAT ÇÖZÜMÜ ---
+                            # GELİŞMİŞ PANDAS SNIFFER (Virgül/Noktalı Virgül Karmaşasını Çözer)
                             if uploaded_file.name.endswith('.csv'):
-                                try:
-                                    # Önce Türkçe Excel standartı olan noktalı virgülü (;) dener
-                                    df_havuz = pd.read_csv(uploaded_file, sep=';', dtype=str)
-                                    if len(df_havuz.columns) == 1: # Sütunları ayıramadıysa virgüldür (,)
-                                        uploaded_file.seek(0)
-                                        df_havuz = pd.read_csv(uploaded_file, sep=',', dtype=str)
-                                except Exception:
-                                    # İkisi de olmazsa Python motoruyla otomatik tespit yapmaya zorlar
-                                    uploaded_file.seek(0)
-                                    df_havuz = pd.read_csv(uploaded_file, sep=None, engine='python', dtype=str)
+                                df_havuz = pd.read_csv(uploaded_file, sep=None, engine='python', header=None, dtype=str)
                             else: 
-                                df_havuz = pd.read_excel(uploaded_file, dtype=str)
+                                df_havuz = pd.read_excel(uploaded_file, header=None, dtype=str)
                             
-                            # --- 2. HAYALET OYUNCU (NaN) VE BOŞLUK TEMİZLİĞİ ---
+                            # Kullanıcının seçtiği Satır/Sütun düzenini ayarlar
+                            if "Satırlarda" in dosya_duzeni:
+                                df_havuz = df_havuz.set_index(0).T
+                            else:
+                                df_havuz.columns = df_havuz.iloc[0]
+                                df_havuz = df_havuz[1:]
+                            
                             yeni_havuz = {}
                             for col in df_havuz.columns:
-                                # "Unnamed" içeren boş isimsiz Excel sütunlarını yoksayar
-                                if not "Unnamed" in str(col):
-                                    # Oyuncu isimlerini temizler (boşlukları siler, 'nan' yazanları eler)
+                                t_adi = str(col).strip()
+                                # Hayalet boşlukları (NaN) temizleme ve geçerli takım adlarını filtreleme
+                                if t_adi and t_adi.lower() != 'nan' and "unnamed" not in t_adi.lower() and "takım adı" not in t_adi.lower() and "takim adi" not in t_adi.lower():
                                     oyuncular = df_havuz[col].dropna().astype(str).tolist()
                                     temiz_oyuncular = [o.strip() for o in oyuncular if o.strip() and o.strip().lower() != 'nan']
                                     
-                                    t_adi = str(col).strip()
-                                    # Geçerli bir takım adı ve içinde en az 1 oyuncu varsa havuza kaydeder
-                                    if t_adi and temiz_oyuncular:
+                                    if temiz_oyuncular:
                                         yeni_havuz[t_adi] = temiz_oyuncular
                                         st.session_state.havuz_kategorileri[t_adi] = up_kat
                                         st.session_state.havuz_yas_gruplari[t_adi] = up_yas
-                                        
+                            
+                            # YENİ EKLENEN ÖNİZLEME TABLOSU
+                            st.markdown("#### 👀 Sisteme Kaydedilecek Dosya Önizlemesi")
+                            st.write(f"Sistem dosyada toplam **{len(yeni_havuz)} takım** tespit etti. Eğer aşağıdaki tabloda Takım Adı ve Kadrosu birbirine girmiş görünüyorsa, yukarıdaki 'Dosya Düzeni' seçeneğini değiştirin.")
+                            preview_df = pd.DataFrame([{"Takım Adı": k, "Sistemin Okuduğu Kadro": ", ".join(v)} for k, v in yeni_havuz.items()])
+                            st.dataframe(preview_df, use_container_width=True)
+                            
                             st.session_state.takim_havuzu.update(yeni_havuz)
                             ortak_veriyi_kaydet()
-                            st.success(f"✅ Başarılı! {len(yeni_havuz)} takım '{up_yas} {up_kat}' etiketiyle sisteme hatasız kaydedildi.")
+                            st.success(f"✅ Başarılı! Takımlar '{up_yas} {up_kat}' etiketiyle sisteme hatasız kaydedildi.")
                         except Exception as e:
                             st.error(f"Dosya okuma hatası: {e}. Lütfen formatın doğru olduğundan emin olun.")
                     
                     if st.session_state.takim_havuzu:
                         st.write(f"📊 Sistemde şu an **{len(st.session_state.takim_havuzu)}** hazır takım bulunuyor.")
-                        if st.button("🗑️ Takım Havuzunu Temizle"):
+                        
+                        # HAVUZ GÖRÜNTÜLEME VE TEKLİ SİLME ALANI
+                        with st.expander("👀 Havuzdaki Takımları Gör ve Yönet", expanded=False):
+                            for t_isim, oyuncular in list(st.session_state.takim_havuzu.items()):
+                                kategori = st.session_state.havuz_kategorileri.get(t_isim, "Bilinmiyor")
+                                yas = st.session_state.havuz_yas_gruplari.get(t_isim, "Bilinmiyor")
+                                
+                                c1, c2 = st.columns([4, 1])
+                                with c1:
+                                    st.markdown(f"**🛡️ {t_isim}** *(Kategori: {kategori} | Yaş: {yas})*")
+                                    st.caption(", ".join(oyuncular))
+                                with c2:
+                                    if st.button("❌ Sil", key=f"del_havuz_{t_isim}"):
+                                        del st.session_state.takim_havuzu[t_isim]
+                                        if t_isim in st.session_state.havuz_kategorileri: del st.session_state.havuz_kategorileri[t_isim]
+                                        if t_isim in st.session_state.havuz_yas_gruplari: del st.session_state.havuz_yas_gruplari[t_isim]
+                                        ortak_veriyi_kaydet()
+                                        st.rerun()
+                                st.markdown("<hr style='margin: 5px 0px;'>", unsafe_allow_html=True)
+                                
+                        if st.button("🗑️ Tüm Takım Havuzunu Komple Temizle"):
                             st.session_state.takim_havuzu = {}
                             st.session_state.havuz_kategorileri = {}
                             st.session_state.havuz_yas_gruplari = {}
-                            ortak_veriyi_kaydet(); st.rerun()
+                            ortak_veriyi_kaydet()
+                            st.rerun()
                 st.markdown("---")
             
             col_y, col_t1, col_t2, col_t3 = st.columns(4)
