@@ -16,27 +16,13 @@ from fpdf import FPDF
 st.set_page_config(page_title="Tenis Turnuva Otomasyonu", page_icon="🎾", layout="wide", initial_sidebar_state="collapsed")
 
 # --- GENEL STİLLER (HER İKİ MOD İÇİN ORTAK) ---
+# DİKKAT: Devasa buton stili buradan kaldırıldı, sadece Ana Sayfaya özel hale getirildi!
 st.markdown("""
 <style>
-    /* Sadece en alttaki Streamlit reklamını her zaman gizliyoruz */
+    /* Sadece en alttaki Streamlit reklamını ve üst boşluğu her zaman gizliyoruz */
     footer {visibility: hidden !important;}
-    
-    /* Ana Ekran Gerçek Devasa Buton Stilleri */
-    .stButton > button {
-        border-radius: 12px;
-        transition: all 0.2s ease-in-out;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        min-height: 80px; 
-    }
-    .stButton > button p {
-        font-size: 18px !important;
-        font-weight: 600 !important;
-        white-space: pre-wrap !important; 
-    }
-    .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 12px rgba(0,0,0,0.15);
-    }
+    header[data-testid="stHeader"] { display: none !important; }
+    .block-container { padding-top: 1rem; padding-bottom: 2rem; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -44,12 +30,10 @@ st.markdown("""
 if not st.session_state.get("admin_mi", False):
     st.markdown("""
     <style>
-        /* Misafirler için Streamlit üst menülerini, GitHub ikonlarını ve ayarları tamamen gizleme */
         [data-testid="stToolbar"] {visibility: hidden !important;}
         [data-testid="stDecoration"] {visibility: hidden !important;}
         [data-testid="stStatusWidget"] {visibility: hidden !important;}
         #MainMenu {visibility: hidden !important;}
-        header {visibility: hidden !important;}
     </style>
     """, unsafe_allow_html=True)
 
@@ -662,194 +646,26 @@ if st.session_state.admin_mi:
         width=0,
     )
 
-# ==============================================================================
-# GLOBAL ÜST BAR VE NAVİGASYON MOTORU (YÜZER / STICKY BANT)
-# ==============================================================================
-
-# 1. Yüzer bant (Sticky Header) CSS'i
-st.markdown("""
-<style>
-    /* Streamlit varsayılan üst menü boşluğunu gizle */
-    header[data-testid="stHeader"] { display: none; }
-    .block-container { padding-top: 2rem; padding-bottom: 2rem; }
-    
-    /* En üstteki ana konteyneri (Yani Navigasyonumuzu) yüzer/sabit yap */
-    div[data-testid="stVerticalBlock"] > div:first-child {
-        position: -webkit-sticky;
-        position: sticky;
-        top: 0px;
-        z-index: 9999;
-        background-color: var(--primary-background-color);
-        padding-top: 15px;
-        padding-bottom: 10px;
-        border-bottom: 2px solid rgba(128, 128, 128, 0.2);
-        margin-bottom: 20px;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# 2. Sabit Kalacak Üst Kısım
-nav_container = st.container()
-with nav_container:
-    # --- ÜST SATIR: Aşama Seçiciler (Sol) & Logolar (Sağ) ---
-    top_c1, top_c2, top_c3 = st.columns([3, 4, 3])
-    
-    with top_c1:
-        st.markdown("<div style='font-size:13px; font-weight:bold; color:gray; margin-bottom:5px; margin-top:-5px;'>Turnuva Aşaması:</div>", unsafe_allow_html=True)
-        asama_c1, asama_c2 = st.columns(2)
-        with asama_c1:
-            if st.button("1. Aşama", type="primary" if st.session_state.aktif_asama == "1. Aşama" else "secondary", use_container_width=True):
-                st.session_state.aktif_asama = "1. Aşama"
-                st.rerun()
-        with asama_c2:
-            if st.button("2. Aşama", type="primary" if st.session_state.aktif_asama == "2. Aşama" else "secondary", use_container_width=True):
-                st.session_state.aktif_asama = "2. Aşama"
-                st.rerun()
-
-    with top_c3:
-        ttf_logo_html = ""
-        if os.path.exists("TTFLOGO.png"):
-            with open("TTFLOGO.png", "rb") as f:
-                b64 = base64.b64encode(f.read()).decode()
-            ttf_logo_html = f'<img src="data:image/png;base64,{b64}" style="height: 40px; border-radius: 8px; filter: drop-shadow(0px 1px 3px rgba(0,0,0,0.2));" alt="TTF Logo">'
-        else:
-            ttf_logo_html = '<div style="background-color: #0B3B24; color: white; padding: 8px 12px; border-radius: 8px; font-weight: bold; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); font-size:14px;">🇹🇷 TTF</div>'
-
-        st.markdown(f"""
-            <div style="display: flex; gap: 10px; justify-content: flex-end; align-items: flex-end; height: 100%; margin-top: 15px;">
-                <a href="https://i-kort.ttf.org.tr/" target="_blank" style="text-decoration: none;">
-                    <div style="background-color: #0056b3; color: white; padding: 8px 12px; border-radius: 8px; font-weight: bold; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); font-size:14px; min-width: 80px;">
-                        🎾 i-Kort
-                    </div>
-                </a>
-                <a href="https://www.ttf.org.tr/" target="_blank" style="text-decoration: none; display: inline-block;">
-                    {ttf_logo_html}
-                </a>
-            </div>
-        """, unsafe_allow_html=True)
-        
-    # --- ALT SATIR: Yatay Ana Menü (Sekmeler) ---
-    st.write("") # Hafif dikey boşluk
-    if st.session_state.admin_mi:
-        menu_items = ["🏠 Ana Sayfa", "👥 Grup Ayarları", "✍️ Skor Girişi", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular", "⚙️ Yönetim"]
-    else:
-        menu_items = ["🏠 Ana Sayfa", "🛡️ Takım Kadroları", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular"]
-
-    nav_cols = st.columns(len(menu_items))
-    for i, menu in enumerate(menu_items):
-        with nav_cols[i]:
-            is_active = (st.session_state.current_page == menu) or (st.session_state.current_page == "Home" and menu == "🏠 Ana Sayfa") or (st.session_state.current_page == "⚙️ Yönetim & Dosya" and menu == "⚙️ Yönetim")
-            btn_type = "primary" if is_active else "secondary"
-            
-            # 7 Butonun tek satıra rahat sığması için Yönetim & Dosya ismini menüde sadece "⚙️ Yönetim" olarak gösteriyoruz.
-            target_menu = "⚙️ Yönetim & Dosya" if menu == "⚙️ Yönetim" else menu
-            
-            if st.button(menu, type=btn_type, use_container_width=True, key=f"nav_{menu}"):
-                st.session_state.current_page = "Home" if menu == "🏠 Ana Sayfa" else target_menu
-                st.rerun()
-
-# ==============================================================================
-# HESAPLAMALAR VE GERİ KALAN FONKSİYONLAR
-# ==============================================================================
-def set_gecerli_mi(t1, t2, is_set3=False, durum="Tamamlandı"):
-    if durum != "Tamamlandı": return True, ""
-    
-    if t1 == 0 and t2 == 0: return True, ""
-    if t1 < 0 or t2 < 0: return False, "Skorlar negatif olamaz."
-    max_s, min_s = max(t1, t2), min(t1, t2)
-    diff = max_s - min_s
-    if is_set3:
-        if max_s >= 10:
-            if max_s == 10 and min_s <= 8: return True, ""
-            elif max_s > 10 and diff == 2: return True, ""
-            else: return False, "Süper Tie-Break kurallarına uymuyor (Örn: 10-8 veya 12-10 olmalıdır)."
-        else:
-            if max_s < 6: return False, "Set en az 6 oyun olmalıdır."
-            if max_s == 6 and diff >= 2: return True, ""
-            if max_s == 7 and (diff == 2 or diff == 1): return True, ""
-            return False, "Geçersiz normal set skoru."
-    else:
-        if max_s < 6: return False, "Set en az 6 oyun olmalıdır."
-        if max_s == 6 and diff >= 2: return True, ""
-        if max_s == 7 and (diff == 2 or diff == 1): return True, ""
-        return False, "Geçersiz set skoru."
-
-def eslesmeleri_olustur(grup_adi, takimlar, grup_tipi, format_secimi):
-    if grup_tipi == "2'li Grup":
-        base_matches = [
-            {"Gün": "1. Gün", "Eşleşme": "1 ve 2", "Takım 1": takimlar[0], "Takım 2": takimlar[1]}
-        ]
-    elif grup_tipi == "3'lü Grup":
-        base_matches = [
-            {"Gün": "1. Gün", "Eşleşme": "2 ve 3", "Takım 1": takimlar[1], "Takım 2": takimlar[2]},
-            {"Gün": "2. Gün", "Eşleşme": "1 ve 3", "Takım 1": takimlar[0], "Takım 2": takimlar[2]},
-            {"Gün": "3. Gün", "Eşleşme": "1 ve 2", "Takım 1": takimlar[0], "Takım 2": takimlar[1]},
-        ]
-    elif grup_tipi == "4'lü Grup":
-        base_matches = [
-            {"Gün": "1. Gün", "Eşleşme": "1 ve 4", "Takım 1": takimlar[0], "Takım 2": takimlar[3]},
-            {"Gün": "1. Gün", "Eşleşme": "2 ve 3", "Takım 1": takimlar[1], "Takım 2": takimlar[2]},
-            {"Gün": "2. Gün", "Eşleşme": "1 ve 3", "Takım 1": takimlar[0], "Takım 2": takimlar[2]},
-            {"Gün": "2. Gün", "Eşleşme": "2 ve 4", "Takım 1": takimlar[1], "Takım 2": takimlar[3]},
-            {"Gün": "3. Gün", "Eşleşme": "1 ve 2", "Takım 1": takimlar[0], "Takım 2": takimlar[1]},
-            {"Gün": "3. Gün", "Eşleşme": "3 ve 4", "Takım 1": takimlar[2], "Takım 2": takimlar[3]},
-        ]
-    elif grup_tipi == "5'li Grup":
-        base_matches = [
-            {"Gün": "1. Gün", "Eşleşme": "2 ve 5", "Takım 1": takimlar[1], "Takım 2": takimlar[4]},
-            {"Gün": "1. Gün", "Eşleşme": "3 ve 4", "Takım 1": takimlar[2], "Takım 2": takimlar[3]},
-            {"Gün": "2. Gün", "Eşleşme": "1 ve 5", "Takım 1": takimlar[0], "Takım 2": takimlar[4]},
-            {"Gün": "2. Gün", "Eşleşme": "2 ve 3", "Takım 1": takimlar[1], "Takım 2": takimlar[2]},
-            {"Gün": "3. Gün", "Eşleşme": "1 ve 4", "Takım 1": takimlar[0], "Takım 2": takimlar[3]},
-            {"Gün": "3. Gün", "Eşleşme": "3 ve 5", "Takım 1": takimlar[2], "Takım 2": takimlar[4]},
-            {"Gün": "4. Gün", "Eşleşme": "1 ve 3", "Takım 1": takimlar[0], "Takım 2": takimlar[2]},
-            {"Gün": "4. Gün", "Eşleşme": "2 ve 4", "Takım 1": takimlar[1], "Takım 2": takimlar[3]},
-            {"Gün": "5. Gün", "Eşleşme": "1 ve 2", "Takım 1": takimlar[0], "Takım 2": takimlar[1]},
-            {"Gün": "5. Gün", "Eşleşme": "4 ve 5", "Takım 1": takimlar[3], "Takım 2": takimlar[4]},
-        ]
-    else: 
-        base_matches = [
-            {"Gün": "1. Gün", "Eşleşme": "1 ve 6", "Takım 1": takimlar[0], "Takım 2": takimlar[5]},
-            {"Gün": "1. Gün", "Eşleşme": "2 ve 5", "Takım 1": takimlar[1], "Takım 2": takimlar[4]},
-            {"Gün": "1. Gün", "Eşleşme": "3 ve 4", "Takım 1": takimlar[2], "Takım 2": takimlar[3]},
-            {"Gün": "2. Gün", "Eşleşme": "1 ve 5", "Takım 1": takimlar[0], "Takım 2": takimlar[4]},
-            {"Gün": "2. Gün", "Eşleşme": "2 ve 3", "Takım 1": takimlar[1], "Takım 2": takimlar[2]},
-            {"Gün": "2. Gün", "Eşleşme": "4 ve 6", "Takım 1": takimlar[3], "Takım 2": takimlar[5]},
-            {"Gün": "3. Gün", "Eşleşme": "1 ve 4", "Takım 1": takimlar[0], "Takım 2": takimlar[3]},
-            {"Gün": "3. Gün", "Eşleşme": "5 ve 3", "Takım 1": takimlar[4], "Takım 2": takimlar[2]},
-            {"Gün": "3. Gün", "Eşleşme": "2 ve 6", "Takım 1": takimlar[1], "Takım 2": takimlar[5]},
-            {"Gün": "4. Gün", "Eşleşme": "1 ve 3", "Takım 1": takimlar[0], "Takım 2": takimlar[2]},
-            {"Gün": "4. Gün", "Eşleşme": "4 ve 2", "Takım 1": takimlar[3], "Takım 2": takimlar[1]},
-            {"Gün": "4. Gün", "Eşleşme": "5 ve 6", "Takım 1": takimlar[4], "Takım 2": takimlar[5]},
-            {"Gün": "5. Gün", "Eşleşme": "1 ve 2", "Takım 1": takimlar[0], "Takım 2": takimlar[1]},
-            {"Gün": "5. Gün", "Eşleşme": "4 ve 5", "Takım 1": takimlar[3], "Takım 2": takimlar[4]},
-            {"Gün": "5. Gün", "Eşleşme": "3 ve 6", "Takım 1": takimlar[2], "Takım 2": takimlar[5]},
-        ]
-    
-    if format_secimi == "5 Maçlık (3 Tek, 2 Çift)":
-        branslar = ["1. Tekler", "2. Tekler", "3. Tekler", "1. Çiftler", "2. Çiftler"]
-    else:
-        branslar = ["1. Tekler", "2. Tekler", "Çiftler"]
-
-    program = []
-    for m in base_matches:
-        for brans in branslar:
-            satir = m.copy()
-            satir["Branş"] = brans
-            satir["Grup"] = grup_adi
-            satir.update({
-                "T1_Oyuncu": "", "T2_Oyuncu": "",
-                "1.Set T1": 0, "1.Set T2": 0, "2.Set T1": 0, "2.Set T2": 0, "3.Set T1": 0, "3.Set T2": 0, "Durum": "Tamamlandı", "STB": False
-            })
-            program.append(satir)
-    return program
-
 def render_big_button(icon, title, target_page):
     if st.button(f"{icon}\n{title}", use_container_width=True, key=f"btn_{target_page}"):
         st.session_state.current_page = target_page
         st.rerun()
 
+# ==============================================================================
+# ANA SAYFA GÖRÜNÜMÜ (DEV BUTONLAR SADECE BURADA)
+# ==============================================================================
 if st.session_state.current_page == "Home":
+    st.markdown("""
+    <style>
+        .stButton > button {
+            border-radius: 12px;
+            min-height: 80px; 
+            font-size: 18px !important;
+            font-weight: 600 !important;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+    
     st.markdown("<h1 style='text-align:center;'>🎾 Turnuva Ana Ekranı</h1><br>", unsafe_allow_html=True)
     if st.session_state.admin_mi:
         st.markdown("<h4 style='text-align:center;'>👨‍⚖️ Başhakem Kontrol Paneli</h4><br>", unsafe_allow_html=True)
@@ -883,13 +699,90 @@ if st.session_state.current_page == "Home":
                 else: st.error("❌ Hatalı Şifre!")
 
 # ==============================================================================
-# ALT SAYFALARIN İÇERİKLERİ
+# ALT SAYFALARIN İÇERİKLERİ VE YÜZER (STICKY) MENÜ
 # ==============================================================================
 else:
     menu_secim = st.session_state.current_page
     aktif_asama = st.session_state.aktif_asama
     
-    st.markdown(f"<h3 style='margin-top: -15px;'>{menu_secim} ({aktif_asama})</h3>", unsafe_allow_html=True)
+    # 1. YÜZER BANT (STICKY NAVBAR) KONTEYNERİ
+    nav_container = st.container()
+    with nav_container:
+        st.markdown("""
+        <style>
+            /* Yüzer (Sticky) Navigasyon Bandı - Katı Arka Planlı */
+            div[data-testid="stVerticalBlock"] > div:first-child {
+                position: -webkit-sticky;
+                position: sticky;
+                top: 0px;
+                z-index: 9999;
+                padding-top: 10px;
+                padding-bottom: 5px;
+                margin-bottom: 10px;
+                border-bottom: 1px solid rgba(128, 128, 128, 0.2);
+            }
+            
+            /* Temaya duyarlı katı arka plan (Üst üste binmeyi engeller) */
+            @media (prefers-color-scheme: light) {
+                div[data-testid="stVerticalBlock"] > div:first-child { background-color: #ffffff; }
+            }
+            @media (prefers-color-scheme: dark) {
+                div[data-testid="stVerticalBlock"] > div:first-child { background-color: #0e1117; }
+            }
+            
+            /* Alt sayfalardaki navigasyon ve menü butonlarını daralt */
+            div[data-testid="stVerticalBlock"] > div:first-child .stButton > button {
+                min-height: 32px !important;
+                padding: 2px 8px !important;
+                border-radius: 6px !important;
+                font-size: 13px !important;
+            }
+        </style>
+        """, unsafe_allow_html=True)
+        
+        # Üst Satır: Aşama Seçiciler (Sol) & Logolar (Sağ)
+        c_st1, c_st2, c_space, c_logos = st.columns([1.5, 1.5, 6, 3])
+        with c_st1:
+            if st.button("1. Aşama", type="primary" if st.session_state.aktif_asama == "1. Aşama" else "secondary", use_container_width=True):
+                st.session_state.aktif_asama = "1. Aşama"; st.rerun()
+        with c_st2:
+            if st.button("2. Aşama", type="primary" if st.session_state.aktif_asama == "2. Aşama" else "secondary", use_container_width=True):
+                st.session_state.aktif_asama = "2. Aşama"; st.rerun()
+        with c_logos:
+            ttf_logo_html = ""
+            if os.path.exists("TTFLOGO.png"):
+                with open("TTFLOGO.png", "rb") as f: b64 = base64.b64encode(f.read()).decode()
+                ttf_logo_html = f'<img src="data:image/png;base64,{b64}" style="height: 28px; border-radius: 6px; filter: drop-shadow(0px 1px 2px rgba(0,0,0,0.2));" alt="TTF Logo">'
+            else:
+                ttf_logo_html = '<div style="background-color: #0B3B24; color: white; padding: 4px 8px; border-radius: 6px; font-weight: bold; font-size:12px;">🇹🇷 TTF</div>'
+
+            st.markdown(f"""
+                <div style="display: flex; gap: 8px; justify-content: flex-end; align-items: center; margin-top: 2px;">
+                    <a href="https://i-kort.ttf.org.tr/" target="_blank" style="text-decoration: none;">
+                        <div style="background-color: #0056b3; color: white; padding: 4px 8px; border-radius: 6px; font-weight: bold; font-size:12px;">🎾 i-Kort</div>
+                    </a>
+                    <a href="https://www.ttf.org.tr/" target="_blank">{ttf_logo_html}</a>
+                </div>
+            """, unsafe_allow_html=True)
+            
+        # Alt Satır: Yatay Sekmeler
+        if st.session_state.admin_mi:
+            menu_items = ["🏠 Ana Sayfa", "👥 Grup Ayarları", "✍️ Skor Girişi", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular", "⚙️ Yönetim"]
+        else:
+            menu_items = ["🏠 Ana Sayfa", "🛡️ Takım Kadroları", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular"]
+
+        nav_cols = st.columns(len(menu_items))
+        for i, menu in enumerate(menu_items):
+            with nav_cols[i]:
+                target_menu = "⚙️ Yönetim & Dosya" if menu == "⚙️ Yönetim" else menu
+                is_active = (st.session_state.current_page == target_menu)
+                btn_type = "primary" if is_active else "secondary"
+                if st.button(menu, type=btn_type, use_container_width=True, key=f"nav_{menu}"):
+                    st.session_state.current_page = "Home" if menu == "🏠 Ana Sayfa" else target_menu
+                    st.rerun()
+
+    # Sayfa Başlığı
+    st.markdown(f"<h3 style='margin-top: 5px;'>{menu_secim} ({aktif_asama})</h3>", unsafe_allow_html=True)
     st.markdown("---")
 
     # --- SAYFA 1: GRUP AYARLARI ---
