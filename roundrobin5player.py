@@ -868,20 +868,40 @@ else:
                     uploaded_file = st.file_uploader("Takım listesini yükleyin (.xlsx veya .csv)", type=["csv", "xlsx"])
                     if uploaded_file:
                         try:
-                            if uploaded_file.name.endswith('.csv'): df_havuz = pd.read_csv(uploaded_file)
-                            else: df_havuz = pd.read_excel(uploaded_file)
+                            # --- 1. CSV AYIRICI VE TÜRKÇE FORMAT ÇÖZÜMÜ ---
+                            if uploaded_file.name.endswith('.csv'):
+                                try:
+                                    # Önce Türkçe Excel standartı olan noktalı virgülü (;) dener
+                                    df_havuz = pd.read_csv(uploaded_file, sep=';', dtype=str)
+                                    if len(df_havuz.columns) == 1: # Sütunları ayıramadıysa virgüldür (,)
+                                        uploaded_file.seek(0)
+                                        df_havuz = pd.read_csv(uploaded_file, sep=',', dtype=str)
+                                except Exception:
+                                    # İkisi de olmazsa Python motoruyla otomatik tespit yapmaya zorlar
+                                    uploaded_file.seek(0)
+                                    df_havuz = pd.read_csv(uploaded_file, sep=None, engine='python', dtype=str)
+                            else: 
+                                df_havuz = pd.read_excel(uploaded_file, dtype=str)
+                            
+                            # --- 2. HAYALET OYUNCU (NaN) VE BOŞLUK TEMİZLİĞİ ---
                             yeni_havuz = {}
                             for col in df_havuz.columns:
+                                # "Unnamed" içeren boş isimsiz Excel sütunlarını yoksayar
                                 if not "Unnamed" in str(col):
+                                    # Oyuncu isimlerini temizler (boşlukları siler, 'nan' yazanları eler)
                                     oyuncular = df_havuz[col].dropna().astype(str).tolist()
+                                    temiz_oyuncular = [o.strip() for o in oyuncular if o.strip() and o.strip().lower() != 'nan']
+                                    
                                     t_adi = str(col).strip()
-                                    if t_adi:
-                                        yeni_havuz[t_adi] = [o.strip() for o in oyuncular if o.strip()]
+                                    # Geçerli bir takım adı ve içinde en az 1 oyuncu varsa havuza kaydeder
+                                    if t_adi and temiz_oyuncular:
+                                        yeni_havuz[t_adi] = temiz_oyuncular
                                         st.session_state.havuz_kategorileri[t_adi] = up_kat
                                         st.session_state.havuz_yas_gruplari[t_adi] = up_yas
+                                        
                             st.session_state.takim_havuzu.update(yeni_havuz)
                             ortak_veriyi_kaydet()
-                            st.success(f"✅ Başarılı! {len(yeni_havuz)} takım '{up_yas} {up_kat}' etiketiyle sisteme kaydedildi.")
+                            st.success(f"✅ Başarılı! {len(yeni_havuz)} takım '{up_yas} {up_kat}' etiketiyle sisteme hatasız kaydedildi.")
                         except Exception as e:
                             st.error(f"Dosya okuma hatası: {e}. Lütfen formatın doğru olduğundan emin olun.")
                     
