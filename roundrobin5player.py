@@ -13,6 +13,7 @@ import html
 from fpdf import FPDF
 
 # --- GENEL SAYFA AYARLARI ---
+# initial_sidebar_state="collapsed" diyerek yan menünün başta kapalı gelmesini sağladık. 
 st.set_page_config(page_title="Tenis Turnuva Otomasyonu", page_icon="🎾", layout="wide", initial_sidebar_state="collapsed")
 
 # --- GENEL STİLLER (HER İKİ MOD İÇİN ORTAK) ---
@@ -44,12 +45,8 @@ st.markdown("""
 if not st.session_state.get("admin_mi", False):
     st.markdown("""
     <style>
-        /* Misafirler için Streamlit üst menülerini ve ayarları tamamen gizleme */
+        /* Misafirler için ayarları gizleme */
         [data-testid="stToolbar"] {visibility: hidden !important;}
-        [data-testid="stDecoration"] {visibility: hidden !important;}
-        [data-testid="stStatusWidget"] {visibility: hidden !important;}
-        #MainMenu {visibility: hidden !important;}
-        header[data-testid="stHeader"] {visibility: hidden !important; display: none !important;}
     </style>
     """, unsafe_allow_html=True)
 
@@ -687,9 +684,6 @@ def ortak_veriyi_yukle():
         except Exception:
             pass 
 
-def ankara_istanbul_kurtarma():
-    pass
-
 def show_pdf(file_path):
     with open(file_path, "rb") as f:
         base64_pdf = base64.b64encode(f.read()).decode('utf-8')
@@ -720,7 +714,6 @@ if "aktif_asama" not in st.session_state: st.session_state.aktif_asama = "1. Aş
 if 'skor_tablosu' not in st.session_state:
     if os.path.exists(VERI_DOSYASI):
         ortak_veriyi_yukle()
-        ankara_istanbul_kurtarma() 
     else:
         st.session_state.skor_tablosu = pd.DataFrame(columns=["Grup", "Gün", "Eşleşme", "Branş", "Takım 1", "Takım 2", "T1_Oyuncu", "T2_Oyuncu", "1.Set T1", "1.Set T2", "2.Set T1", "2.Set T2", "3.Set T1", "3.Set T2", "Durum", "STB"])
         st.session_state.mac_programi = pd.DataFrame(columns=["Maç Saati", "Tarih", "Gün Adı", "Kort", "Grup", "Gün", "Branş", "Eşleşme", "Takım 1", "Takım 2", "T1 Oyuncu", "T2 Oyuncu", "Canlı Skor", "Kazanan"])
@@ -740,100 +733,78 @@ if 'mac_programi' in st.session_state:
             st.session_state.mac_programi["Kazanan"] = ""
 
 def render_big_button(icon, title, target_page):
-    if st.button(f"{icon}\n{title}", use_container_width=True, key=f"btn_{target_page}"):
+    if st.button(f"{icon}\n{title}", use_container_width=True, key=f"btn_main_{target_page}"):
         st.session_state.current_page = target_page
         st.rerun()
 
 # ==============================================================================
-# YÜZER (STICKY) NAVBAR CSS VE KONTEYNERİ (ALT SAYFALAR İÇİN)
+# YAN MENÜ (SIDEBAR) - ORİJİNAL VE KUSURSUZ YÖNTEM
 # ==============================================================================
-# Sadece Alt Sayfalarda Navigasyonu Sabitleyecek CSS
-st.markdown("""
-<style>
-    /* İlk dikey bloğu (nav_container) tepeye yapıştır */
-    div[data-testid="stVerticalBlock"] > div:first-child {
-        position: -webkit-sticky;
-        position: sticky;
-        top: 0px;
-        z-index: 999;
-        padding-top: 10px;
-        padding-bottom: 10px;
-        margin-bottom: 15px;
-        border-bottom: 1px solid rgba(128,128,128,0.2);
-    }
+with st.sidebar:
+    st.markdown("<h3 style='text-align: center;'>🎾 Menü</h3>", unsafe_allow_html=True)
+    st.markdown("---")
     
-    /* Temaya göre katı arka plan rengi (Üst üste binmeyi engeller) */
-    @media (prefers-color-scheme: light) {
-        div[data-testid="stVerticalBlock"] > div:first-child { background-color: #ffffff; }
-    }
-    @media (prefers-color-scheme: dark) {
-        div[data-testid="stVerticalBlock"] > div:first-child { background-color: #0e1117; }
-    }
+    st.markdown("**Turnuva Aşaması:**")
+    c_as1, c_as2 = st.columns(2)
+    with c_as1:
+        if st.button("1. Aşama", type="primary" if st.session_state.aktif_asama == "1. Aşama" else "secondary", use_container_width=True, key="side_1"):
+            st.session_state.aktif_asama = "1. Aşama"; st.rerun()
+    with c_as2:
+        if st.button("2. Aşama", type="primary" if st.session_state.aktif_asama == "2. Aşama" else "secondary", use_container_width=True, key="side_2"):
+            st.session_state.aktif_asama = "2. Aşama"; st.rerun()
+            
+    st.markdown("---")
+    st.markdown("**Sayfalar:**")
     
-    /* Yüzer banttaki menü butonlarını küçük/daraltılmış tut */
-    div[data-testid="stVerticalBlock"] > div:first-child .stButton > button {
-        min-height: 35px !important;
-        height: 35px !important;
-        padding: 0px 5px !important;
-        border-radius: 6px !important;
-        font-size: 14px !important;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-nav_container = st.container()
-
-with nav_container:
-    if st.session_state.current_page != "Home":
-        # SADECE ALT SAYFALAR: Yalnızca sekmeler yüzer olarak görünür
-        if st.session_state.admin_mi:
-            menu_items = ["🏠 Ana Sayfa", "👥 Grup Ayarları", "✍️ Skor Girişi", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular", "⚙️ Yönetim"]
-        else:
-            menu_items = ["🏠 Ana Sayfa", "🛡️ Takım Kadroları", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular"]
-
-        nav_cols = st.columns(len(menu_items))
-        for i, menu in enumerate(menu_items):
-            with nav_cols[i]:
-                target_menu = "⚙️ Yönetim & Dosya" if menu == "⚙️ Yönetim" else menu
-                is_active = (st.session_state.current_page == target_menu)
-                btn_type = "primary" if is_active else "secondary"
-                if st.button(menu, type=btn_type, use_container_width=True, key=f"nav_{menu}"):
-                    st.session_state.current_page = "Home" if menu == "🏠 Ana Sayfa" else target_menu
-                    st.rerun()
+    if st.session_state.admin_mi:
+        menu_items = ["🏠 Ana Sayfa", "👥 Grup Ayarları", "✍️ Skor Girişi", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular", "⚙️ Yönetim & Dosya"]
     else:
-        # ANA SAYFA: Aşama Seçiciler (Sol) & Logolar (Sağ) sadece burada görünür
-        c_st1, c_st2, c_space, c_logos = st.columns([1.5, 1.5, 6, 2])
-        with c_st1:
-            if st.button("1. Aşama", type="primary" if st.session_state.aktif_asama == "1. Aşama" else "secondary", use_container_width=True):
-                st.session_state.aktif_asama = "1. Aşama"; st.rerun()
-        with c_st2:
-            if st.button("2. Aşama", type="primary" if st.session_state.aktif_asama == "2. Aşama" else "secondary", use_container_width=True):
-                st.session_state.aktif_asama = "2. Aşama"; st.rerun()
-        with c_logos:
-            ttf_logo_html = ""
-            if os.path.exists("TTFLOGO.png"):
-                with open("TTFLOGO.png", "rb") as f: b64 = base64.b64encode(f.read()).decode()
-                ttf_logo_html = f'<img src="data:image/png;base64,{b64}" style="height: 28px; border-radius: 6px; filter: drop-shadow(0px 1px 2px rgba(0,0,0,0.2));" alt="TTF Logo">'
-            else:
-                ttf_logo_html = '<div style="background-color: #0B3B24; color: white; padding: 4px 8px; border-radius: 6px; font-weight: bold; font-size:12px;">🇹🇷 TTF</div>'
+        menu_items = ["🏠 Ana Sayfa", "🛡️ Takım Kadroları", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular"]
 
-            st.markdown(f"""
-                <div style="display: flex; gap: 8px; justify-content: flex-end; align-items: center; margin-top: 2px;">
-                    <a href="https://i-kort.ttf.org.tr/" target="_blank" style="text-decoration: none;">
-                        <div style="background-color: #0056b3; color: white; padding: 4px 8px; border-radius: 6px; font-weight: bold; font-size:12px;">🎾 i-Kort</div>
-                    </a>
-                    <a href="https://www.ttf.org.tr/" target="_blank">{ttf_logo_html}</a>
-                </div>
-            """, unsafe_allow_html=True)
+    for menu in menu_items:
+        target = "Home" if menu == "🏠 Ana Sayfa" else menu
+        is_active = (st.session_state.current_page == target)
+        if st.button(menu, type="primary" if is_active else "secondary", use_container_width=True, key=f"side_nav_{menu}"):
+            st.session_state.current_page = target
+            st.rerun()
 
 # ==============================================================================
-# ANA SAYFA GÖRÜNÜMÜ (DEV BUTONLAR İÇERİĞİ)
+# ANA SAYFA GÖRÜNÜMÜ (1. AŞAMA VE LOGOLAR SADECE BURADA)
 # ==============================================================================
 if st.session_state.current_page == "Home":
+    # Sadece Ana Sayfanın en tepesinde duran logolar ve aşama seçiciler
+    c_st1, c_st2, c_space, c_logos = st.columns([1.5, 1.5, 6, 3])
+    with c_st1:
+        if st.button("1. Aşama", type="primary" if st.session_state.aktif_asama == "1. Aşama" else "secondary", use_container_width=True, key="top_1"):
+            st.session_state.aktif_asama = "1. Aşama"; st.rerun()
+    with c_st2:
+        if st.button("2. Aşama", type="primary" if st.session_state.aktif_asama == "2. Aşama" else "secondary", use_container_width=True, key="top_2"):
+            st.session_state.aktif_asama = "2. Aşama"; st.rerun()
+    with c_logos:
+        ttf_logo_html = ""
+        if os.path.exists("TTFLOGO.png"):
+            with open("TTFLOGO.png", "rb") as f: b64 = base64.b64encode(f.read()).decode()
+            ttf_logo_html = f'<img src="data:image/png;base64,{b64}" style="height: 28px; border-radius: 6px; filter: drop-shadow(0px 1px 2px rgba(0,0,0,0.2));" alt="TTF Logo">'
+        else:
+            ttf_logo_html = '<div style="background-color: #0B3B24; color: white; padding: 4px 8px; border-radius: 6px; font-weight: bold; font-size:12px;">🇹🇷 TTF</div>'
+
+        st.markdown(f"""
+            <div style="display: flex; gap: 8px; justify-content: flex-end; align-items: center; margin-top: 2px;">
+                <a href="https://i-kort.ttf.org.tr/" target="_blank" style="text-decoration: none;">
+                    <div style="background-color: #0056b3; color: white; padding: 4px 8px; border-radius: 6px; font-weight: bold; font-size:12px;">🎾 i-Kort</div>
+                </a>
+                <a href="https://www.ttf.org.tr/" target="_blank">{ttf_logo_html}</a>
+            </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("<hr style='margin-top: 5px; margin-bottom: 15px;'>", unsafe_allow_html=True)
+
+    # Dev Butonlar
     st.markdown("<div class='dev-buton'>", unsafe_allow_html=True)
     st.markdown("<h1 style='text-align:center;'>🎾 Turnuva Ana Ekranı</h1><br>", unsafe_allow_html=True)
+    
     if st.session_state.admin_mi:
-        st.markdown("<h4 style='text-align:center;'>👨‍⚖️ Başhakem Kontrol Paneli</h4><br>", unsafe_allow_html=True)
+        st.markdown(f"<h4 style='text-align:center;'>👨‍⚖️ Başhakem Kontrol Paneli ({st.session_state.aktif_asama})</h4><br>", unsafe_allow_html=True)
         c1, c2, c3 = st.columns(3)
         with c1: render_big_button("👥", "Grup Ayarları", "👥 Grup Ayarları")
         with c2: render_big_button("✍️", "Skor Girişi", "✍️ Skor Girişi")
@@ -848,6 +819,7 @@ if st.session_state.current_page == "Home":
             st.session_state.admin_mi = False
             st.rerun()
     else:
+        st.markdown(f"<h4 style='text-align:center;'>İzleyici Paneli ({st.session_state.aktif_asama})</h4><br>", unsafe_allow_html=True)
         c1, c2, c3, c4 = st.columns(4)
         with c1: render_big_button("🛡️", "Takım Kadroları", "🛡️ Takım Kadroları")
         with c2: render_big_button("🏆", "Puan Durumu", "🏆 Puan Durumu")
@@ -871,7 +843,7 @@ else:
     menu_secim = st.session_state.current_page
     aktif_asama = st.session_state.aktif_asama
     
-    st.markdown(f"<h3 style='margin-top: 5px;'>{menu_secim} ({aktif_asama})</h3>", unsafe_allow_html=True)
+    st.markdown(f"<h3 style='margin-top: -10px;'>{menu_secim} ({aktif_asama})</h3>", unsafe_allow_html=True)
     st.markdown("---")
 
     # --- SAYFA 1: GRUP AYARLARI ---
@@ -916,7 +888,6 @@ else:
                                     if temiz_oyuncular:
                                         yeni_havuz[t_adi] = temiz_oyuncular
                             
-                            # EKRAN YENİLEME KAOSUNU ENGELLEYEN ONAY MEKANİZMASI
                             st.markdown("#### 👀 Sisteme Kaydedilecek Dosya Önizlemesi")
                             preview_df = pd.DataFrame([{"Takım Adı": k, "Sistemin Okuduğu Kadro": ", ".join(v)} for k, v in yeni_havuz.items()])
                             st.dataframe(preview_df, use_container_width=True)
