@@ -607,6 +607,7 @@ def show_pdf(file_path):
 # ==============================================================================
 # HAFIZA (SESSION STATE) BAŞLATMA
 # ==============================================================================
+if "takim_kadrolari" not in st.session_state: st.session_state.takim_kadrolari = {}
 if "admin_mi" not in st.session_state: st.session_state.admin_mi = False
 if "expand_all" not in st.session_state: st.session_state.expand_all = False
 if "selected_date_filter" not in st.session_state: st.session_state.selected_date_filter = datetime.date.today()
