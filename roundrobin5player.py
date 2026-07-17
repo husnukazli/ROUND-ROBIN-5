@@ -13,17 +13,14 @@ import html
 from fpdf import FPDF
 
 # --- GENEL SAYFA AYARLARI ---
-# initial_sidebar_state="collapsed" diyerek yan menünün başta kapalı gelmesini sağladık. 
 st.set_page_config(page_title="Tenis Turnuva Otomasyonu", page_icon="🎾", layout="wide", initial_sidebar_state="collapsed")
 
-# --- GENEL STİLLER (HER İKİ MOD İÇİN ORTAK) ---
+# --- GENEL STİLLER ---
+# Sistemi bozan, tavanı yutan ve üst üste bindiren tüm zorlama CSS'ler SİLİNDİ!
 st.markdown("""
 <style>
-    /* Sadece en alttaki Streamlit reklamını her zaman gizliyoruz */
+    /* Sadece Streamlit'in en alttaki "Made with Streamlit" reklamını gizler */
     footer {visibility: hidden !important;}
-    
-    /* İçerik boşluğunu ayarlıyoruz */
-    .block-container { padding-top: 1rem; padding-bottom: 2rem; }
     
     /* Ana Sayfadaki Dev Butonların Stili */
     .dev-buton .stButton > button {
@@ -45,7 +42,7 @@ st.markdown("""
 if not st.session_state.get("admin_mi", False):
     st.markdown("""
     <style>
-        /* Misafirler için ayarları gizleme */
+        /* Misafirler için sağ üstteki ayarlar menüsünü gizler */
         [data-testid="stToolbar"] {visibility: hidden !important;}
     </style>
     """, unsafe_allow_html=True)
@@ -684,6 +681,9 @@ def ortak_veriyi_yukle():
         except Exception:
             pass 
 
+def ankara_istanbul_kurtarma():
+    pass
+
 def show_pdf(file_path):
     with open(file_path, "rb") as f:
         base64_pdf = base64.b64encode(f.read()).decode('utf-8')
@@ -714,6 +714,7 @@ if "aktif_asama" not in st.session_state: st.session_state.aktif_asama = "1. Aş
 if 'skor_tablosu' not in st.session_state:
     if os.path.exists(VERI_DOSYASI):
         ortak_veriyi_yukle()
+        ankara_istanbul_kurtarma() 
     else:
         st.session_state.skor_tablosu = pd.DataFrame(columns=["Grup", "Gün", "Eşleşme", "Branş", "Takım 1", "Takım 2", "T1_Oyuncu", "T2_Oyuncu", "1.Set T1", "1.Set T2", "2.Set T1", "2.Set T2", "3.Set T1", "3.Set T2", "Durum", "STB"])
         st.session_state.mac_programi = pd.DataFrame(columns=["Maç Saati", "Tarih", "Gün Adı", "Kort", "Grup", "Gün", "Branş", "Eşleşme", "Takım 1", "Takım 2", "T1 Oyuncu", "T2 Oyuncu", "Canlı Skor", "Kazanan"])
@@ -738,7 +739,7 @@ def render_big_button(icon, title, target_page):
         st.rerun()
 
 # ==============================================================================
-# YAN MENÜ (SIDEBAR) - ORİJİNAL VE KUSURSUZ YÖNTEM
+# YAN MENÜ (SIDEBAR) - HER YERDEN ERİŞİLEBİLİR
 # ==============================================================================
 with st.sidebar:
     st.markdown("<h3 style='text-align: center;'>🎾 Menü</h3>", unsafe_allow_html=True)
@@ -769,10 +770,10 @@ with st.sidebar:
             st.rerun()
 
 # ==============================================================================
-# ANA SAYFA GÖRÜNÜMÜ (1. AŞAMA VE LOGOLAR SADECE BURADA)
+# ÜST BÖLÜM VE ANA SAYFA (Aşama Seçici ve Logolar Sadece Ana Sayfada)
 # ==============================================================================
 if st.session_state.current_page == "Home":
-    # Sadece Ana Sayfanın en tepesinde duran logolar ve aşama seçiciler
+    # --- ANA SAYFA ÜST BÖLÜMÜ (Aşama Seçiciler ve Logolar) ---
     c_st1, c_st2, c_space, c_logos = st.columns([1.5, 1.5, 6, 3])
     with c_st1:
         if st.button("1. Aşama", type="primary" if st.session_state.aktif_asama == "1. Aşama" else "secondary", use_container_width=True, key="top_1"):
@@ -799,7 +800,7 @@ if st.session_state.current_page == "Home":
     
     st.markdown("<hr style='margin-top: 5px; margin-bottom: 15px;'>", unsafe_allow_html=True)
 
-    # Dev Butonlar
+    # --- ANA SAYFA DEV BUTONLARI ---
     st.markdown("<div class='dev-buton'>", unsafe_allow_html=True)
     st.markdown("<h1 style='text-align:center;'>🎾 Turnuva Ana Ekranı</h1><br>", unsafe_allow_html=True)
     
@@ -837,14 +838,30 @@ if st.session_state.current_page == "Home":
     st.markdown("</div>", unsafe_allow_html=True)
 
 # ==============================================================================
-# ALT SAYFALARIN İÇERİKLERİ
+# ALT SAYFALARIN İÇERİKLERİ (Yüzer Değil, Orijinal Sekmeli Yapı)
 # ==============================================================================
 else:
     menu_secim = st.session_state.current_page
     aktif_asama = st.session_state.aktif_asama
     
-    st.markdown(f"<h3 style='margin-top: -10px;'>{menu_secim} ({aktif_asama})</h3>", unsafe_allow_html=True)
+    # Alt sayfalarda üst kısımdaki yatay sekmeler (Yüzmez, sadece sayfanın tepesinde durur)
+    if st.session_state.admin_mi:
+        menu_items = ["🏠 Ana Sayfa", "👥 Grup Ayarları", "✍️ Skor Girişi", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular", "⚙️ Yönetim"]
+    else:
+        menu_items = ["🏠 Ana Sayfa", "🛡️ Takım Kadroları", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular"]
+
+    nav_cols = st.columns(len(menu_items))
+    for i, menu in enumerate(menu_items):
+        with nav_cols[i]:
+            target_menu = "⚙️ Yönetim & Dosya" if menu == "⚙️ Yönetim" else menu
+            is_active = (st.session_state.current_page == target_menu)
+            btn_type = "primary" if is_active else "secondary"
+            if st.button(menu, type=btn_type, use_container_width=True, key=f"nav_top_{menu}"):
+                st.session_state.current_page = "Home" if menu == "🏠 Ana Sayfa" else target_menu
+                st.rerun()
+
     st.markdown("---")
+    st.markdown(f"<h3 style='margin-top: -10px;'>{menu_secim} ({aktif_asama})</h3>", unsafe_allow_html=True)
 
     # --- SAYFA 1: GRUP AYARLARI ---
     if menu_secim == "👥 Grup Ayarları":
