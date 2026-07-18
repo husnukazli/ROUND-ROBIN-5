@@ -65,19 +65,12 @@ def dogal_sirala(liste):
     return sorted(liste, key=_natural_keys)
 
 def sort_maclar(df):
-    """Maçları sahadaki oynanış sırasına ve eşleşmelere göre kusursuz dizer."""
+    """Sadece Arayüzde (UI) eşleşme içindeki sıralamayı düzeltmek içindir."""
     if df.empty: return df
     sort_map = {"3. Tekler": 1, "2. Tekler": 2, "1. Tekler": 3, "2. Çiftler": 4, "1. Çiftler": 5, "Çiftler": 6}
     df_temp = df.copy()
     df_temp['sira'] = df_temp['Branş'].map(sort_map).fillna(99)
-    
-    # PDF ve Program için tam gruplu sıralama (Önce saat/eşleşme, sonra maç türü)
-    if 'Maç Saati' in df_temp.columns and 'Kort' in df_temp.columns:
-        return df_temp.sort_values(['Maç Saati', 'Kort', 'Grup', 'Eşleşme', 'sira']).drop(columns=['sira'])
-    elif 'Eşleşme' in df_temp.columns:
-        return df_temp.sort_values(['Grup', 'Eşleşme', 'sira']).drop(columns=['sira'])
-    else:
-        return df_temp.sort_values('sira').drop(columns=['sira'])
+    return df_temp.sort_values('sira').drop(columns=['sira'])
 
 FONT_YUKLENDI = os.path.exists("arial.ttf")
 FONT_BOLD_YUKLENDI = os.path.exists("arialbd.ttf")
@@ -791,63 +784,59 @@ with st.sidebar:
     with c_as2:
         if st.button("2. Aşama", type="primary" if st.session_state.aktif_asama == "2. Aşama" else "secondary", use_container_width=True, key="side_2"):
             st.session_state.aktif_asama = "2. Aşama"; st.rerun()
-            
-    st.markdown("---")
-    st.markdown("**Sayfalar:**")
-    
-    if st.session_state.admin_mi:
-        menu_items = ["🏠 Ana Sayfa", "👥 Grup Ayarları", "📝 Esame Kontrol Merkezi", "✍️ Skor Girişi", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular", "⚙️ Yönetim & Dosya"]
-    elif st.session_state.kaptan_mi:
-        menu_items = ["🏠 Ana Sayfa", "👨‍✈️ Kaptan Esame Girişi", "🛡️ Takım Kadroları", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular"]
-    else:
-        menu_items = ["🏠 Ana Sayfa", "👨‍✈️ Kaptan Esame Girişi", "🛡️ Takım Kadroları", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular"]
-
-    for menu in menu_items:
-        target = "Home" if menu == "🏠 Ana Sayfa" else menu
-        is_active = (st.session_state.current_page == target)
-        if st.button(menu, type="primary" if is_active else "secondary", use_container_width=True, key=f"side_nav_{menu}"):
-            st.session_state.current_page = target
-            st.rerun()
-            
-    if st.session_state.admin_mi or st.session_state.kaptan_mi:
-        st.markdown("---")
-        if st.button("🔓 Çıkış Yap", type="primary", use_container_width=True):
-            st.session_state.admin_mi = False
-            st.session_state.kaptan_mi = False
-            st.session_state.kaptan_takim = ""
-            st.session_state.current_page = "Home"
-            st.rerun()
 
 # ==============================================================================
-# ANA SAYFA GÖRÜNÜMÜ (1. AŞAMA VE LOGOLAR SADECE BURADA)
+# ÜST MENÜ (NAVBAR) - HER SAYFADA TEPEDE GÖRÜNECEK
+# ==============================================================================
+c_st1, c_st2, c_space, c_logos = st.columns([1.5, 1.5, 6, 3])
+with c_st1:
+    if st.button("1. Aşama", type="primary" if st.session_state.aktif_asama == "1. Aşama" else "secondary", use_container_width=True, key="top_1"):
+        st.session_state.aktif_asama = "1. Aşama"; st.rerun()
+with c_st2:
+    if st.button("2. Aşama", type="primary" if st.session_state.aktif_asama == "2. Aşama" else "secondary", use_container_width=True, key="top_2"):
+        st.session_state.aktif_asama = "2. Aşama"; st.rerun()
+with c_logos:
+    ttf_logo_html = ""
+    if os.path.exists("TTFLOGO.png"):
+        with open("TTFLOGO.png", "rb") as f: b64 = base64.b64encode(f.read()).decode()
+        ttf_logo_html = f'<img src="data:image/png;base64,{b64}" style="height: 28px; border-radius: 6px; filter: drop-shadow(0px 1px 2px rgba(0,0,0,0.2));" alt="TTF Logo">'
+    else:
+        ttf_logo_html = '<div style="background-color: #0B3B24; color: white; padding: 4px 8px; border-radius: 6px; font-weight: bold; font-size:12px;">🇹🇷 TTF</div>'
+
+    st.markdown(f"""
+        <div style="display: flex; gap: 8px; justify-content: flex-end; align-items: center; margin-top: 2px;">
+            <a href="https://i-kort.ttf.org.tr/" target="_blank" style="text-decoration: none;">
+                <div style="background-color: #0056b3; color: white; padding: 4px 8px; border-radius: 6px; font-weight: bold; font-size:12px;">🎾 i-Kort</div>
+            </a>
+            <a href="https://www.ttf.org.tr/" target="_blank">{ttf_logo_html}</a>
+        </div>
+    """, unsafe_allow_html=True)
+
+st.markdown("<hr style='margin-top: 5px; margin-bottom: 15px;'>", unsafe_allow_html=True)
+
+if st.session_state.admin_mi:
+    menu_items = ["🏠 Ana Sayfa", "👥 Grup Ayarları", "📝 Esame Kontrol Merkezi", "✍️ Skor Girişi", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular", "⚙️ Yönetim"]
+elif st.session_state.kaptan_mi:
+    menu_items = ["🏠 Ana Sayfa", "👨‍✈️ Kaptan Esame Girişi", "🛡️ Takım Kadroları", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular"]
+else:
+    menu_items = ["🏠 Ana Sayfa", "👨‍✈️ Kaptan Esame Girişi", "🛡️ Takım Kadroları", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular"]
+
+nav_cols = st.columns(len(menu_items))
+for i, menu in enumerate(menu_items):
+    with nav_cols[i]:
+        target_menu = "⚙️ Yönetim & Dosya" if menu == "⚙️ Yönetim" else ("Home" if menu == "🏠 Ana Sayfa" else menu)
+        is_active = (st.session_state.current_page == target_menu)
+        btn_type = "primary" if is_active else "secondary"
+        if st.button(menu, type=btn_type, use_container_width=True, key=f"nav_top_{menu}"):
+            st.session_state.current_page = target_menu
+            st.rerun()
+
+st.markdown("---")
+
+# ==============================================================================
+# ANA SAYFA GÖRÜNÜMÜ 
 # ==============================================================================
 if st.session_state.current_page == "Home":
-    c_st1, c_st2, c_space, c_logos = st.columns([1.5, 1.5, 6, 3])
-    with c_st1:
-        if st.button("1. Aşama", type="primary" if st.session_state.aktif_asama == "1. Aşama" else "secondary", use_container_width=True, key="top_1"):
-            st.session_state.aktif_asama = "1. Aşama"; st.rerun()
-    with c_st2:
-        if st.button("2. Aşama", type="primary" if st.session_state.aktif_asama == "2. Aşama" else "secondary", use_container_width=True, key="top_2"):
-            st.session_state.aktif_asama = "2. Aşama"; st.rerun()
-    with c_logos:
-        ttf_logo_html = ""
-        if os.path.exists("TTFLOGO.png"):
-            with open("TTFLOGO.png", "rb") as f: b64 = base64.b64encode(f.read()).decode()
-            ttf_logo_html = f'<img src="data:image/png;base64,{b64}" style="height: 28px; border-radius: 6px; filter: drop-shadow(0px 1px 2px rgba(0,0,0,0.2));" alt="TTF Logo">'
-        else:
-            ttf_logo_html = '<div style="background-color: #0B3B24; color: white; padding: 4px 8px; border-radius: 6px; font-weight: bold; font-size:12px;">🇹🇷 TTF</div>'
-
-        st.markdown(f"""
-            <div style="display: flex; gap: 8px; justify-content: flex-end; align-items: center; margin-top: 2px;">
-                <a href="https://i-kort.ttf.org.tr/" target="_blank" style="text-decoration: none;">
-                    <div style="background-color: #0056b3; color: white; padding: 4px 8px; border-radius: 6px; font-weight: bold; font-size:12px;">🎾 i-Kort</div>
-                </a>
-                <a href="https://www.ttf.org.tr/" target="_blank">{ttf_logo_html}</a>
-            </div>
-        """, unsafe_allow_html=True)
-    
-    st.markdown("<hr style='margin-top: 5px; margin-bottom: 15px;'>", unsafe_allow_html=True)
-
     st.markdown("<div class='dev-buton'>", unsafe_allow_html=True)
     st.markdown("<h1 style='text-align:center;'>🎾 Turnuva Ana Ekranı</h1><br>", unsafe_allow_html=True)
     
@@ -880,7 +869,10 @@ if st.session_state.current_page == "Home":
         with c3: render_big_button("📅", "Maç Fikstürü", "📅 Maç Programı")
         with c4: render_big_button("📢", "Duyurular", "📢 Duyurular")
         
-        st.write("<br><br><br>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
+    
+    st.write("<br><br><br>", unsafe_allow_html=True)
+    if not st.session_state.admin_mi:
         with st.expander("⚙️ Sistem Yöneticisi (Başhakem) Girişi"):
             girilen_sifre = st.text_input("Şifre:", type="password", key="login_pass")
             if st.button("🔒 Yönetici Olarak Giriş Yap"):
@@ -890,33 +882,19 @@ if st.session_state.current_page == "Home":
                     st.success("Giriş Başarılı!")
                     st.rerun()
                 else: st.error("❌ Hatalı Şifre!")
-    st.markdown("</div>", unsafe_allow_html=True)
+    if st.session_state.admin_mi or st.session_state.kaptan_mi:
+        if st.button("🔓 Çıkış Yap (İzleyici Moduna Dön)", type="secondary"):
+            st.session_state.admin_mi = False
+            st.session_state.kaptan_mi = False
+            st.session_state.kaptan_takim = ""
+            st.session_state.current_page = "Home"
+            st.rerun()
 
 # ==============================================================================
 # ALT SAYFALARIN İÇERİKLERİ
 # ==============================================================================
 else:
     menu_secim = st.session_state.current_page
-    aktif_asama = st.session_state.aktif_asama
-    
-    if st.session_state.admin_mi:
-        menu_items = ["🏠 Ana Sayfa", "👥 Grup Ayarları", "📝 Esame Kontrol Merkezi", "✍️ Skor Girişi", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular", "⚙️ Yönetim"]
-    elif st.session_state.kaptan_mi:
-        menu_items = ["🏠 Ana Sayfa", "👨‍✈️ Kaptan Esame Girişi", "🛡️ Takım Kadroları", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular"]
-    else:
-        menu_items = ["🏠 Ana Sayfa", "👨‍✈️ Kaptan Esame Girişi", "🛡️ Takım Kadroları", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular"]
-
-    nav_cols = st.columns(len(menu_items))
-    for i, menu in enumerate(menu_items):
-        with nav_cols[i]:
-            target_menu = "⚙️ Yönetim & Dosya" if menu == "⚙️ Yönetim" else menu
-            is_active = (st.session_state.current_page == target_menu)
-            btn_type = "primary" if is_active else "secondary"
-            if st.button(menu, type=btn_type, use_container_width=True, key=f"nav_top_{menu}"):
-                st.session_state.current_page = "Home" if menu == "🏠 Ana Sayfa" else target_menu
-                st.rerun()
-
-    st.markdown("---")
     st.markdown(f"<h3 style='margin-top: -10px;'>{menu_secim} ({aktif_asama})</h3>", unsafe_allow_html=True)
 
     # --- KAPTAN SAYFASI: ESAME BİLDİRİMİ ---
@@ -977,7 +955,6 @@ else:
                             
                             format_secimi = st.session_state.grup_formatlari.get(grup, "3 Maçlık (2 Tek, 1 Çift)")
                             
-                            # Form sırası kaptanın giriş mantığına göre
                             branslar_kaptan_form = ["1. Tekler", "2. Tekler", "3. Tekler", "1. Çiftler", "2. Çiftler"] if "5 Maçlık" in format_secimi else ["1. Tekler", "2. Tekler", "Çiftler"]
                             
                             label_map = {
@@ -1896,13 +1873,13 @@ else:
                             st.session_state.mac_programi.at[idx, "Canlı Skor"] = "Oynanmadı"
                             st.session_state.mac_programi.at[idx, "Kazanan"] = ""
 
-            # NaN olan boş alanları doldurarak güvenli groupby işlemi, dropna=False ile tüm eşleşmeler garantilendi
+            # NaN olan boş alanları doldurarak güvenli groupby işlemi. Tüm takım maçları korundu!
             df_gunluk_safe = st.session_state.mac_programi[(st.session_state.mac_programi['Tarih'] == formatted_tarih) & (st.session_state.mac_programi['Grup'].isin(gecerli_gruplar_t4))].copy()
-            df_gunluk_safe = df_gunluk_safe.fillna("")
+            df_gunluk_safe = df_gunluk_safe.fillna("Belirtilmedi")
             
             df_team_summary_list = []
             for (saat, tarih, gun, kort, grup, match_gun, eslesme, takim1, takim2), g_df in df_gunluk_safe.groupby(
-                ['Maç Saati', 'Tarih', 'Gün Adı', 'Kort', 'Grup', 'Gün', 'Eşleşme', 'Takım 1', 'Takım 2'], dropna=False
+                ['Maç Saati', 'Tarih', 'Gün Adı', 'Kort', 'Grup', 'Gün', 'Eşleşme', 'Takım 1', 'Takım 2']
             ):
                 played = (g_df['Canlı Skor'] != 'Oynanmadı').sum()
                 if played == 0:
@@ -1929,12 +1906,12 @@ else:
                                 if t1_row.iloc[0]['Galibiyet'] > t2_row.iloc[0]['Galibiyet']: team_winner = "T1"
                                 elif t2_row.iloc[0]['Galibiyet'] > t1_row.iloc[0]['Galibiyet']: team_winner = "T2"
 
-                    df_team_summary_list.append({
-                        "Maç Saati": saat, "Tarih": tarih, "Gün Adı": gun, "Kort": kort,
-                        "Grup": grup, "Gün": match_gun, "Branş": "Genel Skor", "Eşleşme": eslesme,
-                        "Takım 1": takim1, "Takım 2": takim2, "T1 Oyuncu": "-", "T2 Oyuncu": "-",
-                        "Canlı Skor": team_score, "Kazanan": team_winner
-                    })
+                df_team_summary_list.append({
+                    "Maç Saati": saat, "Tarih": tarih, "Gün Adı": gun, "Kort": kort,
+                    "Grup": grup, "Gün": match_gun, "Branş": "Genel Skor", "Eşleşme": eslesme,
+                    "Takım 1": takim1, "Takım 2": takim2, "T1 Oyuncu": "-", "T2 Oyuncu": "-",
+                    "Canlı Skor": team_score, "Kazanan": team_winner
+                })
             df_team_summary = pd.DataFrame(df_team_summary_list)
 
             # ADMİN GÖRÜNÜMÜ
@@ -1951,7 +1928,8 @@ else:
                     secilen_pdf_cols = st.multiselect("PDF'e eklenecek sütunları seçin:", options=tum_kolonlar, default=["Maç Saati", "Kort", "Grup", "Branş", "Takım 1", "Takım 2", "Canlı Skor"])
 
                     if is_bireysel_pdf:
-                        df_pdf_export = sort_maclar(df_gunluk_safe).copy()
+                        # PDF için sıralama (sort_maclar) iptal edildi. Eşleşmeler doğal sırasıyla çıkacak.
+                        df_pdf_export = df_gunluk_safe.copy()
                         if not df_pdf_export.empty:
                             for i in df_pdf_export.index:
                                 win = df_pdf_export.at[i, 'Kazanan']
@@ -2026,12 +2004,13 @@ else:
                             else:
                                 st.error("Sistem meşgul, lütfen tekrar deneyin.")
 
-                if not df_gunluk_safe.empty:
+                # Orijinal df_gunluk kullanılıyor, sıralama ve gruplama hatasız!
+                if not df_gunluk.empty:
                     st.markdown("### 📋 Günlük Akış Editörü")
                     
                     eslesme_sil_liste = ["Seçiniz"]
                     eslesme_idx_map = {}
-                    for (grup_adi, eslesme_adi), g_df in df_gunluk_safe.groupby(['Grup', 'Eşleşme']):
+                    for (grup_adi, eslesme_adi), g_df in df_gunluk.groupby(['Grup', 'Eşleşme']):
                         t1 = g_df.iloc[0]['Takım 1']
                         t2 = g_df.iloc[0]['Takım 2']
                         kort = g_df.iloc[0]['Kort']
@@ -2054,7 +2033,7 @@ else:
                     st.divider()
                     
                     edited_dfs = []
-                    for (grup_adi, eslesme_adi), grup_df in df_gunluk_safe.groupby(['Grup', 'Eşleşme']):
+                    for (grup_adi, eslesme_adi), grup_df in df_gunluk.groupby(['Grup', 'Eşleşme']):
                         takim_skoru_etiketi = ""
                         if not df_team_summary.empty:
                             ozet_satiri = df_team_summary[(df_team_summary['Grup'] == grup_adi) & (df_team_summary['Eşleşme'] == eslesme_adi)]
@@ -2072,7 +2051,7 @@ else:
                         
                         with st.expander(expander_title, expanded=st.session_state.expand_all):
                             e_df = st.data_editor(
-                                sort_maclar(grup_df), 
+                                sort_maclar(grup_df), # Sadece Ekranda sıralı gösterir, veritabanını bozmaz
                                 use_container_width=True, 
                                 num_rows="dynamic", 
                                 disabled=["Grup", "Gün", "Branş", "Eşleşme", "Takım 1", "Takım 2", "T1 Oyuncu", "T2 Oyuncu", "Canlı Skor", "Kazanan"], 
@@ -2083,7 +2062,7 @@ else:
                     if st.button("💾 Değişiklikleri Kaydet"):
                         if edited_dfs:
                             guncel_program = pd.concat(edited_dfs)
-                            st.session_state.mac_programi.drop(index=df_gunluk_safe.index, inplace=True)
+                            st.session_state.mac_programi.drop(index=df_gunluk.index, inplace=True)
                             guncel_program['Tarih'] = guncel_program['Tarih'].fillna(formatted_tarih)
                             st.session_state.mac_programi = pd.concat([st.session_state.mac_programi, guncel_program]).reset_index(drop=True)
                             if ortak_veriyi_kaydet():
@@ -2095,11 +2074,11 @@ else:
             # MİSAFİR & KAPTAN GÖRÜNÜMÜ
             else:
                 st.markdown(f"### 📋 {formatted_tarih} Tarihli Maç Akışı ({aktif_asama})")
-                if df_gunluk_safe.empty:
+                if df_gunluk.empty:
                     st.info("Bu tarihte planlanmış maç bulunmamaktadır.")
                 else:
                     st.divider()
-                    for (grup_adi, eslesme_adi), grup_df in df_gunluk_safe.groupby(['Grup', 'Eşleşme']):
+                    for (grup_adi, eslesme_adi), grup_df in df_gunluk.groupby(['Grup', 'Eşleşme']):
                         takim_skoru_etiketi = ""
                         if not df_team_summary.empty:
                             ozet_satiri = df_team_summary[(df_team_summary['Grup'] == grup_adi) & (df_team_summary['Eşleşme'] == eslesme_adi)]
