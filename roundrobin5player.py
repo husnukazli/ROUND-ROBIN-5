@@ -16,10 +16,10 @@ from fpdf import FPDF
 st.set_page_config(page_title="Tenis Turnuva Otomasyonu", page_icon="🎾", layout="wide", initial_sidebar_state="collapsed")
 
 # --- GENEL STİLLER ---
+# Tavanı yutan zorlama kod (padding-top) silindi. Artık sekmeler barın altında kalmayacak.
 st.markdown("""
 <style>
     footer {visibility: hidden !important;}
-    .block-container { padding-top: 1rem; padding-bottom: 2rem; }
     
     .dev-buton .stButton > button {
         border-radius: 12px;
@@ -1687,13 +1687,27 @@ else:
 
                 if not df_gunluk.empty:
                     st.markdown("### 📋 Günlük Akış Editörü")
-                    mac_sil_secenekler = ["Seçiniz"] + [f"{r['Maç Saati']} - {r['Kort']} | {r['Grup']} | {r['Takım 1']} vs {r['Takım 2']} ({r['Branş']})" for idx, r in df_gunluk.iterrows()]
-                    secilen_program_mac = st.selectbox("⛔ Programdan Kaldırılacak Maçı Seçin:", mac_sil_secenekler, key="program_mac_sil_selectbox")
-                    if secilen_program_mac != "Seçiniz":
-                        secilen_idx_in_df = mac_sil_secenekler.index(secilen_program_mac) - 1
-                        actual_match_idx = df_gunluk.index[secilen_idx_in_df]
-                        if st.button("❌ Seçilen Maçı Programdan Kaldır"):
-                            st.session_state.mac_programi.drop(index=actual_match_idx, inplace=True); st.session_state.mac_programi.reset_index(drop=True, inplace=True); ortak_veriyi_kaydet(); st.rerun()
+                    
+                    eslesme_sil_liste = ["Seçiniz"]
+                    eslesme_idx_map = {}
+                    for (grup_adi, eslesme_adi), g_df in df_gunluk.groupby(['Grup', 'Eşleşme']):
+                        t1 = g_df.iloc[0]['Takım 1']
+                        t2 = g_df.iloc[0]['Takım 2']
+                        kort = g_df.iloc[0]['Kort']
+                        saat = g_df.iloc[0]['Maç Saati']
+                        secenek_metni = f"{saat} - {kort} | {grup_adi} | {t1} vs {t2} ({eslesme_adi})"
+                        eslesme_sil_liste.append(secenek_metni)
+                        eslesme_idx_map[secenek_metni] = g_df.index.tolist()
+
+                    secilen_sil_eslesme = st.selectbox("⛔ Programdan Kaldırılacak Eşleşmeyi Seçin:", eslesme_sil_liste, key="program_eslesme_sil_selectbox")
+                    if secilen_sil_eslesme != "Seçiniz":
+                        if st.button("❌ Seçilen Eşleşmeyi Tüm Maçlarıyla Programdan Kaldır"):
+                            silinecek_indexler = eslesme_idx_map[secilen_sil_eslesme]
+                            st.session_state.mac_programi.drop(index=silinecek_indexler, inplace=True)
+                            st.session_state.mac_programi.reset_index(drop=True, inplace=True)
+                            ortak_veriyi_kaydet()
+                            st.success("Seçilen eşleşmeye ait tüm maçlar programdan silindi!")
+                            st.rerun()
                     st.divider()
                     
                     edited_dfs = []
@@ -2000,7 +2014,6 @@ else:
 
             st.markdown("---")
             
-            # YENİ EKLENEN UÇTAN UCA (END-TO-END) TEST SİMÜLASYONU
             st.markdown("### 🧪 Gelişmiş Uçtan Uca (End-to-End) Simülasyon")
             with st.expander("🤖 35+ Erkekler 4 Grup Testi Başlat", expanded=False):
                 st.warning("⚠️ **DİKKAT:** Bu işlem MEVCUT TÜM VERİLERİ SİLER ve 35+ Erkekler A, B, C ve D gruplarını kurarak tamamen otomatik oynatır. Yedek almadan kullanmayın!")
