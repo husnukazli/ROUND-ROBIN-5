@@ -872,16 +872,18 @@ if st.session_state.current_page == "Home":
         with c2: render_big_button("🏆", "Puan Durumu", "🏆 Puan Durumu")
         with c3: render_big_button("📅", "Maç Fikstürü", "📅 Maç Programı")
         with c4: render_big_button("📢", "Duyurular", "📢 Duyurular")
-        st.write("<br><br><br>", unsafe_allow_html=True)
         
-        tab_kaptan, tab_admin = st.tabs(["👨‍✈️ Kaptan Girişi", "👨‍⚖️ Başhakem Girişi"])
+        st.write("<br><br>", unsafe_allow_html=True)
         
-        with tab_kaptan:
-            st.info("Kendi takımınızın maç kadrosunu (esame) bildirmek için giriş yapınız.")
+        st.markdown("### 👨‍✈️ Kaptan Giriş Paneli")
+        st.info("Kendi takımınızın maç kadrosunu (esame) bildirmek için giriş yapınız.")
+        
+        col_k1, col_k2 = st.columns([2, 1])
+        with col_k1:
             tum_takimlar = dogal_sirala(list(st.session_state.takim_havuzu.keys()))
             secilen_takim_login = st.selectbox("Takımınızı Seçin:", ["Seçiniz"] + tum_takimlar)
             girilen_pin = st.text_input("4 Haneli PIN Kodu:", type="password", key="login_pin")
-            if st.button("🚀 Kaptan Olarak Giriş Yap"):
+            if st.button("🚀 Kaptan Olarak Giriş Yap", type="primary"):
                 if secilen_takim_login == "Seçiniz":
                     st.warning("Lütfen takımınızı seçin.")
                 elif secilen_takim_login not in st.session_state.takim_pinleri:
@@ -895,7 +897,9 @@ if st.session_state.current_page == "Home":
                 else:
                     st.error("❌ Hatalı PIN kodu!")
 
-        with tab_admin:
+        st.write("<br><br>", unsafe_allow_html=True)
+        
+        with st.expander("⚙️ Sistem Yöneticisi (Başhakem) Girişi"):
             girilen_sifre = st.text_input("Şifre:", type="password", key="login_pass")
             if st.button("🔒 Yönetici Olarak Giriş Yap"):
                 if girilen_sifre == "zonguldak2026":
@@ -1539,7 +1543,6 @@ else:
                         # --- BAŞHAKEM SARI KART (UYARI) BÖLÜMÜ ---
                         uyarilar = []
                         
-                        # Çiftler maçında sadece 1 kişi seçilmiş olma durumu kontrolü
                         for b in ["1. Çiftler", "2. Çiftler", "Çiftler"]:
                             c_str = secimler.get(b, "")
                             if c_str:
@@ -1898,10 +1901,12 @@ else:
                             st.session_state.mac_programi.at[idx, "Canlı Skor"] = "Oynanmadı"
                             st.session_state.mac_programi.at[idx, "Kazanan"] = ""
 
-            df_gunluk = st.session_state.mac_programi[(st.session_state.mac_programi['Tarih'] == formatted_tarih) & (st.session_state.mac_programi['Grup'].isin(gecerli_gruplar_t4))].copy()
+            # NaN olan boş alanları doldurarak güvenli groupby işlemi
+            df_gunluk_safe = st.session_state.mac_programi[(st.session_state.mac_programi['Tarih'] == formatted_tarih) & (st.session_state.mac_programi['Grup'].isin(gecerli_gruplar_t4))].copy()
+            df_gunluk_safe = df_gunluk_safe.fillna("")
             
             df_team_summary_list = []
-            for (saat, tarih, gun, kort, grup, match_gun, eslesme, takim1, takim2), g_df in df_gunluk.groupby(
+            for (saat, tarih, gun, kort, grup, match_gun, eslesme, takim1, takim2), g_df in df_gunluk_safe.groupby(
                 ['Maç Saati', 'Tarih', 'Gün Adı', 'Kort', 'Grup', 'Gün', 'Eşleşme', 'Takım 1', 'Takım 2']
             ):
                 played = (g_df['Canlı Skor'] != 'Oynanmadı').sum()
@@ -1951,7 +1956,7 @@ else:
                     secilen_pdf_cols = st.multiselect("PDF'e eklenecek sütunları seçin:", options=tum_kolonlar, default=["Maç Saati", "Kort", "Grup", "Branş", "Takım 1", "Takım 2", "Canlı Skor"])
 
                     if is_bireysel_pdf:
-                        df_pdf_export = sort_maclar(df_gunluk).copy()
+                        df_pdf_export = sort_maclar(df_gunluk_safe).copy()
                         if not df_pdf_export.empty:
                             for i in df_pdf_export.index:
                                 win = df_pdf_export.at[i, 'Kazanan']
@@ -1970,6 +1975,7 @@ else:
                                 win = df_pdf_export.at[i, 'Kazanan']
                                 if win == 'T1': df_pdf_export.at[i, 'Takım 1'] = f"**{df_pdf_export.at[i, 'Takım 1']}**"
                                 elif win == 'T2': df_pdf_export.at[i, 'Takım 2'] = f"**{df_pdf_export.at[i, 'Takım 2']}**"
+                                df_pdf_export.at[i, 'Canlı Skor'] = f"**{df_pdf_export.at[i, 'Canlı Skor']}**"
                                 
                     if not df_pdf_export.empty and secilen_pdf_cols:
                         pdf_bytes_admin = generate_pdf(df_pdf_export[secilen_pdf_cols], f"Mac Programi - {formatted_tarih}")
@@ -2025,12 +2031,12 @@ else:
                             else:
                                 st.error("Sistem meşgul, lütfen tekrar deneyin.")
 
-                if not df_gunluk.empty:
+                if not df_gunluk_safe.empty:
                     st.markdown("### 📋 Günlük Akış Editörü")
                     
                     eslesme_sil_liste = ["Seçiniz"]
                     eslesme_idx_map = {}
-                    for (grup_adi, eslesme_adi), g_df in df_gunluk.groupby(['Grup', 'Eşleşme']):
+                    for (grup_adi, eslesme_adi), g_df in df_gunluk_safe.groupby(['Grup', 'Eşleşme']):
                         t1 = g_df.iloc[0]['Takım 1']
                         t2 = g_df.iloc[0]['Takım 2']
                         kort = g_df.iloc[0]['Kort']
@@ -2053,13 +2059,13 @@ else:
                     st.divider()
                     
                     edited_dfs = []
-                    for (grup_adi, eslesme_adi), grup_df in df_gunluk.groupby(['Grup', 'Eşleşme']):
+                    for (grup_adi, eslesme_adi), grup_df in df_gunluk_safe.groupby(['Grup', 'Eşleşme']):
                         takim_skoru_etiketi = ""
                         if not df_team_summary.empty:
                             ozet_satiri = df_team_summary[(df_team_summary['Grup'] == grup_adi) & (df_team_summary['Eşleşme'] == eslesme_adi)]
                             if not ozet_satiri.empty:
                                 val = ozet_satiri.iloc[0]['Canlı Skor']
-                                if val != "Oynanmadı": takim_skoru_etiketi = f" 👉 [{val}]"
+                                if val != "Oynanmadı": takim_skoru_etiketi = f"  🟢 SKOR: {val}"
                         
                         kort = grup_df.iloc[0]['Kort']
                         tarih = grup_df.iloc[0]['Tarih']
@@ -2082,7 +2088,7 @@ else:
                     if st.button("💾 Değişiklikleri Kaydet"):
                         if edited_dfs:
                             guncel_program = pd.concat(edited_dfs)
-                            st.session_state.mac_programi.drop(index=df_gunluk.index, inplace=True)
+                            st.session_state.mac_programi.drop(index=df_gunluk_safe.index, inplace=True)
                             guncel_program['Tarih'] = guncel_program['Tarih'].fillna(formatted_tarih)
                             st.session_state.mac_programi = pd.concat([st.session_state.mac_programi, guncel_program]).reset_index(drop=True)
                             if ortak_veriyi_kaydet():
@@ -2094,17 +2100,17 @@ else:
             # MİSAFİR & KAPTAN GÖRÜNÜMÜ
             else:
                 st.markdown(f"### 📋 {formatted_tarih} Tarihli Maç Akışı ({aktif_asama})")
-                if df_gunluk.empty:
+                if df_gunluk_safe.empty:
                     st.info("Bu tarihte planlanmış maç bulunmamaktadır.")
                 else:
                     st.divider()
-                    for (grup_adi, eslesme_adi), grup_df in df_gunluk.groupby(['Grup', 'Eşleşme']):
+                    for (grup_adi, eslesme_adi), grup_df in df_gunluk_safe.groupby(['Grup', 'Eşleşme']):
                         takim_skoru_etiketi = ""
                         if not df_team_summary.empty:
                             ozet_satiri = df_team_summary[(df_team_summary['Grup'] == grup_adi) & (df_team_summary['Eşleşme'] == eslesme_adi)]
                             if not ozet_satiri.empty:
                                 val = ozet_satiri.iloc[0]['Canlı Skor']
-                                if val != "Oynanmadı": takim_skoru_etiketi = f" 👉 [{val}]"
+                                if val != "Oynanmadı": takim_skoru_etiketi = f"  🟢 SKOR: {val}"
 
                         kort = grup_df.iloc[0]['Kort']
                         takim1 = grup_df.iloc[0]['Takım 1']
