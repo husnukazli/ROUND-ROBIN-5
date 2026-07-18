@@ -62,6 +62,14 @@ def dogal_sirala(liste):
         return [int(c) if c.isdigit() else c.lower() for c in re.split(r'(\d+)', str(text))]
     return sorted(liste, key=_natural_keys)
 
+def sort_maclar(df):
+    """Maçları sahadaki oynanış sırasına göre (2.Tek, 1.Tek, Çiftler) dizer."""
+    if df.empty: return df
+    sort_map = {"3. Tekler": 1, "2. Tekler": 2, "1. Tekler": 3, "1. Çiftler": 4, "2. Çiftler": 5, "Çiftler": 6}
+    df_temp = df.copy()
+    df_temp['sira'] = df_temp['Branş'].map(sort_map).fillna(99)
+    return df_temp.sort_values('sira').drop(columns=['sira'])
+
 FONT_YUKLENDI = os.path.exists("arial.ttf")
 FONT_BOLD_YUKLENDI = os.path.exists("arialbd.ttf")
 
@@ -242,9 +250,9 @@ def eslesmeleri_olustur(grup_adi, takimlar, grup_tipi, format_secimi):
         ]
     
     if format_secimi == "5 Maçlık (3 Tek, 2 Çift)":
-        branslar = ["1. Tekler", "2. Tekler", "3. Tekler", "1. Çiftler", "2. Çiftler"]
+        branslar = ["3. Tekler", "2. Tekler", "1. Tekler", "1. Çiftler", "2. Çiftler"]
     else:
-        branslar = ["1. Tekler", "2. Tekler", "Çiftler"]
+        branslar = ["2. Tekler", "1. Tekler", "Çiftler"]
 
     program = []
     for m in base_matches:
@@ -350,7 +358,7 @@ def render_html_matrix(takimlar, df_grup):
                     t1_puan_info = 0.0; t2_puan_info = 0.0
                     details = []
                     
-                    for _, row in matches.iterrows():
+                    for _, row in sort_maclar(matches).iterrows():
                         w1, w2 = hesapla_mac_kazanani(row)
                         brans = str(row.get('Branş', '')).lower()
                         is_cift = "çift" in brans
@@ -935,25 +943,40 @@ else:
                             kasadaki_veri = st.session_state.esame_kasasi.get(match_key, {}).get(takim_adi, {})
                             
                             format_secimi = st.session_state.grup_formatlari.get(grup, "3 Maçlık (2 Tek, 1 Çift)")
-                            branslar = ["1. Tekler", "2. Tekler", "3. Tekler", "1. Çiftler", "2. Çiftler"] if "5 Maçlık" in format_secimi else ["1. Tekler", "2. Tekler", "Çiftler"]
+                            branslar_ham = ["3. Tekler", "2. Tekler", "1. Tekler", "1. Çiftler", "2. Çiftler"] if "5 Maçlık" in format_secimi else ["2. Tekler", "1. Tekler", "Çiftler"]
+                            
+                            # Görsel sıralamayı sağlama (2.Tek üstte, 1.Tek altta)
+                            branslar_sirali = sorted(branslar_ham, key=lambda x: {"3. Tekler":1, "2. Tekler":2, "1. Tekler":3, "1. Çiftler":4, "2. Çiftler":5, "Çiftler":6}.get(x, 99))
+                            
+                            # Kaptanlar için anlaşılır net etiketler
+                            label_map = {
+                                "1. Tekler": "🥇 1. Tekler Oyuncusu (Listede Üstte - Günün 2. Maçına Çıkar)",
+                                "2. Tekler": "🥈 2. Tekler Oyuncusu (Listede Altta - Günün 1. Maçına Çıkar)",
+                                "3. Tekler": "🥉 3. Tekler Oyuncusu (Günün 1. Maçına Çıkar)",
+                                "1. Çiftler": "👥 1. Çiftler Oyuncuları (Günün 4. Maçına Çıkar)",
+                                "2. Çiftler": "👥 2. Çiftler Oyuncuları (Günün Son Maçına Çıkar)",
+                                "Çiftler": "👥 Çiftler Oyuncuları (Günün Son Maçına Çıkar)"
+                            }
                             
                             form_secimleri = {}
                             
                             with st.form(key=f"esame_form_{match_key}"):
-                                for b in branslar:
+                                for b in branslar_sirali:
+                                    gorsel_label = label_map.get(b, f"{b} Oyuncusu")
+                                    
                                     if "Çiftler" in b:
                                         eski_cift_str = kasadaki_veri.get(b, "")
                                         eski_cift_liste = [o.strip() for o in eski_cift_str.split("-") if o.strip() in oyuncu_havuzu]
-                                        secim = st.multiselect(f"{b} Oyuncuları", options=oyuncu_havuzu, default=eski_cift_liste, max_selections=2)
+                                        secim = st.multiselect(gorsel_label, options=oyuncu_havuzu, default=eski_cift_liste, max_selections=2)
                                         form_secimleri[b] = " - ".join(secim)
                                     else:
                                         eski_tek = kasadaki_veri.get(b, "Seçiniz")
                                         idx = (["Seçiniz"] + oyuncu_havuzu).index(eski_tek) if eski_tek in oyuncu_havuzu else 0
-                                        secim = st.selectbox(f"{b} Oyuncusu", options=["Seçiniz"] + oyuncu_havuzu, index=idx)
+                                        secim = st.selectbox(gorsel_label, options=["Seçiniz"] + oyuncu_havuzu, index=idx)
                                         form_secimleri[b] = secim if secim != "Seçiniz" else ""
                                         
                                 if st.form_submit_button("💾 Kasaya Gönder (Başhakeme İlet)"):
-                                    # --- KAPTAN ENGELLEME (VALIDASYON) KALKANI ---
+                                    # --- KAPTAN ENGELLEME (KIRMIZI KART) BÖLÜMÜ ---
                                     o1 = form_secimleri.get("1. Tekler", "")
                                     o2 = form_secimleri.get("2. Tekler", "")
                                     o3 = form_secimleri.get("3. Tekler", "")
@@ -964,12 +987,12 @@ else:
                                     
                                     hatalar = []
                                     # Sıralama Hataları (Listede daha iyi olan oyuncu alt sıraya yazılamaz)
-                                    if r1 != -1 and r2 != -1 and r1 >= r2: hatalar.append(f"1. Tekler oyuncusu ({o1}), 2. Tekler oyuncusundan ({o2}) listede daha üst sırada olmalıdır.")
-                                    if r2 != -1 and r3 != -1 and r2 >= r3: hatalar.append(f"2. Tekler oyuncusu ({o2}), 3. Tekler oyuncusundan ({o3}) listede daha üst sırada olmalıdır.")
-                                    if r1 != -1 and r3 != -1 and r2 == -1 and r1 >= r3: hatalar.append(f"1. Tekler oyuncusu ({o1}), 3. Tekler oyuncusundan ({o3}) listede daha üst sırada olmalıdır.")
+                                    if r1 != -1 and r2 != -1 and r1 >= r2: hatalar.append(f"1. Tekler oyuncusu ({o1}), 2. Tekler oyuncusundan ({o2}) takım listesinde daha üst sırada olmalıdır.")
+                                    if r2 != -1 and r3 != -1 and r2 >= r3: hatalar.append(f"2. Tekler oyuncusu ({o2}), 3. Tekler oyuncusundan ({o3}) takım listesinde daha üst sırada olmalıdır.")
+                                    if r1 != -1 and r3 != -1 and r2 == -1 and r1 >= r3: hatalar.append(f"1. Tekler oyuncusu ({o1}), 3. Tekler oyuncusundan ({o3}) takım listesinde daha üst sırada olmalıdır.")
                                     
                                     # Aynı Oyuncuyu Çift Yazma Hataları
-                                    if o1 != "" and o1 == o2: hatalar.append(f"Aynı oyuncuyu ({o1}) hem 1. Tek hem 2. Tek yazamazsınız.")
+                                    if o1 != "" and o1 == o2: hatalar.append(f"Aynı oyuncuyu ({o1}) hem 1. Tek hem 2. Tek maçına yazamazsınız.")
                                     if o2 != "" and o2 == o3: hatalar.append(f"Aynı oyuncuyu ({o2}) birden fazla tekler maçına yazamazsınız.")
                                     if o1 != "" and o1 == o3: hatalar.append(f"Aynı oyuncuyu ({o1}) birden fazla tekler maçına yazamazsınız.")
                                     
@@ -1032,7 +1055,6 @@ else:
                             if st.button("📢 Esameleri Onayla ve Fikstüre Yansıt (Zarfları Aç)", key=f"onay_{match_key}", type="primary"):
                                 st.session_state.esame_onayli[match_key] = True
                                 
-                                # Skor tablosuna yazma işlemi
                                 skor_mask = (st.session_state.skor_tablosu['Grup'] == grup) & (st.session_state.skor_tablosu['Gün'] == gun) & (st.session_state.skor_tablosu['Eşleşme'] == eslesme)
                                 for idx, row in st.session_state.skor_tablosu[skor_mask].iterrows():
                                     brans = row['Branş']
@@ -1325,7 +1347,9 @@ else:
                     df_gun = df_grup[df_grup['Gün'] == secilen_gun]
                     
                     form_verileri = {}
-                    for idx, row in df_gun.iterrows():
+                    
+                    # BAŞHAKEM SKOR GİRİŞİNDE DE GÖRSEL SIRALAMA (2.Tek Üstte)
+                    for idx, row in sort_maclar(df_gun).iterrows():
                         st.markdown(f"**🔹 {row['Branş']} ({row['Eşleşme']})**", unsafe_allow_html=True)
                         
                         h_cols = st.columns([2.8, 2.8, 2.6, 1.4, 0.2, 1.4, 0.2, 1.4])
@@ -1440,9 +1464,9 @@ else:
                         
                         # --- BAŞHAKEM SARI KART (UYARI) BÖLÜMÜ ---
                         uyarilar = []
-                        if r1 != -1 and r2 != -1 and r1 >= r2: uyarilar.append(f"**1. Tekler** oyuncusu ({o1}), **2. Tekler** oyuncusundan ({o2}) listede daha üst sırada olmalıdır.")
-                        if r2 != -1 and r3 != -1 and r2 >= r3: uyarilar.append(f"**2. Tekler** oyuncusu ({o2}), **3. Tekler** oyuncusundan ({o3}) listede daha üst sırada olmalıdır.")
-                        if r1 != -1 and r3 != -1 and r2 == -1 and r1 >= r3: uyarilar.append(f"**1. Tekler** oyuncusu ({o1}), **3. Tekler** oyuncusundan ({o3}) listede daha üst sırada olmalıdır.")
+                        if r1 != -1 and r2 != -1 and r1 >= r2: uyarilar.append(f"**1. Tekler** oyuncusu ({o1}), **2. Tekler** oyuncusundan ({o2}) takım listesinde daha üst sırada olmalıdır.")
+                        if r2 != -1 and r3 != -1 and r2 >= r3: uyarilar.append(f"**2. Tekler** oyuncusu ({o2}), **3. Tekler** oyuncusundan ({o3}) takım listesinde daha üst sırada olmalıdır.")
+                        if r1 != -1 and r3 != -1 and r2 == -1 and r1 >= r3: uyarilar.append(f"**1. Tekler** oyuncusu ({o1}), **3. Tekler** oyuncusundan ({o3}) takım listesinde daha üst sırada olmalıdır.")
                         
                         if o1 and o1 == o2: uyarilar.append(f"Aynı oyuncuyu ({o1}) birden fazla tekler maçına yazamazsınız.")
                         if o2 and o2 == o3: uyarilar.append(f"Aynı oyuncuyu ({o2}) birden fazla tekler maçına yazamazsınız.")
@@ -1813,7 +1837,7 @@ else:
                     secilen_pdf_cols = st.multiselect("PDF'e eklenecek sütunları seçin:", options=tum_kolonlar, default=["Maç Saati", "Kort", "Grup", "Branş", "Takım 1", "Takım 2", "Canlı Skor"])
 
                     if is_bireysel_pdf:
-                        df_pdf_export = df_gunluk.copy()
+                        df_pdf_export = sort_maclar(df_gunluk).copy()
                         if not df_pdf_export.empty:
                             for i in df_pdf_export.index:
                                 win = df_pdf_export.at[i, 'Kazanan']
@@ -1929,7 +1953,7 @@ else:
                         
                         with st.expander(expander_title, expanded=st.session_state.expand_all):
                             e_df = st.data_editor(
-                                grup_df, 
+                                sort_maclar(grup_df), 
                                 use_container_width=True, 
                                 num_rows="dynamic", 
                                 disabled=["Grup", "Gün", "Branş", "Eşleşme", "Takım 1", "Takım 2", "T1 Oyuncu", "T2 Oyuncu", "Canlı Skor", "Kazanan"], 
@@ -1947,7 +1971,7 @@ else:
                             st.success("Güncellendi!")
                             st.rerun()
 
-            # MİSAFİR GÖRÜNÜMÜ
+            # MİSAFİR & KAPTAN GÖRÜNÜMÜ
             else:
                 st.markdown(f"### 📋 {formatted_tarih} Tarihli Maç Akışı ({aktif_asama})")
                 if df_gunluk.empty:
@@ -1974,7 +1998,7 @@ else:
                         
                         with st.expander(expander_title, expanded=False):
                             html_rows = ""
-                            for _, row in grup_df.iterrows():
+                            for _, row in sort_maclar(grup_df).iterrows():
                                 skor = str(row.get('Canlı Skor', 'Oynanmadı'))
                                 skor_html = f"<span style='color:#28a745; font-weight:bold;'>{skor}</span>" if skor not in ["Oynanmadı", ""] else "<i>Bekleniyor</i>"
                                 
