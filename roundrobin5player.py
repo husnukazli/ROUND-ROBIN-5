@@ -1002,6 +1002,16 @@ else:
                                         
                                 if st.form_submit_button("💾 Kasaya Gönder (Başhakeme İlet)"):
                                     # --- KAPTAN ENGELLEME (KIRMIZI KART) BÖLÜMÜ ---
+                                    hatalar = []
+                                    
+                                    # Çiftler 1 kişi seçilme kontrolü (Tamamen boş veya 2 kişi olmalı)
+                                    for b in branslar_kaptan_form:
+                                        if "Çiftler" in b:
+                                            c_str = form_secimleri.get(b, "")
+                                            c_list = [o.strip() for o in c_str.split("-") if o.strip()]
+                                            if len(c_list) == 1:
+                                                hatalar.append(f"{b} maçına tek oyuncu yazılamaz. Lütfen {b} için 2 kişi seçin veya maçı tamamen boş bırakın.")
+                                    
                                     o1 = form_secimleri.get("1. Tekler", "")
                                     o2 = form_secimleri.get("2. Tekler", "")
                                     o3 = form_secimleri.get("3. Tekler", "")
@@ -1010,9 +1020,7 @@ else:
                                     r2 = oyuncu_havuzu.index(o2) if o2 in oyuncu_havuzu else -1
                                     r3 = oyuncu_havuzu.index(o3) if o3 in oyuncu_havuzu else -1
                                     
-                                    hatalar = []
                                     # Sıralama Hataları (Listede daha iyi olan oyuncu alt sıraya yazılamaz)
-                                    # Not: Index sıfıra yaklaştıkça oyuncu daha iyidir.
                                     if r1 != -1 and r2 != -1 and r1 >= r2: hatalar.append(f"1. Tekler oyuncusu ({o1}), 2. Tekler oyuncusundan ({o2}) takım listesinde daha üst sırada (daha iyi) olmalıdır.")
                                     if r2 != -1 and r3 != -1 and r2 >= r3: hatalar.append(f"2. Tekler oyuncusu ({o2}), 3. Tekler oyuncusundan ({o3}) takım listesinde daha üst sırada (daha iyi) olmalıdır.")
                                     if r1 != -1 and r3 != -1 and r2 == -1 and r1 >= r3: hatalar.append(f"1. Tekler oyuncusu ({o1}), 3. Tekler oyuncusundan ({o3}) takım listesinde daha üst sırada (daha iyi) olmalıdır.")
@@ -1530,6 +1538,15 @@ else:
                         
                         # --- BAŞHAKEM SARI KART (UYARI) BÖLÜMÜ ---
                         uyarilar = []
+                        
+                        # Çiftler maçında sadece 1 kişi seçilmiş olma durumu kontrolü
+                        for b in ["1. Çiftler", "2. Çiftler", "Çiftler"]:
+                            c_str = secimler.get(b, "")
+                            if c_str:
+                                c_list = [o.strip() for o in c_str.split("-") if o.strip()]
+                                if len(c_list) == 1:
+                                    uyarilar.append(f"**{b}** maçına tek bir oyuncu seçilmiş. Çiftler maçı için 2 kişi seçilmeli veya boş bırakılmalıdır.")
+                                    
                         if r1 != -1 and r2 != -1 and r1 >= r2: uyarilar.append(f"**1. Tekler** oyuncusu ({o1}), **2. Tekler** oyuncusundan ({o2}) takım listesinde daha üst sırada olmalıdır.")
                         if r2 != -1 and r3 != -1 and r2 >= r3: uyarilar.append(f"**2. Tekler** oyuncusu ({o2}), **3. Tekler** oyuncusundan ({o3}) takım listesinde daha üst sırada olmalıdır.")
                         if r1 != -1 and r3 != -1 and r2 == -1 and r1 >= r3: uyarilar.append(f"**1. Tekler** oyuncusu ({o1}), **3. Tekler** oyuncusundan ({o3}) takım listesinde daha üst sırada olmalıdır.")
