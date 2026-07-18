@@ -932,7 +932,6 @@ else:
                         if not oyuncu_havuzu or oyuncu_havuzu == ["Belirtilmedi"]:
                             st.error("Takımınızın oyuncu havuzu boş. Lütfen Başhakem ile iletişime geçin.")
                         else:
-                            # Mevcut kilitli kasadaki (eğer daha önce girip kaydettiyse) veriyi çek
                             kasadaki_veri = st.session_state.esame_kasasi.get(match_key, {}).get(takim_adi, {})
                             
                             format_secimi = st.session_state.grup_formatlari.get(grup, "3 Maçlık (2 Tek, 1 Çift)")
@@ -954,13 +953,36 @@ else:
                                         form_secimleri[b] = secim if secim != "Seçiniz" else ""
                                         
                                 if st.form_submit_button("💾 Kasaya Gönder (Başhakeme İlet)"):
-                                    if match_key not in st.session_state.esame_kasasi:
-                                        st.session_state.esame_kasasi[match_key] = {}
+                                    # --- KAPTAN ENGELLEME (VALIDASYON) KALKANI ---
+                                    o1 = form_secimleri.get("1. Tekler", "")
+                                    o2 = form_secimleri.get("2. Tekler", "")
+                                    o3 = form_secimleri.get("3. Tekler", "")
                                     
-                                    st.session_state.esame_kasasi[match_key][takim_adi] = form_secimleri
-                                    ortak_veriyi_kaydet()
-                                    st.success("Kadro başarıyla kasaya kilitlendi! Başhakem onayına kadar gizli kalacaktır.")
-                                    st.rerun()
+                                    r1 = oyuncu_havuzu.index(o1) if o1 in oyuncu_havuzu else -1
+                                    r2 = oyuncu_havuzu.index(o2) if o2 in oyuncu_havuzu else -1
+                                    r3 = oyuncu_havuzu.index(o3) if o3 in oyuncu_havuzu else -1
+                                    
+                                    hatalar = []
+                                    # Sıralama Hataları (Listede daha iyi olan oyuncu alt sıraya yazılamaz)
+                                    if r1 != -1 and r2 != -1 and r1 >= r2: hatalar.append(f"1. Tekler oyuncusu ({o1}), 2. Tekler oyuncusundan ({o2}) listede daha üst sırada olmalıdır.")
+                                    if r2 != -1 and r3 != -1 and r2 >= r3: hatalar.append(f"2. Tekler oyuncusu ({o2}), 3. Tekler oyuncusundan ({o3}) listede daha üst sırada olmalıdır.")
+                                    if r1 != -1 and r3 != -1 and r2 == -1 and r1 >= r3: hatalar.append(f"1. Tekler oyuncusu ({o1}), 3. Tekler oyuncusundan ({o3}) listede daha üst sırada olmalıdır.")
+                                    
+                                    # Aynı Oyuncuyu Çift Yazma Hataları
+                                    if o1 != "" and o1 == o2: hatalar.append(f"Aynı oyuncuyu ({o1}) hem 1. Tek hem 2. Tek yazamazsınız.")
+                                    if o2 != "" and o2 == o3: hatalar.append(f"Aynı oyuncuyu ({o2}) birden fazla tekler maçına yazamazsınız.")
+                                    if o1 != "" and o1 == o3: hatalar.append(f"Aynı oyuncuyu ({o1}) birden fazla tekler maçına yazamazsınız.")
+                                    
+                                    if hatalar:
+                                        st.error("❌ **KADRO HATASI (Gönderilemedi):** Lütfen aşağıdaki hataları düzeltin!\n\n" + "\n".join([f"- {h}" for h in hatalar]))
+                                    else:
+                                        if match_key not in st.session_state.esame_kasasi:
+                                            st.session_state.esame_kasasi[match_key] = {}
+                                        
+                                        st.session_state.esame_kasasi[match_key][takim_adi] = form_secimleri
+                                        ortak_veriyi_kaydet()
+                                        st.success("Kadro başarıyla kasaya kilitlendi! Başhakem onayına kadar gizli kalacaktır.")
+                                        st.rerun()
                     st.divider()
 
     # --- BAŞHAKEM SAYFASI: ESAME KONTROL MERKEZİ ---
@@ -1409,15 +1431,24 @@ else:
                         takim_ismi = data[team_key]["isim"]
                         havuz = grup_kadro_dict.get(takim_ismi, [])
                         secimler = data[team_key]["secimler"]
-                        o1 = secimler.get("1. Tekler"); o2 = secimler.get("2. Tekler"); o3 = secimler.get("3. Tekler")
+                        o1 = secimler.get("1. Tekler")
+                        o2 = secimler.get("2. Tekler")
+                        o3 = secimler.get("3. Tekler")
                         r1 = havuz.index(o1) if o1 in havuz else -1
                         r2 = havuz.index(o2) if o2 in havuz else -1
                         r3 = havuz.index(o3) if o3 in havuz else -1
+                        
+                        # --- BAŞHAKEM SARI KART (UYARI) BÖLÜMÜ ---
                         uyarilar = []
-                        if r1 != -1 and r2 != -1 and r1 <= r2: uyarilar.append(f"**2. Tekler** oyuncusu ({o2}), **1. Tekler** oyuncusundan ({o1}) daha üst bir esame sırasına sahip olmalıdır.")
-                        if r2 != -1 and r3 != -1 and r2 <= r3: uyarilar.append(f"**3. Tekler** oyuncusu ({o3}), **2. Tekler** oyuncusundan ({o2}) daha üst bir esame sırasına sahip olmalıdır.")
-                        if r1 != -1 and r3 != -1 and r2 == -1 and r1 <= r3: uyarilar.append(f"**3. Tekler** oyuncusu ({o3}), **1. Tekler** oyuncusundan ({o1}) daha üst bir esame sırasına sahip olmalıdır.")
-                        if uyarilar: st.warning(f"⚠️ **Takım İçi Sıralama Uyarısı ({takim_ismi} | Eşleşme: {eslesme}):**\n\n" + "\n".join([f"- {u}" for u in uyarilar]) + "\n\n*(Kayıt işlemi yapılabilir, bu sadece bilgi uyarısıdır.)*")
+                        if r1 != -1 and r2 != -1 and r1 >= r2: uyarilar.append(f"**1. Tekler** oyuncusu ({o1}), **2. Tekler** oyuncusundan ({o2}) listede daha üst sırada olmalıdır.")
+                        if r2 != -1 and r3 != -1 and r2 >= r3: uyarilar.append(f"**2. Tekler** oyuncusu ({o2}), **3. Tekler** oyuncusundan ({o3}) listede daha üst sırada olmalıdır.")
+                        if r1 != -1 and r3 != -1 and r2 == -1 and r1 >= r3: uyarilar.append(f"**1. Tekler** oyuncusu ({o1}), **3. Tekler** oyuncusundan ({o3}) listede daha üst sırada olmalıdır.")
+                        
+                        if o1 and o1 == o2: uyarilar.append(f"Aynı oyuncuyu ({o1}) birden fazla tekler maçına yazamazsınız.")
+                        if o2 and o2 == o3: uyarilar.append(f"Aynı oyuncuyu ({o2}) birden fazla tekler maçına yazamazsınız.")
+                        if o1 and o1 == o3: uyarilar.append(f"Aynı oyuncuyu ({o1}) birden fazla tekler maçına yazamazsınız.")
+                        
+                        if uyarilar: st.warning(f"⚠️ **Sıralama Uyarısı ({takim_ismi} | Eşleşme: {eslesme}):**\n\n" + "\n".join([f"- {u}" for u in uyarilar]) + "\n\n*(Başhakem olarak bu uyarıya rağmen kaydetme yetkiniz bulunmaktadır.)*")
 
                 if st.button("✅ Tüm Skorları ve Esameleri Kaydet"):
                     hata_mesajlari = []
