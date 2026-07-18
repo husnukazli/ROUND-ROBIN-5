@@ -11,6 +11,7 @@ import shutil
 import re
 import html
 import random
+import time
 from fpdf import FPDF
 
 # --- GENEL SAYFA AYARLARI ---
@@ -49,6 +50,7 @@ SISTEM_KLASORU = os.path.dirname(os.path.abspath(__file__))
 
 VERI_DOSYASI = os.path.join(SISTEM_KLASORU, "tenis_grup_turnuvasi_veri.json")
 BELGELER_KLASORU = os.path.join(SISTEM_KLASORU, "turnuva_belgeleri")
+LOCK_DOSYASI = os.path.join(SISTEM_KLASORU, "turnuva.lock")
 
 if not os.path.exists(BELGELER_KLASORU):
     os.makedirs(BELGELER_KLASORU)
@@ -63,9 +65,9 @@ def dogal_sirala(liste):
     return sorted(liste, key=_natural_keys)
 
 def sort_maclar(df):
-    """Maçları sahadaki oynanış sırasına göre (2.Tek, 1.Tek, Çiftler) dizer."""
+    """Maçları sahadaki oynanış sırasına göre (3.Tek, 2.Tek, 1.Tek, 2.Çift, 1.Çift) dizer."""
     if df.empty: return df
-    sort_map = {"3. Tekler": 1, "2. Tekler": 2, "1. Tekler": 3, "1. Çiftler": 4, "2. Çiftler": 5, "Çiftler": 6}
+    sort_map = {"3. Tekler": 1, "2. Tekler": 2, "1. Tekler": 3, "2. Çiftler": 4, "1. Çiftler": 5, "Çiftler": 6}
     df_temp = df.copy()
     df_temp['sira'] = df_temp['Branş'].map(sort_map).fillna(99)
     return df_temp.sort_values('sira').drop(columns=['sira'])
@@ -250,7 +252,7 @@ def eslesmeleri_olustur(grup_adi, takimlar, grup_tipi, format_secimi):
         ]
     
     if format_secimi == "5 Maçlık (3 Tek, 2 Çift)":
-        branslar = ["3. Tekler", "2. Tekler", "1. Tekler", "1. Çiftler", "2. Çiftler"]
+        branslar = ["3. Tekler", "2. Tekler", "1. Tekler", "2. Çiftler", "1. Çiftler"]
     else:
         branslar = ["2. Tekler", "1. Tekler", "Çiftler"]
 
@@ -626,26 +628,55 @@ def sirala_grup_df(grup_df, gp):
     return grup_df
 
 def ortak_veriyi_kaydet():
-    data = {
-        "skor_tablosu": st.session_state.skor_tablosu.to_dict(orient="records"),
-        "mac_programi": st.session_state.mac_programi.to_dict(orient="records"),
-        "takim_kadrolari": st.session_state.takim_kadrolari,
-        "grup_formatlari": st.session_state.get("grup_formatlari", {}),
-        "grup_kategorileri": st.session_state.get("grup_kategorileri", {}),
-        "grup_asamalari": st.session_state.get("grup_asamalari", {}),
-        "duyuru_metni": st.session_state.get("duyuru_metni", ""),
-        "takim_havuzu": st.session_state.get("takim_havuzu", {}),
-        "havuz_kategorileri": st.session_state.get("havuz_kategorileri", {}),
-        "havuz_yas_gruplari": st.session_state.get("havuz_yas_gruplari", {}),
-        "grup_siralamalari": st.session_state.get("grup_siralamalari", {}),
-        "grup_tamamlandi": st.session_state.get("grup_tamamlandi", {}),
-        "grup_yas_gruplari": st.session_state.get("grup_yas_gruplari", {}),
-        "takim_pinleri": st.session_state.get("takim_pinleri", {}),
-        "esame_kasasi": st.session_state.get("esame_kasasi", {}),
-        "esame_onayli": st.session_state.get("esame_onayli", {})
-    }
-    with open(VERI_DOSYASI, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
+    """Çakışma önleyici (File Lock) mekanizmalı güvenli kayıt fonksiyonu."""
+    try:
+        # Kapıda kilit var mı diye kontrol et (Maks 3 saniye bekle)
+        bekleme_suresi = 0
+        while os.path.exists(LOCK_DOSYASI) and bekleme_suresi < 15:
+            # Kilit 10 saniyeden eskiyse askıda kalmıştır, sil
+            if time.time() - os.path.getmtime(LOCK_DOSYASI) > 10:
+                try: os.remove(LOCK_DOSYASI)
+                except: pass
+                break
+            time.sleep(0.2)
+            bekleme_suresi += 1
+            
+        if os.path.exists(LOCK_DOSYASI):
+            return False # Hala kilitli, çakışma önlendi
+            
+        # Kendi kilidimizi asıyoruz
+        with open(LOCK_DOSYASI, "w") as f:
+            f.write("locked")
+            
+        data = {
+            "skor_tablosu": st.session_state.skor_tablosu.to_dict(orient="records"),
+            "mac_programi": st.session_state.mac_programi.to_dict(orient="records"),
+            "takim_kadrolari": st.session_state.takim_kadrolari,
+            "grup_formatlari": st.session_state.get("grup_formatlari", {}),
+            "grup_kategorileri": st.session_state.get("grup_kategorileri", {}),
+            "grup_asamalari": st.session_state.get("grup_asamalari", {}),
+            "duyuru_metni": st.session_state.get("duyuru_metni", ""),
+            "takim_havuzu": st.session_state.get("takim_havuzu", {}),
+            "havuz_kategorileri": st.session_state.get("havuz_kategorileri", {}),
+            "havuz_yas_gruplari": st.session_state.get("havuz_yas_gruplari", {}),
+            "grup_siralamalari": st.session_state.get("grup_siralamalari", {}),
+            "grup_tamamlandi": st.session_state.get("grup_tamamlandi", {}),
+            "grup_yas_gruplari": st.session_state.get("grup_yas_gruplari", {}),
+            "takim_pinleri": st.session_state.get("takim_pinleri", {}),
+            "esame_kasasi": st.session_state.get("esame_kasasi", {}),
+            "esame_onayli": st.session_state.get("esame_onayli", {})
+        }
+        with open(VERI_DOSYASI, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
+        return True
+    except Exception as e:
+        st.error(f"Kayıt Hatası: {e}")
+        return False
+    finally:
+        # Çıkarken kilidi kaldır
+        if os.path.exists(LOCK_DOSYASI):
+            try: os.remove(LOCK_DOSYASI)
+            except: pass
 
 def ortak_veriyi_yukle():
     if os.path.exists(VERI_DOSYASI):
@@ -943,25 +974,23 @@ else:
                             kasadaki_veri = st.session_state.esame_kasasi.get(match_key, {}).get(takim_adi, {})
                             
                             format_secimi = st.session_state.grup_formatlari.get(grup, "3 Maçlık (2 Tek, 1 Çift)")
-                            branslar_ham = ["3. Tekler", "2. Tekler", "1. Tekler", "1. Çiftler", "2. Çiftler"] if "5 Maçlık" in format_secimi else ["2. Tekler", "1. Tekler", "Çiftler"]
                             
-                            # Görsel sıralamayı sağlama (2.Tek üstte, 1.Tek altta)
-                            branslar_sirali = sorted(branslar_ham, key=lambda x: {"3. Tekler":1, "2. Tekler":2, "1. Tekler":3, "1. Çiftler":4, "2. Çiftler":5, "Çiftler":6}.get(x, 99))
+                            # Form sırası kaptanın giriş mantığına göre (1. Çiftler önce, 2. Çiftler sonra)
+                            branslar_kaptan_form = ["3. Tekler", "2. Tekler", "1. Tekler", "1. Çiftler", "2. Çiftler"] if "5 Maçlık" in format_secimi else ["2. Tekler", "1. Tekler", "Çiftler"]
                             
-                            # Kaptanlar için anlaşılır net etiketler
                             label_map = {
-                                "1. Tekler": "🥇 1. Tekler Oyuncusu (Listede Üstte - Günün 2. Maçına Çıkar)",
-                                "2. Tekler": "🥈 2. Tekler Oyuncusu (Listede Altta - Günün 1. Maçına Çıkar)",
+                                "1. Tekler": "🥇 1. Tekler Oyuncusu (Takımın en iyisi - Günün 3. Maçına Çıkar)",
+                                "2. Tekler": "🥈 2. Tekler Oyuncusu (Günün 2. Maçına Çıkar)",
                                 "3. Tekler": "🥉 3. Tekler Oyuncusu (Günün 1. Maçına Çıkar)",
-                                "1. Çiftler": "👥 1. Çiftler Oyuncuları (Günün 4. Maçına Çıkar)",
-                                "2. Çiftler": "👥 2. Çiftler Oyuncuları (Günün Son Maçına Çıkar)",
+                                "1. Çiftler": "👥 1. Çiftler Oyuncuları (En iyi çift - Günün 5. Maçına Çıkar)",
+                                "2. Çiftler": "👥 2. Çiftler Oyuncuları (Günün 4. Maçına Çıkar)",
                                 "Çiftler": "👥 Çiftler Oyuncuları (Günün Son Maçına Çıkar)"
                             }
                             
                             form_secimleri = {}
                             
                             with st.form(key=f"esame_form_{match_key}"):
-                                for b in branslar_sirali:
+                                for b in branslar_kaptan_form:
                                     gorsel_label = label_map.get(b, f"{b} Oyuncusu")
                                     
                                     if "Çiftler" in b:
@@ -987,14 +1016,35 @@ else:
                                     
                                     hatalar = []
                                     # Sıralama Hataları (Listede daha iyi olan oyuncu alt sıraya yazılamaz)
-                                    if r1 != -1 and r2 != -1 and r1 >= r2: hatalar.append(f"1. Tekler oyuncusu ({o1}), 2. Tekler oyuncusundan ({o2}) takım listesinde daha üst sırada olmalıdır.")
-                                    if r2 != -1 and r3 != -1 and r2 >= r3: hatalar.append(f"2. Tekler oyuncusu ({o2}), 3. Tekler oyuncusundan ({o3}) takım listesinde daha üst sırada olmalıdır.")
-                                    if r1 != -1 and r3 != -1 and r2 == -1 and r1 >= r3: hatalar.append(f"1. Tekler oyuncusu ({o1}), 3. Tekler oyuncusundan ({o3}) takım listesinde daha üst sırada olmalıdır.")
+                                    # Not: Index sıfıra yaklaştıkça oyuncu daha iyidir.
+                                    if r1 != -1 and r2 != -1 and r1 >= r2: hatalar.append(f"1. Tekler oyuncusu ({o1}), 2. Tekler oyuncusundan ({o2}) takım listesinde daha üst sırada (daha iyi) olmalıdır.")
+                                    if r2 != -1 and r3 != -1 and r2 >= r3: hatalar.append(f"2. Tekler oyuncusu ({o2}), 3. Tekler oyuncusundan ({o3}) takım listesinde daha üst sırada (daha iyi) olmalıdır.")
+                                    if r1 != -1 and r3 != -1 and r2 == -1 and r1 >= r3: hatalar.append(f"1. Tekler oyuncusu ({o1}), 3. Tekler oyuncusundan ({o3}) takım listesinde daha üst sırada (daha iyi) olmalıdır.")
                                     
                                     # Aynı Oyuncuyu Çift Yazma Hataları
                                     if o1 != "" and o1 == o2: hatalar.append(f"Aynı oyuncuyu ({o1}) hem 1. Tek hem 2. Tek maçına yazamazsınız.")
                                     if o2 != "" and o2 == o3: hatalar.append(f"Aynı oyuncuyu ({o2}) birden fazla tekler maçına yazamazsınız.")
                                     if o1 != "" and o1 == o3: hatalar.append(f"Aynı oyuncuyu ({o1}) birden fazla tekler maçına yazamazsınız.")
+                                    
+                                    # 5 Maçlık Sistemde Çiftler Çakışması ve Sıralama Hatası
+                                    if "5 Maçlık" in format_secimi:
+                                        c1_oyuncular = form_secimleri.get("1. Çiftler", "")
+                                        c2_oyuncular = form_secimleri.get("2. Çiftler", "")
+                                        
+                                        c1_list = [o.strip() for o in c1_oyuncular.split("-") if o.strip()]
+                                        c2_list = [o.strip() for o in c2_oyuncular.split("-") if o.strip()]
+                                        
+                                        # Çiftler Çakışma Kontrolü
+                                        for p in c1_list:
+                                            if p in c2_list:
+                                                hatalar.append(f"Aynı oyuncuyu ({p}) hem 1. Çiftler hem de 2. Çiftler maçına yazamazsınız.")
+                                                
+                                        # Çiftler Sıralama Kontrolü (Toplam index puanı)
+                                        if len(c1_list) == 2 and len(c2_list) == 2:
+                                            idx_c1 = sum([oyuncu_havuzu.index(p) for p in c1_list if p in oyuncu_havuzu])
+                                            idx_c2 = sum([oyuncu_havuzu.index(p) for p in c2_list if p in oyuncu_havuzu])
+                                            if idx_c1 > idx_c2:
+                                                hatalar.append(f"1. Çiftler takımının liste sırası toplam gücü, 2. Çiftler takımından daha iyi olmalıdır.")
                                     
                                     if hatalar:
                                         st.error("❌ **KADRO HATASI (Gönderilemedi):** Lütfen aşağıdaki hataları düzeltin!\n\n" + "\n".join([f"- {h}" for h in hatalar]))
@@ -1003,9 +1053,11 @@ else:
                                             st.session_state.esame_kasasi[match_key] = {}
                                         
                                         st.session_state.esame_kasasi[match_key][takim_adi] = form_secimleri
-                                        ortak_veriyi_kaydet()
-                                        st.success("Kadro başarıyla kasaya kilitlendi! Başhakem onayına kadar gizli kalacaktır.")
-                                        st.rerun()
+                                        if ortak_veriyi_kaydet():
+                                            st.success("Kadro başarıyla kasaya kilitlendi! Başhakem onayına kadar gizli kalacaktır.")
+                                            st.rerun()
+                                        else:
+                                            st.error("⚠️ Sistem şu an başka bir takımın kaydını işliyor (Meşgul). Çakışma önlendi, lütfen 3 saniye bekleyip butona tekrar basınız.")
                     st.divider()
 
     # --- BAŞHAKEM SAYFASI: ESAME KONTROL MERKEZİ ---
@@ -1061,9 +1113,11 @@ else:
                                     if t1_girdi: st.session_state.skor_tablosu.at[idx, 'T1_Oyuncu'] = kasadaki_veri[t1].get(brans, "")
                                     if t2_girdi: st.session_state.skor_tablosu.at[idx, 'T2_Oyuncu'] = kasadaki_veri[t2].get(brans, "")
                                 
-                                ortak_veriyi_kaydet()
-                                st.success("Esameler başarıyla açıldı ve Skor Girişi sayfasına gönderildi!")
-                                st.rerun()
+                                if ortak_veriyi_kaydet():
+                                    st.success("Esameler başarıyla açıldı ve Skor Girişi sayfasına gönderildi!")
+                                    st.rerun()
+                                else:
+                                    st.error("⚠️ Sistem şu an meşgul. Çakışma önlendi, lütfen tekrar deneyin.")
 
     # --- SAYFA 1: GRUP AYARLARI ---
     elif menu_secim == "👥 Grup Ayarları":
@@ -1119,8 +1173,10 @@ else:
                                     st.session_state.havuz_yas_gruplari[t_adi] = up_yas
                                     
                                 st.session_state.takim_havuzu.update(yeni_havuz)
-                                ortak_veriyi_kaydet()
-                                st.success(f"✅ Başarılı! Takımlar '{up_yas} {up_kat}' etiketiyle sisteme güvenle kaydedildi.")
+                                if ortak_veriyi_kaydet():
+                                    st.success(f"✅ Başarılı! Takımlar '{up_yas} {up_kat}' etiketiyle sisteme güvenle kaydedildi.")
+                                else:
+                                    st.error("Sistem meşgul, lütfen tekrar deneyin.")
                                 
                         except Exception as e:
                             st.error(f"Dosya okuma hatası: {e}. Lütfen formatın doğru olduğundan emin olun.")
@@ -1299,14 +1355,18 @@ else:
                     st.session_state.grup_yas_gruplari[grup_adi_temiz] = yas_secimi
                     
                     if not st.session_state.skor_tablosu.empty and grup_adi_temiz in st.session_state.skor_tablosu['Grup'].unique():
-                        ortak_veriyi_kaydet()
-                        st.success("Mevcut grup bulundu! Kadrolar başarıyla güncellendi, eski fikstür korundu.")
+                        if ortak_veriyi_kaydet():
+                            st.success("Mevcut grup bulundu! Kadrolar başarıyla güncellendi, eski fikstür korundu.")
+                        else:
+                            st.error("Sistem meşgul, lütfen tekrar deneyin.")
                     else:
                         yeni_df = pd.DataFrame(eslesmeleri_olustur(grup_adi_temiz, takimlar, grup_tipi, format_secimi))
                         if st.session_state.skor_tablosu.empty: st.session_state.skor_tablosu = yeni_df
                         else: st.session_state.skor_tablosu = pd.concat([st.session_state.skor_tablosu, yeni_df], ignore_index=True)
-                        ortak_veriyi_kaydet()
-                        st.success(f"{aktif_asama} grubu başarıyla oluşturuldu!")
+                        if ortak_veriyi_kaydet():
+                            st.success(f"{aktif_asama} grubu başarıyla oluşturuldu!")
+                        else:
+                            st.error("Sistem meşgul, lütfen tekrar deneyin.")
                     
             if st.session_state.takim_kadrolari:
                 st.markdown("---")
@@ -1346,9 +1406,10 @@ else:
                     secilen_gun = st.selectbox("Müsabaka Günü:", aktif_gunler)
                     df_gun = df_grup[df_grup['Gün'] == secilen_gun]
                     
+                    format_secimi = st.session_state.grup_formatlari.get(secilen_grup, "3 Maçlık (2 Tek, 1 Çift)")
+                    
                     form_verileri = {}
                     
-                    # BAŞHAKEM SKOR GİRİŞİNDE DE GÖRSEL SIRALAMA (2.Tek Üstte)
                     for idx, row in sort_maclar(df_gun).iterrows():
                         st.markdown(f"**🔹 {row['Branş']} ({row['Eşleşme']})**", unsafe_allow_html=True)
                         
@@ -1472,6 +1533,21 @@ else:
                         if o2 and o2 == o3: uyarilar.append(f"Aynı oyuncuyu ({o2}) birden fazla tekler maçına yazamazsınız.")
                         if o1 and o1 == o3: uyarilar.append(f"Aynı oyuncuyu ({o1}) birden fazla tekler maçına yazamazsınız.")
                         
+                        if "5 Maçlık" in format_secimi:
+                            c1_oyuncular = secimler.get("1. Çiftler", "")
+                            c2_oyuncular = secimler.get("2. Çiftler", "")
+                            c1_list = [o.strip() for o in c1_oyuncular.split("-") if o.strip()]
+                            c2_list = [o.strip() for o in c2_oyuncular.split("-") if o.strip()]
+                            
+                            for p in c1_list:
+                                if p in c2_list: uyarilar.append(f"Aynı oyuncuyu ({p}) hem 1. Çiftler hem 2. Çiftler maçına yazamazsınız.")
+                            
+                            if len(c1_list) == 2 and len(c2_list) == 2:
+                                idx_c1 = sum([havuz.index(p) for p in c1_list if p in havuz])
+                                idx_c2 = sum([havuz.index(p) for p in c2_list if p in havuz])
+                                if idx_c1 > idx_c2:
+                                    uyarilar.append(f"1. Çiftler takımının liste sırası toplam gücü, 2. Çiftler takımından daha iyi olmalıdır.")
+                        
                         if uyarilar: st.warning(f"⚠️ **Sıralama Uyarısı ({takim_ismi} | Eşleşme: {eslesme}):**\n\n" + "\n".join([f"- {u}" for u in uyarilar]) + "\n\n*(Başhakem olarak bu uyarıya rağmen kaydetme yetkiniz bulunmaktadır.)*")
 
                 if st.button("✅ Tüm Skorları ve Esameleri Kaydet"):
@@ -1512,9 +1588,11 @@ else:
                         for idx, guncel_row in form_verileri.items():
                             for k, v in guncel_row.items():
                                 st.session_state.skor_tablosu.at[idx, k] = v
-                        ortak_veriyi_kaydet()
-                        st.success("Veriler başarıyla işlendi ve kaydedildi!")
-                        st.rerun()
+                        if ortak_veriyi_kaydet():
+                            st.success("Veriler başarıyla işlendi ve kaydedildi!")
+                            st.rerun()
+                        else:
+                            st.error("⚠️ Sistem şu an başka bir takımın kaydını işliyor (Meşgul). Çakışma önlendi, lütfen tekrar deneyin.")
 
                 st.markdown("---")
                 with st.expander(f"📊 {secilen_grup} Anlık Puan Durumu (Görüntülemek için tıklayın)"):
@@ -1614,17 +1692,21 @@ else:
                                     else:
                                         st.session_state.grup_tamamlandi[gp] = is_tamam
                                         st.session_state.grup_siralamalari[gp] = secilenler
-                                        ortak_veriyi_kaydet()
-                                        st.success(f"{gp} Ayarları ve Sıralaması Başarıyla Kilitlendi!")
-                                        st.rerun()
+                                        if ortak_veriyi_kaydet():
+                                            st.success(f"{gp} Ayarları ve Sıralaması Başarıyla Kilitlendi!")
+                                            st.rerun()
+                                        else:
+                                            st.error("Sistem meşgul, lütfen tekrar deneyin.")
                                         
                                 if c2.button(f"🔄 {gp} Manuel Sıralamayı Sıfırla (Otomatiğe Dön)", key=f"btn_reset_{gp}"):
                                     if gp in st.session_state.grup_siralamalari:
                                         del st.session_state.grup_siralamalari[gp]
                                     st.session_state.grup_tamamlandi[gp] = is_tamam 
-                                    ortak_veriyi_kaydet()
-                                    st.success("Sıralama sıfırlandı, otomatik hesaplamaya dönüldü.")
-                                    st.rerun()
+                                    if ortak_veriyi_kaydet():
+                                        st.success("Sıralama sıfırlandı, otomatik hesaplamaya dönüldü.")
+                                        st.rerun()
+                                    else:
+                                        st.error("Sistem meşgul, lütfen tekrar deneyin.")
 
                         st.markdown("<br><hr>", unsafe_allow_html=True)
 
@@ -1905,9 +1987,11 @@ else:
                                 })
                             
                             st.session_state.mac_programi = pd.concat([st.session_state.mac_programi, pd.DataFrame(yeni_kayitlar)], ignore_index=True)
-                            ortak_veriyi_kaydet()
-                            st.success(f"Eşleşmeye ait {len(yeni_kayitlar)} maç başarıyla eklendi!")
-                            st.rerun()
+                            if ortak_veriyi_kaydet():
+                                st.success(f"Eşleşmeye ait {len(yeni_kayitlar)} maç başarıyla eklendi!")
+                                st.rerun()
+                            else:
+                                st.error("Sistem meşgul, lütfen tekrar deneyin.")
 
                 if not df_gunluk.empty:
                     st.markdown("### 📋 Günlük Akış Editörü")
@@ -1929,9 +2013,11 @@ else:
                             silinecek_indexler = eslesme_idx_map[secilen_sil_eslesme]
                             st.session_state.mac_programi.drop(index=silinecek_indexler, inplace=True)
                             st.session_state.mac_programi.reset_index(drop=True, inplace=True)
-                            ortak_veriyi_kaydet()
-                            st.success("Seçilen eşleşmeye ait tüm maçlar programdan silindi!")
-                            st.rerun()
+                            if ortak_veriyi_kaydet():
+                                st.success("Seçilen eşleşmeye ait tüm maçlar programdan silindi!")
+                                st.rerun()
+                            else:
+                                st.error("Sistem meşgul, lütfen tekrar deneyin.")
                     st.divider()
                     
                     edited_dfs = []
@@ -1967,9 +2053,11 @@ else:
                             st.session_state.mac_programi.drop(index=df_gunluk.index, inplace=True)
                             guncel_program['Tarih'] = guncel_program['Tarih'].fillna(formatted_tarih)
                             st.session_state.mac_programi = pd.concat([st.session_state.mac_programi, guncel_program]).reset_index(drop=True)
-                            ortak_veriyi_kaydet()
-                            st.success("Güncellendi!")
-                            st.rerun()
+                            if ortak_veriyi_kaydet():
+                                st.success("Güncellendi!")
+                                st.rerun()
+                            else:
+                                st.error("Sistem meşgul, lütfen tekrar deneyin.")
 
             # MİSAFİR & KAPTAN GÖRÜNÜMÜ
             else:
@@ -2031,8 +2119,10 @@ else:
             yeni_duyuru = st.text_area("Duyuru Metni:", value=st.session_state.duyuru_metni, height=150)
             if st.button("💾 Duyuruyu Kaydet"):
                 st.session_state.duyuru_metni = yeni_duyuru
-                ortak_veriyi_kaydet()
-                st.success("Duyuru metni başarıyla güncellendi!")
+                if ortak_veriyi_kaydet():
+                    st.success("Duyuru metni başarıyla güncellendi!")
+                else:
+                    st.error("Sistem meşgul, lütfen tekrar deneyin.")
             
             st.markdown("---")
             st.markdown("### 📄 Turnuva Belgeleri Ekle (Çoklu Yükleme)")
@@ -2094,9 +2184,11 @@ else:
                     for t in tum_takim_listesi:
                         if t not in st.session_state.takim_pinleri:
                             st.session_state.takim_pinleri[t] = random.randint(1000, 9999)
-                    ortak_veriyi_kaydet()
-                    st.success("Tüm takımlar için şifreler başarıyla üretildi!")
-                    st.rerun()
+                    if ortak_veriyi_kaydet():
+                        st.success("Tüm takımlar için şifreler başarıyla üretildi!")
+                        st.rerun()
+                    else:
+                        st.error("Sistem meşgul, lütfen tekrar deneyin.")
                 
                 if st.session_state.takim_pinleri:
                     pin_df = pd.DataFrame(list(st.session_state.takim_pinleri.items()), columns=["Takım Adı", "Kaptan PIN Kodu"])
@@ -2206,8 +2298,10 @@ else:
                                         if st.session_state.skor_tablosu.empty: st.session_state.skor_tablosu = yeni_df
                                         else: st.session_state.skor_tablosu = pd.concat([st.session_state.skor_tablosu, yeni_df], ignore_index=True)
                                         
-                                        ortak_veriyi_kaydet()
-                                        st.success("Grup ayarları güncellendi ve yeni fikstür başarıyla oluşturuldu!")
+                                        if ortak_veriyi_kaydet():
+                                            st.success("Grup ayarları güncellendi ve yeni fikstür başarıyla oluşturuldu!")
+                                        else:
+                                            st.error("Sistem meşgul, lütfen tekrar deneyin.")
                                         
                                     else:
                                         st.session_state.takim_kadrolari[sec_g] = yeni_k_yapisi
@@ -2235,9 +2329,10 @@ else:
                                             if sec_g in st.session_state.grup_tamamlandi: st.session_state.grup_tamamlandi[g_hedef] = st.session_state.grup_tamamlandi.pop(sec_g)
                                             if sec_g in st.session_state.grup_yas_gruplari: st.session_state.grup_yas_gruplari[g_hedef] = st.session_state.grup_yas_gruplari.pop(sec_g)
                                         
-                                        ortak_veriyi_kaydet()
-                                        st.success("Takım ve kadro bilgileri başarıyla güncellendi!")
-                                    
+                                        if ortak_veriyi_kaydet():
+                                            st.success("Takım ve kadro bilgileri başarıyla güncellendi!")
+                                        else:
+                                            st.error("Sistem meşgul, lütfen tekrar deneyin.")
                                     st.rerun()
 
             st.markdown("### 🗑️ Grup Silme İşlemleri")
@@ -2260,9 +2355,11 @@ else:
                         if secilen_sil_grup in st.session_state.grup_tamamlandi: del st.session_state.grup_tamamlandi[secilen_sil_grup]
                         if secilen_sil_grup in st.session_state.grup_yas_gruplari: del st.session_state.grup_yas_gruplari[secilen_sil_grup]
                         
-                        ortak_veriyi_kaydet()
-                        st.success(f"'{secilen_sil_grup}' grubu sistemden başarıyla silindi!")
-                        st.rerun()
+                        if ortak_veriyi_kaydet():
+                            st.success(f"'{secilen_sil_grup}' grubu sistemden başarıyla silindi!")
+                            st.rerun()
+                        else:
+                            st.error("Sistem meşgul, lütfen tekrar deneyin.")
             else:
                 st.info(f"{aktif_asama} için silinecek herhangi bir grup bulunmuyor.")
 
@@ -2312,9 +2409,11 @@ else:
                         st.session_state.takim_pinleri = d.get("takim_pinleri", {})
                         st.session_state.esame_kasasi = d.get("esame_kasasi", {})
                         st.session_state.esame_onayli = d.get("esame_onayli", {})
-                        ortak_veriyi_kaydet()
-                        st.success("Yedek başarıyla yüklendi!")
-                        st.rerun()
+                        if ortak_veriyi_kaydet():
+                            st.success("Yedek başarıyla yüklendi!")
+                            st.rerun()
+                        else:
+                            st.error("Sistem meşgul, lütfen tekrar deneyin.")
                     except Exception as ex: st.error(f"Hata: {ex}")
             st.markdown("---")
             st.markdown("### ⚠️ Sistem Sıfırlama (Tehlikeli İşlem)")
@@ -2332,6 +2431,7 @@ else:
                 if col_evet.button("✅ Evet, Tüm Verileri Sil"):
                     if os.path.exists(VERI_DOSYASI): os.remove(VERI_DOSYASI)
                     if os.path.exists(BELGELER_KLASORU): shutil.rmtree(BELGELER_KLASORU)
+                    if os.path.exists(LOCK_DOSYASI): os.remove(LOCK_DOSYASI)
                     st.session_state.clear()
                     st.session_state.confirm_reset = False
                     st.success("Tüm veritabanı başarıyla temizlendi!")
