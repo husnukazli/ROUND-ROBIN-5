@@ -630,10 +630,8 @@ def sirala_grup_df(grup_df, gp):
 def ortak_veriyi_kaydet():
     """Çakışma önleyici (File Lock) mekanizmalı güvenli kayıt fonksiyonu."""
     try:
-        # Kapıda kilit var mı diye kontrol et (Maks 3 saniye bekle)
         bekleme_suresi = 0
         while os.path.exists(LOCK_DOSYASI) and bekleme_suresi < 15:
-            # Kilit 10 saniyeden eskiyse askıda kalmıştır, sil
             if time.time() - os.path.getmtime(LOCK_DOSYASI) > 10:
                 try: os.remove(LOCK_DOSYASI)
                 except: pass
@@ -642,9 +640,8 @@ def ortak_veriyi_kaydet():
             bekleme_suresi += 1
             
         if os.path.exists(LOCK_DOSYASI):
-            return False # Hala kilitli, çakışma önlendi
+            return False
             
-        # Kendi kilidimizi asıyoruz
         with open(LOCK_DOSYASI, "w") as f:
             f.write("locked")
             
@@ -673,7 +670,6 @@ def ortak_veriyi_kaydet():
         st.error(f"Kayıt Hatası: {e}")
         return False
     finally:
-        # Çıkarken kilidi kaldır
         if os.path.exists(LOCK_DOSYASI):
             try: os.remove(LOCK_DOSYASI)
             except: pass
@@ -976,7 +972,7 @@ else:
                             format_secimi = st.session_state.grup_formatlari.get(grup, "3 Maçlık (2 Tek, 1 Çift)")
                             
                             # Form sırası kaptanın giriş mantığına göre (1. Çiftler önce, 2. Çiftler sonra)
-                            branslar_kaptan_form = ["3. Tekler", "2. Tekler", "1. Tekler", "1. Çiftler", "2. Çiftler"] if "5 Maçlık" in format_secimi else ["2. Tekler", "1. Tekler", "Çiftler"]
+                            branslar_kaptan_form = ["1. Tekler", "2. Tekler", "3. Tekler", "1. Çiftler", "2. Çiftler"] if "5 Maçlık" in format_secimi else ["1. Tekler", "2. Tekler", "Çiftler"]
                             
                             label_map = {
                                 "1. Tekler": "🥇 1. Tekler Oyuncusu (Takımın en iyisi - Günün 3. Maçına Çıkar)",
@@ -1026,7 +1022,7 @@ else:
                                     if o2 != "" and o2 == o3: hatalar.append(f"Aynı oyuncuyu ({o2}) birden fazla tekler maçına yazamazsınız.")
                                     if o1 != "" and o1 == o3: hatalar.append(f"Aynı oyuncuyu ({o1}) birden fazla tekler maçına yazamazsınız.")
                                     
-                                    # 5 Maçlık Sistemde Çiftler Çakışması ve Sıralama Hatası
+                                    # 5 Maçlık Sistemde Çiftler Çakışması ve "Bağıl" Sıralama Hatası
                                     if "5 Maçlık" in format_secimi:
                                         c1_oyuncular = form_secimleri.get("1. Çiftler", "")
                                         c2_oyuncular = form_secimleri.get("2. Çiftler", "")
@@ -1035,16 +1031,25 @@ else:
                                         c2_list = [o.strip() for o in c2_oyuncular.split("-") if o.strip()]
                                         
                                         # Çiftler Çakışma Kontrolü
-                                        for p in c1_list:
-                                            if p in c2_list:
-                                                hatalar.append(f"Aynı oyuncuyu ({p}) hem 1. Çiftler hem de 2. Çiftler maçına yazamazsınız.")
+                                        ortak_oyuncular = set(c1_list).intersection(set(c2_list))
+                                        if ortak_oyuncular:
+                                            hatalar.append(f"Aynı oyuncuyu ({', '.join(ortak_oyuncular)}) hem 1. Çiftler hem de 2. Çiftler maçına yazamazsınız.")
                                                 
-                                        # Çiftler Sıralama Kontrolü (Toplam index puanı)
-                                        if len(c1_list) == 2 and len(c2_list) == 2:
-                                            idx_c1 = sum([oyuncu_havuzu.index(p) for p in c1_list if p in oyuncu_havuzu])
-                                            idx_c2 = sum([oyuncu_havuzu.index(p) for p in c2_list if p in oyuncu_havuzu])
-                                            if idx_c1 > idx_c2:
-                                                hatalar.append(f"1. Çiftler takımının liste sırası toplam gücü, 2. Çiftler takımından daha iyi olmalıdır.")
+                                        # Çiftler Bağıl Sıralama Kontrolü (1, 2, 3, 4 kuralı)
+                                        if len(c1_list) == 2 and len(c2_list) == 2 and not ortak_oyuncular:
+                                            dortlu_havuz = []
+                                            for p in c1_list + c2_list:
+                                                if p in oyuncu_havuzu:
+                                                    dortlu_havuz.append((p, oyuncu_havuzu.index(p)))
+                                            
+                                            dortlu_sirali = sorted(dortlu_havuz, key=lambda x: x[1])
+                                            yeni_ranking = {oyuncu: (i + 1) for i, (oyuncu, idx) in enumerate(dortlu_sirali)}
+                                            
+                                            toplam_c1 = yeni_ranking[c1_list[0]] + yeni_ranking[c1_list[1]]
+                                            toplam_c2 = yeni_ranking[c2_list[0]] + yeni_ranking[c2_list[1]]
+                                            
+                                            if toplam_c1 > toplam_c2:
+                                                hatalar.append(f"Çiftler Sıralama Hatası: Seçilen 4 oyuncu arasındaki güç dengesine göre, 1. Çiftler daha güçlü veya eşit (Toplam: {toplam_c1}) olmalıdır. Mevcut durumda 2. Çiftler (Toplam: {toplam_c2}) daha güçlü görünüyor.")
                                     
                                     if hatalar:
                                         st.error("❌ **KADRO HATASI (Gönderilemedi):** Lütfen aşağıdaki hataları düzeltin!\n\n" + "\n".join([f"- {h}" for h in hatalar]))
@@ -1539,14 +1544,24 @@ else:
                             c1_list = [o.strip() for o in c1_oyuncular.split("-") if o.strip()]
                             c2_list = [o.strip() for o in c2_oyuncular.split("-") if o.strip()]
                             
-                            for p in c1_list:
-                                if p in c2_list: uyarilar.append(f"Aynı oyuncuyu ({p}) hem 1. Çiftler hem 2. Çiftler maçına yazamazsınız.")
+                            ortak_oyuncular = set(c1_list).intersection(set(c2_list))
+                            if ortak_oyuncular:
+                                uyarilar.append(f"Aynı oyuncuyu ({', '.join(ortak_oyuncular)}) hem 1. Çiftler hem 2. Çiftler maçına yazamazsınız.")
                             
-                            if len(c1_list) == 2 and len(c2_list) == 2:
-                                idx_c1 = sum([havuz.index(p) for p in c1_list if p in havuz])
-                                idx_c2 = sum([havuz.index(p) for p in c2_list if p in havuz])
-                                if idx_c1 > idx_c2:
-                                    uyarilar.append(f"1. Çiftler takımının liste sırası toplam gücü, 2. Çiftler takımından daha iyi olmalıdır.")
+                            if len(c1_list) == 2 and len(c2_list) == 2 and not ortak_oyuncular:
+                                dortlu_havuz = []
+                                for p in c1_list + c2_list:
+                                    if p in havuz:
+                                        dortlu_havuz.append((p, havuz.index(p)))
+                                
+                                dortlu_sirali = sorted(dortlu_havuz, key=lambda x: x[1])
+                                yeni_ranking = {oyuncu: (i + 1) for i, (oyuncu, idx) in enumerate(dortlu_sirali)}
+                                
+                                toplam_c1 = yeni_ranking[c1_list[0]] + yeni_ranking[c1_list[1]]
+                                toplam_c2 = yeni_ranking[c2_list[0]] + yeni_ranking[c2_list[1]]
+                                
+                                if toplam_c1 > toplam_c2:
+                                    uyarilar.append(f"Çiftler Sıralama Hatası: Seçilen 4 oyuncu arasındaki güç dengesine göre, 1. Çiftler daha güçlü veya eşit (Toplam: {toplam_c1}) olmalıdır. Mevcut durumda 2. Çiftler (Toplam: {toplam_c2}) daha güçlü görünüyor.")
                         
                         if uyarilar: st.warning(f"⚠️ **Sıralama Uyarısı ({takim_ismi} | Eşleşme: {eslesme}):**\n\n" + "\n".join([f"- {u}" for u in uyarilar]) + "\n\n*(Başhakem olarak bu uyarıya rağmen kaydetme yetkiniz bulunmaktadır.)*")
 
