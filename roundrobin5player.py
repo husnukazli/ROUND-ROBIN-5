@@ -1467,11 +1467,7 @@ else:
 
     # --- SAYFA 5: MAÇ PROGRAMI ---
     elif menu_secim == "📅 Maç Programı":
-        gosterim_sekli = st.radio("👁️ Fikstür ve PDF Gösterim Şekli:", ["Bireysel Maçlar (Tekler/Çiftler Skorları)", "Takım Maçları (Genel Skor)"], horizontal=True)
-        is_bireysel = "Bireysel" in gosterim_sekli
-        st.markdown("---")
-
-        st.markdown("### 📅 Maç Olan Günler (Filtre)")
+        st.markdown("### 📅 Maç Olan Günler")
         gecerli_gruplar_t4 = [g for g in st.session_state.grup_asamalari.keys() if st.session_state.grup_asamalari[g] == aktif_asama]
         mac_programi_asama = st.session_state.mac_programi[st.session_state.mac_programi['Grup'].isin(gecerli_gruplar_t4)].copy()
 
@@ -1487,18 +1483,24 @@ else:
                         st.rerun()
         else:
             st.info("Bu aşama için henüz maç planlanmadı.")
-
         st.markdown("---")
-        if 'expand_all' not in st.session_state: st.session_state.expand_all = False
-        if st.button("🔄 Arayüzde Maçları Göster/ Gizle"):
-            st.session_state.expand_all = not st.session_state.expand_all; st.rerun()
 
         if not st.session_state.skor_tablosu.empty:
             turkce_gunler = {0: "Pazartesi", 1: "Salı", 2: "Çarşamba", 3: "Perşembe", 4: "Cuma", 5: "Cumartesi", 6: "Pazar"}
-            secilen_tarih = st.date_input("🗓️ Program Yapılacak / Görüntülenecek Tarih:", value=st.session_state.selected_date_filter)
-            st.session_state.selected_date_filter = secilen_tarih
-            formatted_tarih = secilen_tarih.strftime("%d.%m.%Y")
-            gun_adi = turkce_gunler[secilen_tarih.weekday()]
+            
+            if st.session_state.admin_mi:
+                if 'expand_all' not in st.session_state: st.session_state.expand_all = False
+                
+                secilen_tarih = st.date_input("🗓️ Program Yapılacak / Görüntülenecek Tarih:", value=st.session_state.selected_date_filter)
+                st.session_state.selected_date_filter = secilen_tarih
+                formatted_tarih = secilen_tarih.strftime("%d.%m.%Y")
+                gun_adi = turkce_gunler[secilen_tarih.weekday()]
+                
+                if st.button("🔄 Arayüzde Maçları Göster/ Gizle"):
+                    st.session_state.expand_all = not st.session_state.expand_all; st.rerun()
+            else:
+                formatted_tarih = st.session_state.selected_date_filter.strftime("%d.%m.%Y")
+                gun_adi = turkce_gunler[st.session_state.selected_date_filter.weekday()]
 
             for idx in st.session_state.mac_programi.index:
                 row = st.session_state.mac_programi.loc[idx]
@@ -1565,7 +1567,6 @@ else:
                 ['Maç Saati', 'Tarih', 'Gün Adı', 'Kort', 'Grup', 'Gün', 'Eşleşme', 'Takım 1', 'Takım 2']
             ):
                 played = (g_df['Canlı Skor'] != 'Oynanmadı').sum()
-                
                 if played == 0:
                     team_score = "Oynanmadı"
                     team_winner = ""
@@ -1597,36 +1598,44 @@ else:
                         "Canlı Skor": team_score, "Kazanan": team_winner
                     })
             df_team_summary = pd.DataFrame(df_team_summary_list)
-            
-            if st.session_state.admin_mi:
-                st.markdown("### 📥 PDF İndirme Ayarları")
-                tum_kolonlar = ["Maç Saati", "Tarih", "Gün Adı", "Kort", "Grup", "Gün", "Branş", "Eşleşme", "Takım 1", "Takım 2", "Canlı Skor", "Kazanan"]
-                
-                if not is_bireysel:
-                    tum_kolonlar = [c for c in tum_kolonlar if c not in ["T1 Oyuncu", "T2 Oyuncu"]]
-                    
-                secilen_pdf_cols = st.multiselect("PDF'e eklenecek sütunları seçin:", options=tum_kolonlar, default=["Maç Saati", "Kort", "Grup", "Branş", "Takım 1", "Takım 2", "Canlı Skor"])
 
-                if is_bireysel:
-                    df_pdf_export = df_gunluk.copy()
-                    if not df_pdf_export.empty:
-                        for i in df_pdf_export.index:
-                            win = df_pdf_export.at[i, 'Kazanan']
-                            if win == 'T1':
-                                df_pdf_export.at[i, 'Takım 1'] = f"**{df_pdf_export.at[i, 'Takım 1']}**"
-                                if 'T1 Oyuncu' in df_pdf_export.columns and df_pdf_export.at[i, 'T1 Oyuncu']: 
-                                    df_pdf_export.at[i, 'T1 Oyuncu'] = f"**{df_pdf_export.at[i, 'T1 Oyuncu']}**"
-                            elif win == 'T2':
-                                df_pdf_export.at[i, 'Takım 2'] = f"**{df_pdf_export.at[i, 'Takım 2']}**"
-                                if 'T2 Oyuncu' in df_pdf_export.columns and df_pdf_export.at[i, 'T2 Oyuncu']: 
-                                    df_pdf_export.at[i, 'T2 Oyuncu'] = f"**{df_pdf_export.at[i, 'T2 Oyuncu']}**"
-                else:
-                    df_pdf_export = df_team_summary.copy()
-                    if not df_pdf_export.empty:
-                        for i in df_pdf_export.index:
-                            win = df_pdf_export.at[i, 'Kazanan']
-                            if win == 'T1': df_pdf_export.at[i, 'Takım 1'] = f"**{df_pdf_export.at[i, 'Takım 1']}**"
-                            elif win == 'T2': df_pdf_export.at[i, 'Takım 2'] = f"**{df_pdf_export.at[i, 'Takım 2']}**"
+            # ADMİN GÖRÜNÜMÜ
+            if st.session_state.admin_mi:
+                
+                with st.expander("📄 PDF Çıktı Ayarları"):
+                    gosterim_sekli = st.radio("PDF Gösterim Şekli:", ["Bireysel Maçlar (Tekler/Çiftler Skorları)", "Takım Maçları (Genel Skor)"], horizontal=True)
+                    is_bireysel_pdf = "Bireysel" in gosterim_sekli
+                    tum_kolonlar = ["Maç Saati", "Tarih", "Gün Adı", "Kort", "Grup", "Gün", "Branş", "Eşleşme", "Takım 1", "Takım 2", "Canlı Skor", "Kazanan"]
+                    
+                    if not is_bireysel_pdf:
+                        tum_kolonlar = [c for c in tum_kolonlar if c not in ["T1 Oyuncu", "T2 Oyuncu"]]
+                        
+                    secilen_pdf_cols = st.multiselect("PDF'e eklenecek sütunları seçin:", options=tum_kolonlar, default=["Maç Saati", "Kort", "Grup", "Branş", "Takım 1", "Takım 2", "Canlı Skor"])
+
+                    if is_bireysel_pdf:
+                        df_pdf_export = df_gunluk.copy()
+                        if not df_pdf_export.empty:
+                            for i in df_pdf_export.index:
+                                win = df_pdf_export.at[i, 'Kazanan']
+                                if win == 'T1':
+                                    df_pdf_export.at[i, 'Takım 1'] = f"**{df_pdf_export.at[i, 'Takım 1']}**"
+                                    if 'T1 Oyuncu' in df_pdf_export.columns and df_pdf_export.at[i, 'T1 Oyuncu']: 
+                                        df_pdf_export.at[i, 'T1 Oyuncu'] = f"**{df_pdf_export.at[i, 'T1 Oyuncu']}**"
+                                elif win == 'T2':
+                                    df_pdf_export.at[i, 'Takım 2'] = f"**{df_pdf_export.at[i, 'Takım 2']}**"
+                                    if 'T2 Oyuncu' in df_pdf_export.columns and df_pdf_export.at[i, 'T2 Oyuncu']: 
+                                        df_pdf_export.at[i, 'T2 Oyuncu'] = f"**{df_pdf_export.at[i, 'T2 Oyuncu']}**"
+                    else:
+                        df_pdf_export = df_team_summary.copy()
+                        if not df_pdf_export.empty:
+                            for i in df_pdf_export.index:
+                                win = df_pdf_export.at[i, 'Kazanan']
+                                if win == 'T1': df_pdf_export.at[i, 'Takım 1'] = f"**{df_pdf_export.at[i, 'Takım 1']}**"
+                                elif win == 'T2': df_pdf_export.at[i, 'Takım 2'] = f"**{df_pdf_export.at[i, 'Takım 2']}**"
+                                
+                    if not df_pdf_export.empty and secilen_pdf_cols:
+                        pdf_bytes_admin = generate_pdf(df_pdf_export[secilen_pdf_cols], f"Mac Programi - {formatted_tarih}")
+                        st.download_button("📥 Programı PDF Olarak İndir", data=pdf_bytes_admin, file_name=f"mac_programi_{formatted_tarih}.pdf", mime="application/pdf", key="pdf_admin")
 
                 st.markdown(f"### ➕ {formatted_tarih} Tarihine Maç Ekle ({aktif_asama})")
                 c1, c2, c3 = st.columns(3)
@@ -1687,19 +1696,22 @@ else:
                             st.session_state.mac_programi.drop(index=actual_match_idx, inplace=True); st.session_state.mac_programi.reset_index(drop=True, inplace=True); ortak_veriyi_kaydet(); st.rerun()
                     st.divider()
                     
-                    if not df_pdf_export.empty and secilen_pdf_cols:
-                        pdf_bytes_admin = generate_pdf(df_pdf_export[secilen_pdf_cols], f"Mac Programi - {formatted_tarih}")
-                        st.download_button("📥 Programı PDF Olarak İndir", data=pdf_bytes_admin, file_name=f"mac_programi_{formatted_tarih}.pdf", mime="application/pdf", key="pdf_admin")
-                    
                     edited_dfs = []
                     for (grup_adi, eslesme_adi), grup_df in df_gunluk.groupby(['Grup', 'Eşleşme']):
+                        takim_skoru_etiketi = ""
+                        if not df_team_summary.empty:
+                            ozet_satiri = df_team_summary[(df_team_summary['Grup'] == grup_adi) & (df_team_summary['Eşleşme'] == eslesme_adi)]
+                            if not ozet_satiri.empty:
+                                val = ozet_satiri.iloc[0]['Canlı Skor']
+                                if val != "Oynanmadı": takim_skoru_etiketi = f" 👉 [{val}]"
+                        
                         kort = grup_df.iloc[0]['Kort']
                         tarih = grup_df.iloc[0]['Tarih']
                         gun_adi_val = grup_df.iloc[0]['Gün Adı']
                         takim1 = grup_df.iloc[0]['Takım 1']
                         takim2 = grup_df.iloc[0]['Takım 2']
                         
-                        expander_title = f"{kort} | {tarih} | {gun_adi_val} | {grup_adi} | {takim1} - {takim2}"
+                        expander_title = f"{kort} | {tarih} | {grup_adi} | {takim1} - {takim2}{takim_skoru_etiketi}"
                         
                         with st.expander(expander_title, expanded=st.session_state.expand_all):
                             e_df = st.data_editor(
@@ -1721,62 +1733,46 @@ else:
                             st.success("Güncellendi!")
                             st.rerun()
 
+            # MİSAFİR GÖRÜNÜMÜ
             else:
                 st.markdown(f"### 📋 {formatted_tarih} Tarihli Maç Akışı ({aktif_asama})")
                 if df_gunluk.empty:
                     st.info("Bu tarihte planlanmış maç bulunmamaktadır.")
                 else:
                     st.divider()
-                    if is_bireysel:
-                        for (grup_adi, eslesme_adi), grup_df in df_gunluk.groupby(['Grup', 'Eşleşme']):
-                            kort = grup_df.iloc[0]['Kort']
-                            tarih = grup_df.iloc[0]['Tarih']
-                            gun_adi_val = grup_df.iloc[0]['Gün Adı']
-                            takim1 = grup_df.iloc[0]['Takım 1']
-                            takim2 = grup_df.iloc[0]['Takım 2']
-                            
-                            expander_title = f"{kort} | {tarih} | {gun_adi_val} | {grup_adi} | {takim1} - {takim2}"
-                            with st.expander(expander_title, expanded=st.session_state.expand_all):
-                                html_rows = ""
-                                for _, row in grup_df.iterrows():
-                                    skor = str(row.get('Canlı Skor', 'Oynanmadı'))
-                                    skor_html = f"<span style='color:#28a745; font-weight:bold;'>{skor}</span>" if skor not in ["Oynanmadı", ""] else "<i>Bekleniyor</i>"
-                                    t1_o = html.escape(str(row.get('T1 Oyuncu', '')).strip())
-                                    t2_o = html.escape(str(row.get('T2 Oyuncu', '')).strip())
-                                    
-                                    if row.get('Kazanan') == 'T1': t1_o = f"<b>{t1_o}</b>"
-                                    elif row.get('Kazanan') == 'T2': t2_o = f"<b>{t2_o}</b>"
-                                    
-                                    html_rows += f"<tr><td style='border:1px solid rgba(128,128,128,0.3); padding:5px;'>{row['Branş']}</td><td style='border:1px solid rgba(128,128,128,0.3); padding:5px;'>{t1_o} / {t2_o}</td><td style='border:1px solid rgba(128,128,128,0.3); padding:5px;'>{skor_html}</td></tr>"
-                                
-                                st.markdown(f"""
-                                <table style="width:100%; border-collapse: collapse; font-family: sans-serif;">
-                                    <tr><th style="border:1px solid rgba(128,128,128,0.3); padding:5px; background-color: rgba(128, 128, 128, 0.1);">Branş</th><th style="border:1px solid rgba(128,128,128,0.3); padding:5px; background-color: rgba(128, 128, 128, 0.1);">Oyuncular</th><th style="border:1px solid rgba(128,128,128,0.3); padding:5px; background-color: rgba(128, 128, 128, 0.1);">Skor</th></tr>
-                                    {html_rows}
-                                </table>
-                                """, unsafe_allow_html=True)
-                    else:
+                    for (grup_adi, eslesme_adi), grup_df in df_gunluk.groupby(['Grup', 'Eşleşme']):
+                        takim_skoru_etiketi = ""
                         if not df_team_summary.empty:
-                            for (grup_adi, eslesme_adi), df_grup_t in df_team_summary.groupby(['Grup', 'Eşleşme']):
-                                row = df_grup_t.iloc[0]
-                                skor = str(row['Canlı Skor'])
-                                skor_html = f"<span style='color:#28a745; font-weight:bold;'>{skor}</span>" if skor != "Oynanmadı" else "<i>Bekleniyor</i>"
-                                t1_n = html.escape(str(row['Takım 1']))
-                                t2_n = html.escape(str(row['Takım 2']))
+                            ozet_satiri = df_team_summary[(df_team_summary['Grup'] == grup_adi) & (df_team_summary['Eşleşme'] == eslesme_adi)]
+                            if not ozet_satiri.empty:
+                                val = ozet_satiri.iloc[0]['Canlı Skor']
+                                if val != "Oynanmadı": takim_skoru_etiketi = f" 👉 [{val}]"
+
+                        kort = grup_df.iloc[0]['Kort']
+                        takim1 = grup_df.iloc[0]['Takım 1']
+                        takim2 = grup_df.iloc[0]['Takım 2']
+                        
+                        expander_title = f"{kort} | {grup_adi} | {takim1} - {takim2}{takim_skoru_etiketi}"
+                        
+                        with st.expander(expander_title, expanded=False):
+                            html_rows = ""
+                            for _, row in grup_df.iterrows():
+                                skor = str(row.get('Canlı Skor', 'Oynanmadı'))
+                                skor_html = f"<span style='color:#28a745; font-weight:bold;'>{skor}</span>" if skor not in ["Oynanmadı", ""] else "<i>Bekleniyor</i>"
+                                t1_o = html.escape(str(row.get('T1 Oyuncu', '')).strip())
+                                t2_o = html.escape(str(row.get('T2 Oyuncu', '')).strip())
                                 
-                                if row['Kazanan'] == 'T1': t1_n = f"<b>{t1_n}</b>"
-                                elif row['Kazanan'] == 'T2': t2_n = f"<b>{t2_n}</b>"
+                                if row.get('Kazanan') == 'T1': t1_o = f"<b>{t1_o}</b>"
+                                elif row.get('Kazanan') == 'T2': t2_o = f"<b>{t2_o}</b>"
                                 
-                                html_rows = f"<tr><td style='border:1px solid rgba(128,128,128,0.3); padding:5px;'>Takım Karşılaşması</td><td style='border:1px solid rgba(128,128,128,0.3); padding:5px;'>{t1_n} / {t2_n}</td><td style='border:1px solid rgba(128,128,128,0.3); padding:5px;'>{skor_html}</td></tr>"
-                                
-                                expander_title = f"{row['Kort']} | {row['Tarih']} | {row['Gün Adı']} | {grup_adi} | {row['Takım 1']} - {row['Takım 2']}"
-                                with st.expander(expander_title, expanded=st.session_state.expand_all):
-                                    st.markdown(f"""
-                                    <table style="width:100%; border-collapse: collapse; font-family: sans-serif;">
-                                        <tr><th style="border:1px solid rgba(128,128,128,0.3); padding:5px; background-color: rgba(128, 128, 128, 0.1);">Branş</th><th style="border:1px solid rgba(128,128,128,0.3); padding:5px; background-color: rgba(128, 128, 128, 0.1);">Takımlar</th><th style="border:1px solid rgba(128,128,128,0.3); padding:5px; background-color: rgba(128, 128, 128, 0.1);">Skor</th></tr>
-                                        {html_rows}
-                                    </table>
-                                    """, unsafe_allow_html=True)
+                                html_rows += f"<tr><td style='border:1px solid rgba(128,128,128,0.3); padding:5px;'>{row['Branş']}</td><td style='border:1px solid rgba(128,128,128,0.3); padding:5px;'>{t1_o} / {t2_o}</td><td style='border:1px solid rgba(128,128,128,0.3); padding:5px;'>{skor_html}</td></tr>"
+                            
+                            st.markdown(f"""
+                            <table style="width:100%; border-collapse: collapse; font-family: sans-serif;">
+                                <tr><th style="border:1px solid rgba(128,128,128,0.3); padding:5px; background-color: rgba(128, 128, 128, 0.1);">Branş</th><th style="border:1px solid rgba(128,128,128,0.3); padding:5px; background-color: rgba(128, 128, 128, 0.1);">Oyuncular</th><th style="border:1px solid rgba(128,128,128,0.3); padding:5px; background-color: rgba(128, 128, 128, 0.1);">Skor</th></tr>
+                                {html_rows}
+                            </table>
+                            """, unsafe_allow_html=True)
         else:
             st.info("Gruplar oluşturulmadan maç programı aktif edilemez.")
 
