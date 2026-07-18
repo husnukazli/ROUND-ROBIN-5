@@ -16,7 +16,6 @@ from fpdf import FPDF
 st.set_page_config(page_title="Tenis Turnuva Otomasyonu", page_icon="🎾", layout="wide", initial_sidebar_state="collapsed")
 
 # --- GENEL STİLLER ---
-# Tavanı yutan zorlama kod (padding-top) silindi. Artık sekmeler barın altında kalmayacak.
 st.markdown("""
 <style>
     footer {visibility: hidden !important;}
@@ -2013,90 +2012,6 @@ else:
                 st.info(f"{aktif_asama} için silinecek herhangi bir grup bulunmuyor.")
 
             st.markdown("---")
-            
-            st.markdown("### 🧪 Gelişmiş Uçtan Uca (End-to-End) Simülasyon")
-            with st.expander("🤖 35+ Erkekler 4 Grup Testi Başlat", expanded=False):
-                st.warning("⚠️ **DİKKAT:** Bu işlem MEVCUT TÜM VERİLERİ SİLER ve 35+ Erkekler A, B, C ve D gruplarını kurarak tamamen otomatik oynatır. Yedek almadan kullanmayın!")
-                
-                if st.button("🚀 Büyük Testi Başlat (4 Grup, Fikstür ve 2. Aşama Geçişi)"):
-                    st.session_state.skor_tablosu = pd.DataFrame(columns=["Grup", "Gün", "Eşleşme", "Branş", "Takım 1", "Takım 2", "T1_Oyuncu", "T2_Oyuncu", "1.Set T1", "1.Set T2", "2.Set T1", "2.Set T2", "3.Set T1", "3.Set T2", "Durum", "STB"])
-                    st.session_state.mac_programi = pd.DataFrame(columns=["Maç Saati", "Tarih", "Gün Adı", "Kort", "Grup", "Gün", "Branş", "Eşleşme", "Takım 1", "Takım 2", "T1 Oyuncu", "T2 Oyuncu", "Canlı Skor", "Kazanan"])
-                    st.session_state.takim_kadrolari = {}
-                    st.session_state.grup_formatlari = {}
-                    st.session_state.grup_asamalari = {}
-                    st.session_state.grup_kategorileri = {}
-                    st.session_state.grup_yas_gruplari = {}
-                    st.session_state.grup_tamamlandi = {}
-                    st.session_state.grup_siralamalari = {}
-
-                    gruplar = ["35+ Erkekler A Grubu", "35+ Erkekler B Grubu", "35+ Erkekler C Grubu", "35+ Erkekler D Grubu"]
-                    takimlar_dict = {
-                        gruplar[0]: ["A1 Karşıyaka", "A2 Göztepe", "A3 Buca"],
-                        gruplar[1]: ["B1 Bornova", "B2 Konak", "B3 Çiğli"],
-                        gruplar[2]: ["C1 Balçova", "C2 Narlıdere", "C3 Gaziemir"],
-                        gruplar[3]: ["D1 Urla", "D2 Çeşme", "D3 Seferihisar"]
-                    }
-
-                    tum_df_list = []
-                    program_list = []
-                    
-                    tarih1 = datetime.date.today().strftime("%d.%m.%Y")
-                    tarih2 = (datetime.date.today() + datetime.timedelta(days=1)).strftime("%d.%m.%Y")
-                    gun_adi1 = "Cumartesi"
-                    gun_adi2 = "Pazar"
-
-                    for i, grup in enumerate(gruplar):
-                        st.session_state.grup_formatlari[grup] = "3 Maçlık (2 Tek, 1 Çift)"
-                        st.session_state.grup_asamalari[grup] = "1. Aşama"
-                        st.session_state.grup_kategorileri[grup] = "Erkekler"
-                        st.session_state.grup_yas_gruplari[grup] = "35+"
-                        
-                        takimlar = takimlar_dict[grup]
-                        st.session_state.takim_kadrolari[grup] = {t: ["Oyuncu 1", "Oyuncu 2", "Oyuncu 3"] for t in takimlar}
-                        
-                        df_grup = pd.DataFrame(eslesmeleri_olustur(grup, takimlar, "3'lü Grup", "3 Maçlık (2 Tek, 1 Çift)"))
-                        
-                        if i == 0: 
-                            df_grup.loc[(df_grup['Eşleşme']=='2 ve 3'), ['1.Set T1', '1.Set T2', '2.Set T1', '2.Set T2']] = [6,4, 6,4]
-                            df_grup.loc[(df_grup['Eşleşme']=='1 ve 3'), ['1.Set T1', '1.Set T2', '2.Set T1', '2.Set T2']] = [6,2, 6,2]
-                            df_grup.loc[(df_grup['Eşleşme']=='1 ve 2'), ['1.Set T1', '1.Set T2', '2.Set T1', '2.Set T2']] = [6,1, 6,1]
-                        elif i == 1: 
-                            df_grup.loc[(df_grup['Eşleşme']=='2 ve 3'), ['1.Set T1', '1.Set T2', '2.Set T1', '2.Set T2']] = [6,0, 6,0]
-                            df_grup.loc[(df_grup['Eşleşme']=='1 ve 3'), 'Durum'] = 'Takım 1 Kazandı (W/O)'
-                            df_grup.loc[(df_grup['Eşleşme']=='1 ve 2'), ['1.Set T1', '1.Set T2', '2.Set T1', '2.Set T2']] = [7,5, 7,6]
-                        elif i == 2: 
-                            df_grup.loc[(df_grup['Eşleşme']=='2 ve 3'), ['1.Set T1', '1.Set T2', '2.Set T1', '2.Set T2']] = [6,3, 6,2]
-                            df_grup.loc[(df_grup['Eşleşme']=='1 ve 3'), ['1.Set T1', '1.Set T2', 'Durum']] = [4,2, 'Takım 1 Kazandı (Ret.)']
-                            df_grup.loc[(df_grup['Eşleşme']=='1 ve 2'), ['1.Set T1', '1.Set T2', '2.Set T1', '2.Set T2']] = [6,4, 6,4]
-                        elif i == 3: 
-                            idx_stb = df_grup[(df_grup['Eşleşme']=='2 ve 3')].index
-                            df_grup.loc[idx_stb, ['1.Set T1', '1.Set T2', '2.Set T1', '2.Set T2', '3.Set T1', '3.Set T2', 'STB']] = [6,4, 4,6, 10,8, True]
-                            df_grup.loc[(df_grup['Eşleşme']=='1 ve 3'), ['1.Set T1', '1.Set T2', '2.Set T1', '2.Set T2']] = [6,1, 6,2]
-                            idx_stb2 = df_grup[(df_grup['Eşleşme']=='1 ve 2')].index
-                            df_grup.loc[idx_stb2, ['1.Set T1', '1.Set T2', '2.Set T1', '2.Set T2', '3.Set T1', '3.Set T2', 'STB']] = [4,6, 6,3, 12,10, True]
-
-                        tum_df_list.append(df_grup)
-                        
-                        st.session_state.grup_tamamlandi[grup] = True
-
-                        for _, r in df_grup.iterrows():
-                            mac_tarihi = tarih1 if r['Gün'] == '1. Gün' else tarih2
-                            mac_gunu = gun_adi1 if r['Gün'] == '1. Gün' else gun_adi2
-                            program_list.append({
-                                "Maç Saati": "10:00", "Tarih": mac_tarihi, "Gün Adı": mac_gunu, "Kort": f"Kort {i+1}",
-                                "Grup": grup, "Gün": r['Gün'], "Branş": r['Branş'], "Eşleşme": r['Eşleşme'],
-                                "Takım 1": r['Takım 1'], "Takım 2": r['Takım 2'], "T1 Oyuncu": "Oyuncu 1", "T2 Oyuncu": "Oyuncu 2", "Canlı Skor": "Oynanmadı", "Kazanan": ""
-                            })
-
-                    st.session_state.skor_tablosu = pd.concat(tum_df_list, ignore_index=True)
-                    st.session_state.mac_programi = pd.DataFrame(program_list)
-                    
-                    ortak_veriyi_kaydet()
-                    st.success("✅ DEV TEST SENARYOSU YÜKLENDİ!")
-                    st.info("👉 Lütfen önce **🏆 Puan Durumu** sayfasına gidip A, B, C, D gruplarındaki hesaplamaları, averajları ve cezaları kontrol et.\n👉 Ardından sol menüden **2. Aşama**'yı seç, **👥 Grup Ayarları**'na git. Oradaki havuzda '35+ Erkekler A Grubu 1.si' gibi tüm grup liderlerini ve ikincilerini havuzda göreceksin!")
-            
-            st.markdown("---")
-
             st.markdown("### 💾 Yedekleme Paneli")
             c_sv, c_ld = st.columns(2)
             with c_sv:
