@@ -129,14 +129,21 @@ def get_pdf_bytes(pdf):
     out = pdf.output(dest='S')
     return out.encode('latin-1') if isinstance(out, str) else bytes(out)
 
-def generate_pdf(df, baslik):
+def generate_pdf(df, baslik, not_metni=""):
     pdf = FPDF(orientation='P', unit='mm', format='A4')
     pdf.add_page()
     setup_pdf_fonts(pdf)
     
     apply_font(pdf, bold=True, size=14)
     pdf.cell(0, 10, to_pdf_text(baslik), ln=True, align='C')
-    pdf.ln(5)
+    
+    if not_metni:
+        pdf.ln(2)
+        apply_font(pdf, bold=False, size=10)
+        pdf.multi_cell(0, 6, to_pdf_text(f"Bashakem Notu: {not_metni}"), align='C')
+        pdf.ln(5)
+    else:
+        pdf.ln(5)
     
     if len(df.columns) > 0:
         col_widths = get_proportional_widths(pdf, df)
@@ -337,8 +344,10 @@ def get_formatted_match_score(row, target_t1):
     if s2_1 != 0 or s2_2 != 0 or s1_1 != 0 or s1_2 != 0: score_str += f" | {s2_1}-{s2_2}"
     if s3_1 != 0 or s3_2 != 0: score_str += f" | {s3_1}-{s3_2}"
 
-    if durum == "Takım 1 Kazandı (Ret.)": score_str += " Ret." if is_t1 else " (Ret.)"
-    elif durum == "Takım 2 Kazandı (Ret.)": score_str += " (Ret.)" if is_t1 else " Ret."
+    if durum == "Takım 1 Kazandı (Ret.)": 
+        score_str += " Ret. (Galip)" if is_t1 else " Ret. (Mağlup)"
+    elif durum == "Takım 2 Kazandı (Ret.)": 
+        score_str += " Ret. (Mağlup)" if is_t1 else " Ret. (Galip)"
 
     return f"<b>{brans}</b>: <span style='opacity: 0.8;'>{score_str}</span>"
 
@@ -658,6 +667,7 @@ def ortak_veriyi_kaydet():
             "grup_kategorileri": st.session_state.get("grup_kategorileri", {}),
             "grup_asamalari": st.session_state.get("grup_asamalari", {}),
             "duyuru_metni": st.session_state.get("duyuru_metni", ""),
+            "gunluk_notlar": st.session_state.get("gunluk_notlar", {}),
             "takim_havuzu": st.session_state.get("takim_havuzu", {}),
             "havuz_kategorileri": st.session_state.get("havuz_kategorileri", {}),
             "havuz_yas_gruplari": st.session_state.get("havuz_yas_gruplari", {}),
@@ -703,6 +713,7 @@ def ortak_veriyi_yukle():
             st.session_state.grup_kategorileri = data.get("grup_kategorileri", {})
             st.session_state.grup_asamalari = data.get("grup_asamalari", {})
             st.session_state.duyuru_metni = data.get("duyuru_metni", "")
+            st.session_state.gunluk_notlar = data.get("gunluk_notlar", {})
             st.session_state.takim_havuzu = data.get("takim_havuzu", {})
             st.session_state.havuz_kategorileri = data.get("havuz_kategorileri", {})
             st.session_state.havuz_yas_gruplari = data.get("havuz_yas_gruplari", {})
@@ -734,6 +745,7 @@ if "grup_formatlari" not in st.session_state: st.session_state.grup_formatlari =
 if "grup_kategorileri" not in st.session_state: st.session_state.grup_kategorileri = {}
 if "grup_asamalari" not in st.session_state: st.session_state.grup_asamalari = {}
 if "duyuru_metni" not in st.session_state: st.session_state.duyuru_metni = ""
+if "gunluk_notlar" not in st.session_state: st.session_state.gunluk_notlar = {}
 if "takim_havuzu" not in st.session_state: st.session_state.takim_havuzu = {}
 if "havuz_kategorileri" not in st.session_state: st.session_state.havuz_kategorileri = {}
 if "havuz_yas_gruplari" not in st.session_state: st.session_state.havuz_yas_gruplari = {}
@@ -1547,9 +1559,7 @@ else:
                         r2 = havuz.index(o2) if o2 in havuz else -1
                         r3 = havuz.index(o3) if o3 in havuz else -1
                         
-                        # --- BAŞHAKEM SARI KART (UYARI) BÖLÜMÜ ---
                         uyarilar = []
-                        
                         for b in ["1. Çiftler", "2. Çiftler", "Çiftler"]:
                             c_str = secimler.get(b, "")
                             if c_str:
@@ -1844,11 +1854,25 @@ else:
                 formatted_tarih = secilen_tarih.strftime("%d.%m.%Y")
                 gun_adi = turkce_gunler[secilen_tarih.weekday()]
                 
+                gunluk_not = st.session_state.gunluk_notlar.get(formatted_tarih, "")
+                yeni_not = st.text_area(f"✍️ {formatted_tarih} Tarihi İçin Başhakem Notu:", value=gunluk_not, height=70, placeholder="Buraya yazacağınız not, bu tarihteki maç programının en tepesinde görünecektir.")
+                if st.button("💾 Notu Kaydet"):
+                    st.session_state.gunluk_notlar[formatted_tarih] = yeni_not
+                    ortak_veriyi_kaydet()
+                    st.success("Not kaydedildi ve yayına alındı!")
+                
+                st.markdown("---")
+                
                 if st.button("🔄 Arayüzde Maçları Göster/ Gizle"):
                     st.session_state.expand_all = not st.session_state.expand_all; st.rerun()
             else:
                 formatted_tarih = st.session_state.selected_date_filter.strftime("%d.%m.%Y")
                 gun_adi = turkce_gunler[st.session_state.selected_date_filter.weekday()]
+
+            # BAŞHAKEM NOTU - EN TEPEDE GÖSTERİM (MİSAFİR VE KAPTAN İÇİN)
+            gunluk_not_gosterim = st.session_state.gunluk_notlar.get(formatted_tarih, "")
+            if gunluk_not_gosterim:
+                st.warning(f"📢 **Başhakem Notu:** {gunluk_not_gosterim}")
 
             for idx in st.session_state.mac_programi.index:
                 row = st.session_state.mac_programi.loc[idx]
@@ -1908,7 +1932,6 @@ else:
                             st.session_state.mac_programi.at[idx, "Canlı Skor"] = "Oynanmadı"
                             st.session_state.mac_programi.at[idx, "Kazanan"] = ""
 
-            # dropna=False ile tüm verileri garanti altina aldik
             df_gunluk_safe = st.session_state.mac_programi[(st.session_state.mac_programi['Tarih'] == formatted_tarih) & (st.session_state.mac_programi['Grup'].isin(gecerli_gruplar_t4))].copy()
             df_gunluk_safe = df_gunluk_safe.fillna("")
             
@@ -1964,7 +1987,6 @@ else:
 
                     if is_bireysel_pdf:
                         pdf_rows = []
-                        # Hiyerarşik yapı kurulumu: Önce başlık, sonra maçlar
                         for (grup_adi, eslesme_adi), g_df in df_gunluk_safe.groupby(['Grup', 'Eşleşme'], dropna=False):
                             t1 = g_df.iloc[0]['Takım 1']
                             t2 = g_df.iloc[0]['Takım 2']
@@ -1979,7 +2001,6 @@ else:
                             if not ozet_df.empty:
                                 team_score = ozet_df.iloc[0]['Canlı Skor']
                             
-                            # ANA TAKIM EŞLEŞMESİ BAŞLIĞI
                             header_row = {
                                 "Maç Saati": saat, "Tarih": tarih_str, "Gün Adı": gun_isim, "Kort": kort,
                                 "Grup": grup_adi, "Gün": gun_val, "Eşleşme": eslesme_adi,
@@ -1990,10 +2011,9 @@ else:
                             }
                             pdf_rows.append(header_row)
                             
-                            # ALT MAÇLARI KORTA ÇIKIŞ SIRASIYLA (sort_maclar) EKLEME
                             for _, row in sort_maclar(g_df).iterrows():
                                 match_row = row.copy()
-                                match_row['Branş'] = f" -> {match_row['Branş']}" # Görsel girinti
+                                match_row['Branş'] = f" -> {match_row['Branş']}" 
                                 
                                 win = match_row.get('Kazanan', '')
                                 if win == 'T1':
@@ -2016,9 +2036,9 @@ else:
                                 df_pdf_export.at[i, 'Canlı Skor'] = f"**{df_pdf_export.at[i, 'Canlı Skor']}**"
                                 
                     if not df_pdf_export.empty and secilen_pdf_cols:
-                        # Seçilen kolonlara göre final DataFrame'i daralt
                         final_pdf_df = df_pdf_export[secilen_pdf_cols]
-                        pdf_bytes_admin = generate_pdf(final_pdf_df, f"Mac Programi - {formatted_tarih}")
+                        pdf_notu = st.session_state.gunluk_notlar.get(formatted_tarih, "")
+                        pdf_bytes_admin = generate_pdf(final_pdf_df, f"Mac Programi - {formatted_tarih}", not_metni=pdf_notu)
                         st.download_button("📥 Programı PDF Olarak İndir", data=pdf_bytes_admin, file_name=f"mac_programi_{formatted_tarih}.pdf", mime="application/pdf", key="pdf_admin")
 
                 st.markdown(f"### ➕ {formatted_tarih} Tarihine Maç Ekle ({aktif_asama})")
@@ -2117,7 +2137,7 @@ else:
                         
                         with st.expander(expander_title, expanded=st.session_state.expand_all):
                             e_df = st.data_editor(
-                                sort_maclar(grup_df), # Ekranda görsel korta çıkış sırası
+                                sort_maclar(grup_df), 
                                 use_container_width=True, 
                                 num_rows="dynamic", 
                                 disabled=["Grup", "Gün", "Branş", "Eşleşme", "Takım 1", "Takım 2", "T1 Oyuncu", "T2 Oyuncu", "Canlı Skor", "Kazanan"], 
@@ -2204,7 +2224,7 @@ else:
             
             st.markdown("---")
             st.markdown("### 📄 Turnuva Belgeleri Ekle (Çoklu Yükleme)")
-            st.info("Kural kitapçığı veya yönetmelik gibi PDF dosyalarını sisteme buradan yükleyebilirsiniz.")
+            st.info("Kural kitapçığı veya yönetmelik gibi PDF dosyalarını sisteme buradan yükleyebilirsiniz. (Not: Ücretsiz bulut sunucular uyku moduna geçtiğinde yüklenen PDF dosyaları silinebilir. Turnuva anında profesyonel sunucuya geçildiğinde bu durum kalıcı olarak çözülecektir.)")
             uploaded_pdfs = st.file_uploader("PDF Dosyalarını Seçin:", type=["pdf"], accept_multiple_files=True)
             if uploaded_pdfs:
                 if st.button("📤 Seçilen PDF'leri Sisteme Yükle"):
@@ -2453,6 +2473,7 @@ else:
                     "grup_kategorileri": st.session_state.get("grup_kategorileri", {}),
                     "grup_asamalari": st.session_state.get("grup_asamalari", {}),
                     "duyuru_metni": st.session_state.duyuru_metni,
+                    "gunluk_notlar": st.session_state.get("gunluk_notlar", {}),
                     "takim_havuzu": st.session_state.get("takim_havuzu", {}),
                     "havuz_kategorileri": st.session_state.get("havuz_kategorileri", {}),
                     "havuz_yas_gruplari": st.session_state.get("havuz_yas_gruplari", {}),
@@ -2478,6 +2499,7 @@ else:
                         st.session_state.grup_kategorileri = d.get("grup_kategorileri", {})
                         st.session_state.grup_asamalari = d.get("grup_asamalari", {})
                         st.session_state.duyuru_metni = d.get("duyuru_metni", "")
+                        st.session_state.gunluk_notlar = d.get("gunluk_notlar", {})
                         st.session_state.takim_havuzu = d.get("takim_havuzu", {})
                         st.session_state.havuz_kategorileri = d.get("havuz_kategorileri", {})
                         st.session_state.havuz_yas_gruplari = d.get("havuz_yas_gruplari", {})
