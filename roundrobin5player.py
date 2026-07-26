@@ -2270,34 +2270,54 @@ else:
             
             df_gunluk_safe['Hakem'] = df_gunluk_safe['Hakem'].replace("", "Atanmadı")
 
-            df_team_summary_list = []
+df_team_summary_list = []
             for (saat, tarih, gun, kort, grup, match_gun, eslesme, takim1, takim2), g_df in df_gunluk_safe.groupby(
                 ['Maç Saati', 'Tarih', 'Gün Adı', 'Kort', 'Grup', 'Gün', 'Eşleşme', 'Takım 1', 'Takım 2'], dropna=False
             ):
                 played = (g_df['Canlı Skor'] != 'Oynanmadı').sum()
-                if played == 0:
-                    team_score = "Oynanmadı"
-                    team_winner = ""
-                else:
-                    t1_match_wins = (g_df['Kazanan'] == 'T1').sum()
-                    t2_match_wins = (g_df['Kazanan'] == 'T2').sum()
-                    team_score = f"{t1_match_wins}-{t2_match_wins}"
-                    
+                team_score = "Oynanmadı"
+                team_winner = ""
+                
+                if played > 0:
                     eslesen_skorlar = st.session_state.skor_tablosu[
                         (st.session_state.skor_tablosu['Grup'] == grup) & 
                         (st.session_state.skor_tablosu['Gün'] == match_gun) & 
                         (st.session_state.skor_tablosu['Eşleşme'] == eslesme)
                     ]
                     
-                    team_winner = ""
                     if not eslesen_skorlar.empty:
+                        # İlkel hesabı atıp, Puan tablosunu hesaplayan kusursuz ana beyinden veriyi çekiyoruz
                         temp_stats = hesapla_tum_puan_durumu(eslesen_skorlar)
                         if not temp_stats.empty:
                             t1_row = temp_stats[temp_stats['Takım'] == takim1]
                             t2_row = temp_stats[temp_stats['Takım'] == takim2]
+                            
                             if not t1_row.empty and not t2_row.empty:
+                                # Kazananı Belirle
                                 if t1_row.iloc[0]['Galibiyet'] > t2_row.iloc[0]['Galibiyet']: team_winner = "T1"
                                 elif t2_row.iloc[0]['Galibiyet'] > t1_row.iloc[0]['Galibiyet']: team_winner = "T2"
+                                
+                                # Gerçek skoru Puan Tablosundaki 'Aldığı Maç' kolonundan çekiyoruz (Kusursuz veri)
+                                t1_aldigi = float(t1_row.iloc[0]['Aldığı Maç'])
+                                t2_aldigi = float(t2_row.iloc[0]['Aldığı Maç'])
+                                
+                                # 2.0 gibi sıfırlı görünmemesi için temizliyoruz
+                                t1_skor_gosterim = int(t1_aldigi) if t1_aldigi.is_integer() else t1_aldigi
+                                t2_skor_gosterim = int(t2_aldigi) if t2_aldigi.is_integer() else t2_aldigi
+                                
+                                team_score = f"{t1_skor_gosterim}-{t2_skor_gosterim}"
+                            else:
+                                t1_match_wins = (g_df['Kazanan'] == 'T1').sum()
+                                t2_match_wins = (g_df['Kazanan'] == 'T2').sum()
+                                team_score = f"{t1_match_wins}-{t2_match_wins}"
+                        else:
+                            t1_match_wins = (g_df['Kazanan'] == 'T1').sum()
+                            t2_match_wins = (g_df['Kazanan'] == 'T2').sum()
+                            team_score = f"{t1_match_wins}-{t2_match_wins}"
+                    else:
+                        t1_match_wins = (g_df['Kazanan'] == 'T1').sum()
+                        t2_match_wins = (g_df['Kazanan'] == 'T2').sum()
+                        team_score = f"{t1_match_wins}-{t2_match_wins}"
 
                 hakem_ilk = g_df.iloc[0]['Hakem'] if 'Hakem' in g_df.columns else "Atanmadı"
                 if pd.isna(hakem_ilk) or hakem_ilk == "": hakem_ilk = "Atanmadı"
