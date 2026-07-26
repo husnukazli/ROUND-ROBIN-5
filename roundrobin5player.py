@@ -2274,12 +2274,78 @@ st.download_button("📥 Programı PDF Olarak İndir")
             # ADMİN GÖRÜNÜMÜ (HAKEM ATAMA MODÜLÜ BURADA)
 
 
-if not df_pdf_export.empty and secilen_pdf_cols:
-                        # ...
-                        # aradaki PDF kodları
-                        # ...
+# ADMİN GÖRÜNÜMÜ (HAKEM ATAMA MODÜLÜ BURADA)
+            if st.session_state.admin_mi:
+                
+                with st.expander("📄 PDF Çıktı Ayarları"):
+                    gosterim_sekli = st.radio("PDF Gösterim Şekli:", ["Bireysel Maçlar (Detaylı Hiyerarşik Çıktı)", "Takım Maçları (Sadece Genel Skor)"], horizontal=True)
+                    is_bireysel_pdf = "Bireysel" in gosterim_sekli
+                    tum_kolonlar = ["Maç Saati", "Tarih", "Gün Adı", "Kort", "Grup", "Gün", "Branş", "Eşleşme", "Takım 1", "Takım 2", "T1 Oyuncu", "T2 Oyuncu", "Canlı Skor", "Kazanan", "Hakem"]
+                    
+                    if not is_bireysel_pdf:
+                        tum_kolonlar = [c for c in tum_kolonlar if c not in ["T1 Oyuncu", "T2 Oyuncu"]]
+                        
+                    secilen_pdf_cols = st.multiselect("PDF'e eklenecek sütunları seçin:", options=tum_kolonlar, default=["Maç Saati", "Kort", "Grup", "Branş", "Takım 1", "Takım 2", "Canlı Skor", "Hakem"])
+
+                    if is_bireysel_pdf:
+                        pdf_rows = []
+                        for (grup_adi, eslesme_adi), g_df in df_gunluk_safe.groupby(['Grup', 'Eşleşme'], dropna=False):
+                            t1 = g_df.iloc[0]['Takım 1']
+                            t2 = g_df.iloc[0]['Takım 2']
+                            saat = g_df.iloc[0]['Maç Saati']
+                            kort = g_df.iloc[0]['Kort']
+                            tarih_str = g_df.iloc[0]['Tarih']
+                            gun_isim = g_df.iloc[0]['Gün Adı']
+                            gun_val = g_df.iloc[0]['Gün']
+                            
+                            team_score = "Oynanmadı"
+                            ozet_df = df_team_summary[(df_team_summary['Grup'] == grup_adi) & (df_team_summary['Eşleşme'] == eslesme_adi)]
+                            if not ozet_df.empty:
+                                team_score = ozet_df.iloc[0]['Canlı Skor']
+                            
+                            header_row = {
+                                "Maç Saati": saat, "Tarih": tarih_str, "Gün Adı": gun_isim, "Kort": kort,
+                                "Grup": grup_adi, "Gün": gun_val, "Eşleşme": eslesme_adi,
+                                "Branş": "**TAKIM EŞLEŞMESİ**",
+                                "Takım 1": f"**{t1}**", "Takım 2": f"**{t2}**",
+                                "T1 Oyuncu": "", "T2 Oyuncu": "",
+                                "Canlı Skor": f"**{team_score}**", "Kazanan": "", "Hakem": ""
+                            }
+                            pdf_rows.append(header_row)
+                            
+                            for _, row in sort_maclar(g_df).iterrows():
+                                match_row = row.copy()
+                                match_row['Branş'] = f" -> {match_row['Branş']}" 
+                                
+                                win = match_row.get('Kazanan', '')
+                                if win == 'T1':
+                                    match_row['Takım 1'] = f"**{match_row['Takım 1']}**"
+                                    if match_row['T1 Oyuncu']: match_row['T1 Oyuncu'] = f"**{match_row['T1 Oyuncu']}**"
+                                elif win == 'T2':
+                                    match_row['Takım 2'] = f"**{match_row['Takım 2']}**"
+                                    if match_row['T2 Oyuncu']: match_row['T2 Oyuncu'] = f"**{match_row['T2 Oyuncu']}**"
+                                
+                                pdf_rows.append(match_row.to_dict())
+                                
+                        df_pdf_export = pd.DataFrame(pdf_rows)
+                    else:
+                        df_pdf_export = df_team_summary.copy()
+                        if not df_pdf_export.empty:
+                            for i in df_pdf_export.index:
+                                win = df_pdf_export.at[i, 'Kazanan']
+                                if win == 'T1': df_pdf_export.at[i, 'Takım 1'] = f"**{df_pdf_export.at[i, 'Takım 1']}**"
+                                elif win == 'T2': df_pdf_export.at[i, 'Takım 2'] = f"**{df_pdf_export.at[i, 'Takım 2']}**"
+                                df_pdf_export.at[i, 'Canlı Skor'] = f"**{df_pdf_export.at[i, 'Canlı Skor']}**"
+                                
+                    if not df_pdf_export.empty and secilen_pdf_cols:
+                        final_pdf_df = df_pdf_export[secilen_pdf_cols]
+                        pdf_notu = st.session_state.gunluk_notlar.get(formatted_tarih, "")
+                        pdf_bytes_admin = generate_pdf(final_pdf_df, f"Mac Programi - {formatted_tarih}", not_metni=pdf_notu)
+                        st.download_button("📥 Programı PDF Olarak İndir", data=pdf_bytes_admin, file_name=f"mac_programi_{formatted_tarih}.pdf", mime="application/pdf", key="pdf_admin")
+
                 st.markdown(f"### ➕ {formatted_tarih} Tarihine Maç Ekle ({aktif_asama})")
                 c1, c2, c3 = st.columns(3)
+                
                 gruplar_prog = dogal_sirala([g for g in st.session_state.skor_tablosu['Grup'].unique() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama])
                 if not gruplar_prog:
                     st.info("Bu aşamada ekleyebileceğiniz grup bulunmuyor.")
@@ -2458,7 +2524,6 @@ if not df_pdf_export.empty and secilen_pdf_cols:
                             """, unsafe_allow_html=True)
         else:
             st.info("Gruplar oluşturulmadan maç programı aktif edilemez.")
-
 # --- SAYFA 6: DUYURULAR ---
     elif menu_secim == "📢 Duyurular":
         st.subheader("📢 Turnuva Duyuruları ve Belgeler")
