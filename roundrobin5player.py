@@ -284,7 +284,7 @@ def eslesmeleri_olustur(grup_adi, takimlar, grup_tipi, format_secimi):
     for m in base_matches:
         for brans in branslar:
             satir = m.copy()
-            satir["id"] = str(uuid.uuid4()) # SUPABASE İÇİN EŞSİZ ID EKLENDİ
+            satir["id"] = str(uuid.uuid4())
             satir["Branş"] = brans
             satir["Grup"] = grup_adi
             satir.update({
@@ -654,8 +654,23 @@ def sirala_grup_df(grup_df, gp):
     grup_df.index = range(1, len(grup_df) + 1)
     return grup_df
 
+def safe_val(val, default=""):
+    """NaN veya boş değerleri güvenli formata dönüştürür."""
+    if pd.isna(val) or val is None:
+        return default
+    return val
+
+def safe_int(val, default=0):
+    """NaN değerleri güvenle tam sayıya çevirir."""
+    if pd.isna(val) or val is None or val == "":
+        return default
+    try:
+        return int(val)
+    except:
+        return default
+
 def ortak_veriyi_kaydet():
-    """Verileri doğrudan Supabase veritabanına yazar (UPSERT mantığıyla)."""
+    """Verileri NaN temizliği yaparak doğrudan Supabase veritabanına yazar."""
     if not supabase: return False
     try:
         mac_kayitlari = []
@@ -666,34 +681,41 @@ def ortak_veriyi_kaydet():
                     mac_id = str(uuid.uuid4())
                     
                 mac_kayitlari.append({
-                    "id": mac_id,
-                    "grup_adi": str(row.get("Grup", "")),
-                    "musabaka_gunu": str(row.get("Gün", "")),
-                    "eslesme": str(row.get("Eşleşme", "")),
-                    "brans": str(row.get("Branş", "")),
-                    "takim_a": str(row.get("Takım 1", "")),
-                    "takim_b": str(row.get("Takım 2", "")),
-                    "oyuncu_a": str(row.get("T1_Oyuncu", "")),
-                    "oyuncu_b": str(row.get("T2_Oyuncu", "")),
-                    "set1_a": int(row.get("1.Set T1", 0)),
-                    "set1_b": int(row.get("1.Set T2", 0)),
-                    "set2_a": int(row.get("2.Set T1", 0)),
-                    "set2_b": int(row.get("2.Set T2", 0)),
-                    "set3_a": int(row.get("3.Set T1", 0)),
-                    "set3_b": int(row.get("3.Set T2", 0)),
-                    "durum": str(row.get("Durum", "Tamamlandı")),
-                    "stb": bool(row.get("STB", False))
+                    "id": str(mac_id),
+                    "grup_adi": str(safe_val(row.get("Grup"), "")),
+                    "musabaka_gunu": str(safe_val(row.get("Gün"), "")),
+                    "eslesme": str(safe_val(row.get("Eşleşme"), "")),
+                    "brans": str(safe_val(row.get("Branş"), "")),
+                    "takim_a": str(safe_val(row.get("Takım 1"), "")),
+                    "takim_b": str(safe_val(row.get("Takım 2"), "")),
+                    "oyuncu_a": str(safe_val(row.get("T1_Oyuncu"), "")),
+                    "oyuncu_b": str(safe_val(row.get("T2_Oyuncu"), "")),
+                    "set1_a": safe_int(row.get("1.Set T1"), 0),
+                    "set1_b": safe_int(row.get("1.Set T2"), 0),
+                    "set2_a": safe_int(row.get("2.Set T1"), 0),
+                    "set2_b": safe_int(row.get("2.Set T2"), 0),
+                    "set3_a": safe_int(row.get("3.Set T1"), 0),
+                    "set3_b": safe_int(row.get("3.Set T2"), 0),
+                    "durum": str(safe_val(row.get("Durum"), "Tamamlandı")),
+                    "stb": bool(safe_val(row.get("STB"), False))
                 })
             
             if mac_kayitlari:
                 supabase.table("maclar").upsert(mac_kayitlari).execute()
+
+        # mac_programi DataFrame'indeki NaN değerleri temizle
+        mp_records = []
+        if not st.session_state.get("mac_programi", pd.DataFrame()).empty:
+            mp_df = st.session_state.mac_programi.copy()
+            mp_df = mp_df.where(pd.notnull(mp_df), "")
+            mp_records = mp_df.to_dict(orient="records")
 
         ayarlar = {
             "takim_kadrolari": st.session_state.get("takim_kadrolari", {}),
             "grup_formatlari": st.session_state.get("grup_formatlari", {}),
             "grup_kategorileri": st.session_state.get("grup_kategorileri", {}),
             "grup_asamalari": st.session_state.get("grup_asamalari", {}),
-            "duyuru_metni": st.session_state.get("duyuru_metni", ""),
+            "duyuru_metni": str(safe_val(st.session_state.get("duyuru_metni", ""), "")),
             "gunluk_notlar": st.session_state.get("gunluk_notlar", {}),
             "takim_havuzu": st.session_state.get("takim_havuzu", {}),
             "havuz_kategorileri": st.session_state.get("havuz_kategorileri", {}),
@@ -704,7 +726,7 @@ def ortak_veriyi_kaydet():
             "takim_pinleri": st.session_state.get("takim_pinleri", {}),
             "esame_kasasi": st.session_state.get("esame_kasasi", {}),
             "esame_onayli": st.session_state.get("esame_onayli", {}),
-            "mac_programi": st.session_state.mac_programi.to_dict(orient="records") if not st.session_state.get("mac_programi", pd.DataFrame()).empty else []
+            "mac_programi": mp_records
         }
         supabase.table("turnuva_ayarlari").update(ayarlar).eq("id", 1).execute()
         return True
@@ -2579,7 +2601,6 @@ else:
                 if col_evet.button("✅ Evet, Tüm Verileri Sil"):
                     if supabase:
                         try:
-                            # Supabase tablosundaki verileri sil
                             res = supabase.table("maclar").select("id").execute()
                             if res.data:
                                 ids = [item['id'] for item in res.data]
