@@ -1221,7 +1221,7 @@ else:
                     else:
                         st.error("❌ Hatalı PIN kodu!")
 
-    # --- HAKEM SAYFASI: SKOR GİRİŞ PANELİ ---
+# --- HAKEM SAYFASI: SKOR GİRİŞ PANELİ ---
     elif menu_secim == "✍️ Hakem Paneli":
         if not st.session_state.hakem_mi:
             st.warning("Bu paneli görüntülemek için lütfen hakem olarak giriş yapın.")
@@ -1268,19 +1268,20 @@ else:
                         
                         d_idx = durum_opts.index(mevcut_durum) if mevcut_durum in durum_opts else 0
                         
-                        with r_cols[0]: secilen_durum = st.selectbox("Durum", options=durum_opts, index=d_idx, key=f"h_durum_{idx}", label_visibility="collapsed")
-                        with r_cols[1]: secilen_stb = st.checkbox("STB", value=bool(row.get('STB', False)), key=f"h_stb_{idx}")
+                        # Burada key değerlerine __{idx_mp} ekleyerek mutlak benzersizlik sağladık
+                        with r_cols[0]: secilen_durum = st.selectbox("Durum", options=durum_opts, index=d_idx, key=f"h_durum_{idx}_{idx_mp}", label_visibility="collapsed")
+                        with r_cols[1]: secilen_stb = st.checkbox("STB", value=bool(row.get('STB', False)), key=f"h_stb_{idx}_{idx_mp}")
                         
                         is_wo = "W/O" in secilen_durum
                         
-                        s1t1 = r_cols[2].number_input("S1T1", min_value=0, value=0 if is_wo else int(row['1.Set T1']), step=1, key=f"h_s1t1_{idx}", label_visibility="collapsed", disabled=is_wo)
-                        s1t2 = r_cols[3].number_input("S1T2", min_value=0, value=0 if is_wo else int(row['1.Set T2']), step=1, key=f"h_s1t2_{idx}", label_visibility="collapsed", disabled=is_wo)
+                        s1t1 = r_cols[2].number_input("S1T1", min_value=0, value=0 if is_wo else int(row['1.Set T1']), step=1, key=f"h_s1t1_{idx}_{idx_mp}", label_visibility="collapsed", disabled=is_wo)
+                        s1t2 = r_cols[3].number_input("S1T2", min_value=0, value=0 if is_wo else int(row['1.Set T2']), step=1, key=f"h_s1t2_{idx}_{idx_mp}", label_visibility="collapsed", disabled=is_wo)
                         r_cols[4].markdown("<div style='text-align:center; opacity:0.5; margin-top:5px; font-weight:bold;'>|</div>", unsafe_allow_html=True)
-                        s2t1 = r_cols[5].number_input("S2T1", min_value=0, value=0 if is_wo else int(row['2.Set T1']), step=1, key=f"h_s2t1_{idx}", label_visibility="collapsed", disabled=is_wo)
-                        s2t2 = r_cols[6].number_input("S2T2", min_value=0, value=0 if is_wo else int(row['2.Set T2']), step=1, key=f"h_s2t2_{idx}", label_visibility="collapsed", disabled=is_wo)
+                        s2t1 = r_cols[5].number_input("S2T1", min_value=0, value=0 if is_wo else int(row['2.Set T1']), step=1, key=f"h_s2t1_{idx}_{idx_mp}", label_visibility="collapsed", disabled=is_wo)
+                        s2t2 = r_cols[6].number_input("S2T2", min_value=0, value=0 if is_wo else int(row['2.Set T2']), step=1, key=f"h_s2t2_{idx}_{idx_mp}", label_visibility="collapsed", disabled=is_wo)
                         r_cols[7].markdown("<div style='text-align:center; opacity:0.5; margin-top:5px; font-weight:bold;'>|</div>", unsafe_allow_html=True)
-                        s3t1 = r_cols[8].number_input("S3T1", min_value=0, value=0 if is_wo else int(row['3.Set T1']), step=1, key=f"h_s3t1_{idx}", label_visibility="collapsed", disabled=is_wo)
-                        s3t2 = r_cols[9].number_input("S3T2", min_value=0, value=0 if is_wo else int(row['3.Set T2']), step=1, key=f"h_s3t2_{idx}", label_visibility="collapsed", disabled=is_wo)
+                        s3t1 = r_cols[8].number_input("S3T1", min_value=0, value=0 if is_wo else int(row['3.Set T1']), step=1, key=f"h_s3t1_{idx}_{idx_mp}", label_visibility="collapsed", disabled=is_wo)
+                        s3t2 = r_cols[9].number_input("S3T2", min_value=0, value=0 if is_wo else int(row['3.Set T2']), step=1, key=f"h_s3t2_{idx}_{idx_mp}", label_visibility="collapsed", disabled=is_wo)
                         
                         form_verileri[idx] = {
                             "1.Set T1": s1t1, "1.Set T2": s1t2, "2.Set T1": s2t1, "2.Set T2": s2t2, "3.Set T1": s3t1, "3.Set T2": s3t2,
