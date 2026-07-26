@@ -2155,7 +2155,7 @@ else:
         else:
             st.info("Kayıtlı takım bulunmamaktadır.")
 
-    # --- SAYFA 5: MAÇ PROGRAMI ---
+# --- SAYFA 5: MAÇ PROGRAMI ---
     elif menu_secim == "📅 Maç Programı":
         st.markdown("### 📅 Maç Olan Günler")
         gecerli_gruplar_t4 = [g for g in st.session_state.grup_asamalari.keys() if st.session_state.grup_asamalari[g] == aktif_asama]
@@ -2267,6 +2267,9 @@ else:
             df_gunluk_safe = st.session_state.mac_programi[(st.session_state.mac_programi['Tarih'] == formatted_tarih) & (st.session_state.mac_programi['Grup'].isin(gecerli_gruplar_t4))].copy()
             df_gunluk_safe = df_gunluk_safe.fillna("")
             
+            # --- YENİ EKLENEN DÜZELTME: Eski boş Hakem verilerini kilitlenmemesi için "Atanmadı" olarak güncelle ---
+            df_gunluk_safe['Hakem'] = df_gunluk_safe['Hakem'].replace("", "Atanmadı")
+
             df_team_summary_list = []
             for (saat, tarih, gun, kort, grup, match_gun, eslesme, takim1, takim2), g_df in df_gunluk_safe.groupby(
                 ['Maç Saati', 'Tarih', 'Gün Adı', 'Kort', 'Grup', 'Gün', 'Eşleşme', 'Takım 1', 'Takım 2'], dropna=False
@@ -2413,7 +2416,7 @@ else:
                                 yeni_kayitlar.append({
                                     "Maç Saati": "10:00", "Tarih": formatted_tarih, "Gün Adı": gun_adi, "Kort": "Kort 1",
                                     "Grup": r['Grup'], "Gün": r['Gün'], "Branş": r['Branş'], "Eşleşme": r['Eşleşme'],
-                                    "Takım 1": r['Takım 1'], "Takım 2": r['Takım 2'], "T1 Oyuncu": "", "T2 Oyuncu": "", "Canlı Skor": "Oynanmadı", "Kazanan": "", "Hakem": ""
+                                    "Takım 1": r['Takım 1'], "Takım 2": r['Takım 2'], "T1 Oyuncu": "", "T2 Oyuncu": "", "Canlı Skor": "Oynanmadı", "Kazanan": "", "Hakem": "Atanmadı"
                                 })
                             
                             st.session_state.mac_programi = pd.concat([st.session_state.mac_programi, pd.DataFrame(yeni_kayitlar)], ignore_index=True)
@@ -2480,7 +2483,7 @@ else:
                                         "Hakem",
                                         help="Maça atanacak hakemi seçin",
                                         width="medium",
-                                        options=[""] + st.session_state.hakem_listesi,
+                                        options=["Atanmadı"] + st.session_state.hakem_listesi,
                                     )
                                 },
                                 key=f"editor_{grup_adi}_{eslesme_adi}_{formatted_tarih}"
@@ -2531,6 +2534,7 @@ else:
                                 skor_html = f"<span style='color:#28a745; font-weight:bold;'>{skor}</span>" if skor not in ["Oynanmadı", ""] else "<i>Bekleniyor</i>"
                                 
                                 hakem_adi = str(row.get('Hakem', '')).strip()
+                                if hakem_adi == "Atanmadı": hakem_adi = ""
                                 hakem_gosterimi = f"<br><span style='font-size: 11px; color: #555;'>👮‍♂️ Hakem: {hakem_adi}</span>" if hakem_adi else ""
                                 
                                 if is_approved:
