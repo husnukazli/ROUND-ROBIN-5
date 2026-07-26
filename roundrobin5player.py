@@ -2157,6 +2157,7 @@ else:
 
 # --- SAYFA 5: MAÇ PROGRAMI ---
 # --- SAYFA 5: MAÇ PROGRAMI ---
+# --- SAYFA 5: MAÇ PROGRAMI ---
     elif menu_secim == "📅 Maç Programı":
         st.markdown("### 📅 Maç Olan Günler")
         gecerli_gruplar_t4 = [g for g in st.session_state.grup_asamalari.keys() if st.session_state.grup_asamalari[g] == aktif_asama]
@@ -2270,7 +2271,7 @@ else:
             
             df_gunluk_safe['Hakem'] = df_gunluk_safe['Hakem'].replace("", "Atanmadı")
 
-df_team_summary_list = []
+            df_team_summary_list = []
             for (saat, tarih, gun, kort, grup, match_gun, eslesme, takim1, takim2), g_df in df_gunluk_safe.groupby(
                 ['Maç Saati', 'Tarih', 'Gün Adı', 'Kort', 'Grup', 'Gün', 'Eşleşme', 'Takım 1', 'Takım 2'], dropna=False
             ):
@@ -2286,22 +2287,18 @@ df_team_summary_list = []
                     ]
                     
                     if not eslesen_skorlar.empty:
-                        # İlkel hesabı atıp, Puan tablosunu hesaplayan kusursuz ana beyinden veriyi çekiyoruz
                         temp_stats = hesapla_tum_puan_durumu(eslesen_skorlar)
                         if not temp_stats.empty:
                             t1_row = temp_stats[temp_stats['Takım'] == takim1]
                             t2_row = temp_stats[temp_stats['Takım'] == takim2]
                             
                             if not t1_row.empty and not t2_row.empty:
-                                # Kazananı Belirle
                                 if t1_row.iloc[0]['Galibiyet'] > t2_row.iloc[0]['Galibiyet']: team_winner = "T1"
                                 elif t2_row.iloc[0]['Galibiyet'] > t1_row.iloc[0]['Galibiyet']: team_winner = "T2"
                                 
-                                # Gerçek skoru Puan Tablosundaki 'Aldığı Maç' kolonundan çekiyoruz (Kusursuz veri)
                                 t1_aldigi = float(t1_row.iloc[0]['Aldığı Maç'])
                                 t2_aldigi = float(t2_row.iloc[0]['Aldığı Maç'])
                                 
-                                # 2.0 gibi sıfırlı görünmemesi için temizliyoruz
                                 t1_skor_gosterim = int(t1_aldigi) if t1_aldigi.is_integer() else t1_aldigi
                                 t2_skor_gosterim = int(t2_aldigi) if t2_aldigi.is_integer() else t2_aldigi
                                 
@@ -2329,6 +2326,7 @@ df_team_summary_list = []
                     "Canlı Skor": team_score, "Kazanan": team_winner, "Hakem": hakem_ilk
                 })
             df_team_summary = pd.DataFrame(df_team_summary_list)
+
             # ADMİN GÖRÜNÜMÜ (HAKEM ATAMA MODÜLÜ BURADA)
             if st.session_state.admin_mi:
                 
