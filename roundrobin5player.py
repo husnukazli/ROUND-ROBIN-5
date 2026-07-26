@@ -2274,9 +2274,12 @@ st.download_button("📥 Programı PDF Olarak İndir")
             # ADMİN GÖRÜNÜMÜ (HAKEM ATAMA MODÜLÜ BURADA)
 
 
+if not df_pdf_export.empty and secilen_pdf_cols:
+                        # ...
+                        # aradaki PDF kodları
+                        # ...
                 st.markdown(f"### ➕ {formatted_tarih} Tarihine Maç Ekle ({aktif_asama})")
                 c1, c2, c3 = st.columns(3)
-                
                 gruplar_prog = dogal_sirala([g for g in st.session_state.skor_tablosu['Grup'].unique() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama])
                 if not gruplar_prog:
                     st.info("Bu aşamada ekleyebileceğiniz grup bulunmuyor.")
