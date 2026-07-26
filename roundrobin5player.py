@@ -673,10 +673,15 @@ def ortak_veriyi_kaydet():
     try:
         mac_kayitlari = []
         if not st.session_state.skor_tablosu.empty:
-            for _, row in st.session_state.skor_tablosu.iterrows():
+            # EĞER ID KOLONU YOKSA OLUŞTUR VE HAFIZAYA SABİTLE
+            if 'id' not in st.session_state.skor_tablosu.columns:
+                st.session_state.skor_tablosu['id'] = [str(uuid.uuid4()) for _ in range(len(st.session_state.skor_tablosu))]
+                
+            for idx, row in st.session_state.skor_tablosu.iterrows():
                 mac_id = row.get("id")
                 if pd.isna(mac_id) or not mac_id:
                     mac_id = str(uuid.uuid4())
+                    st.session_state.skor_tablosu.at[idx, 'id'] = mac_id # KALICI OLARAK YAZ
                     
                 mac_kayitlari.append({
                     "id": str(mac_id),
