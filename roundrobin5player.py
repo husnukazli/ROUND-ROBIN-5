@@ -2270,7 +2270,7 @@ else:
             # --- YENİ EKLENEN DÜZELTME: Eski boş Hakem verilerini kilitlenmemesi için "Atanmadı" olarak güncelle ---
             df_gunluk_safe['Hakem'] = df_gunluk_safe['Hakem'].replace("", "Atanmadı")
 
-st.download_button("📥 Programı PDF Olarak İndir"...)
+st.download_button("📥 Programı PDF Olarak İndir")
             # ADMİN GÖRÜNÜMÜ (HAKEM ATAMA MODÜLÜ BURADA)
 
 
