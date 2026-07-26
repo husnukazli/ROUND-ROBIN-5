@@ -2329,7 +2329,6 @@ df_team_summary_list = []
                     "Canlı Skor": team_score, "Kazanan": team_winner, "Hakem": hakem_ilk
                 })
             df_team_summary = pd.DataFrame(df_team_summary_list)
-
             # ADMİN GÖRÜNÜMÜ (HAKEM ATAMA MODÜLÜ BURADA)
             if st.session_state.admin_mi:
                 
