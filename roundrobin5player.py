@@ -12,10 +12,25 @@ import re
 import html
 import random
 import time
+import uuid
+from supabase import create_client, Client
 from fpdf import FPDF
 
 # --- GENEL SAYFA AYARLARI ---
 st.set_page_config(page_title="Tenis Turnuva Otomasyonu", page_icon="🎾", layout="wide", initial_sidebar_state="collapsed")
+
+# --- SUPABASE BAĞLANTISI ---
+@st.cache_resource
+def init_supabase() -> Client:
+    try:
+        url = st.secrets["SUPABASE_URL"]
+        key = st.secrets["SUPABASE_KEY"]
+        return create_client(url, key)
+    except Exception as e:
+        st.error(f"Bağlantı hatası: .streamlit/secrets.toml dosyanızı kontrol edin. Detay: {e}")
+        return None
+
+supabase = init_supabase()
 
 # --- GENEL STİLLER ---
 st.markdown("""
@@ -47,10 +62,7 @@ if not st.session_state.get("admin_mi", False) and not st.session_state.get("kap
 
 # --- SABİT KLASÖR YOLU AYARI ---
 SISTEM_KLASORU = os.path.dirname(os.path.abspath(__file__))
-
-VERI_DOSYASI = os.path.join(SISTEM_KLASORU, "tenis_grup_turnuvasi_veri.json")
 BELGELER_KLASORU = os.path.join(SISTEM_KLASORU, "turnuva_belgeleri")
-LOCK_DOSYASI = os.path.join(SISTEM_KLASORU, "turnuva.lock")
 
 if not os.path.exists(BELGELER_KLASORU):
     os.makedirs(BELGELER_KLASORU)
@@ -272,6 +284,7 @@ def eslesmeleri_olustur(grup_adi, takimlar, grup_tipi, format_secimi):
     for m in base_matches:
         for brans in branslar:
             satir = m.copy()
+            satir["id"] = str(uuid.uuid4()) # SUPABASE İÇİN EŞSİZ ID EKLENDİ
             satir["Branş"] = brans
             satir["Grup"] = grup_adi
             satir.update({
@@ -642,27 +655,41 @@ def sirala_grup_df(grup_df, gp):
     return grup_df
 
 def ortak_veriyi_kaydet():
-    """Çakışma önleyici (File Lock) mekanizmalı güvenli kayıt fonksiyonu."""
+    """Verileri doğrudan Supabase veritabanına yazar (UPSERT mantığıyla)."""
+    if not supabase: return False
     try:
-        bekleme_suresi = 0
-        while os.path.exists(LOCK_DOSYASI) and bekleme_suresi < 15:
-            if time.time() - os.path.getmtime(LOCK_DOSYASI) > 10:
-                try: os.remove(LOCK_DOSYASI)
-                except: pass
-                break
-            time.sleep(0.2)
-            bekleme_suresi += 1
+        mac_kayitlari = []
+        if not st.session_state.skor_tablosu.empty:
+            for _, row in st.session_state.skor_tablosu.iterrows():
+                mac_id = row.get("id")
+                if pd.isna(mac_id) or not mac_id:
+                    mac_id = str(uuid.uuid4())
+                    
+                mac_kayitlari.append({
+                    "id": mac_id,
+                    "grup_adi": str(row.get("Grup", "")),
+                    "musabaka_gunu": str(row.get("Gün", "")),
+                    "eslesme": str(row.get("Eşleşme", "")),
+                    "brans": str(row.get("Branş", "")),
+                    "takim_a": str(row.get("Takım 1", "")),
+                    "takim_b": str(row.get("Takım 2", "")),
+                    "oyuncu_a": str(row.get("T1_Oyuncu", "")),
+                    "oyuncu_b": str(row.get("T2_Oyuncu", "")),
+                    "set1_a": int(row.get("1.Set T1", 0)),
+                    "set1_b": int(row.get("1.Set T2", 0)),
+                    "set2_a": int(row.get("2.Set T1", 0)),
+                    "set2_b": int(row.get("2.Set T2", 0)),
+                    "set3_a": int(row.get("3.Set T1", 0)),
+                    "set3_b": int(row.get("3.Set T2", 0)),
+                    "durum": str(row.get("Durum", "Tamamlandı")),
+                    "stb": bool(row.get("STB", False))
+                })
             
-        if os.path.exists(LOCK_DOSYASI):
-            return False
-            
-        with open(LOCK_DOSYASI, "w") as f:
-            f.write("locked")
-            
-        data = {
-            "skor_tablosu": st.session_state.skor_tablosu.to_dict(orient="records"),
-            "mac_programi": st.session_state.mac_programi.to_dict(orient="records"),
-            "takim_kadrolari": st.session_state.takim_kadrolari,
+            if mac_kayitlari:
+                supabase.table("maclar").upsert(mac_kayitlari).execute()
+
+        ayarlar = {
+            "takim_kadrolari": st.session_state.get("takim_kadrolari", {}),
             "grup_formatlari": st.session_state.get("grup_formatlari", {}),
             "grup_kategorileri": st.session_state.get("grup_kategorileri", {}),
             "grup_asamalari": st.session_state.get("grup_asamalari", {}),
@@ -676,30 +703,23 @@ def ortak_veriyi_kaydet():
             "grup_yas_gruplari": st.session_state.get("grup_yas_gruplari", {}),
             "takim_pinleri": st.session_state.get("takim_pinleri", {}),
             "esame_kasasi": st.session_state.get("esame_kasasi", {}),
-            "esame_onayli": st.session_state.get("esame_onayli", {})
+            "esame_onayli": st.session_state.get("esame_onayli", {}),
+            "mac_programi": st.session_state.mac_programi.to_dict(orient="records") if not st.session_state.get("mac_programi", pd.DataFrame()).empty else []
         }
-        with open(VERI_DOSYASI, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=4)
+        supabase.table("turnuva_ayarlari").update(ayarlar).eq("id", 1).execute()
         return True
     except Exception as e:
-        st.error(f"Kayıt Hatası: {e}")
+        st.error(f"Supabase Kayıt Hatası: {e}")
         return False
-    finally:
-        if os.path.exists(LOCK_DOSYASI):
-            try: os.remove(LOCK_DOSYASI)
-            except: pass
 
 def ortak_veriyi_yukle():
-    if os.path.exists(VERI_DOSYASI):
-        try:
-            with open(VERI_DOSYASI, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                
-            if data.get("skor_tablosu"):
-                st.session_state.skor_tablosu = pd.DataFrame(data["skor_tablosu"])
-            else:
-                st.session_state.skor_tablosu = pd.DataFrame(columns=["Grup", "Gün", "Eşleşme", "Branş", "Takım 1", "Takım 2", "T1_Oyuncu", "T2_Oyuncu", "1.Set T1", "1.Set T2", "2.Set T1", "2.Set T2", "3.Set T1", "3.Set T2", "Durum", "STB"])
-                
+    """Uygulama açıldığında verileri Supabase üzerinden çeker."""
+    if not supabase: return
+    try:
+        res = supabase.table("turnuva_ayarlari").select("*").eq("id", 1).execute()
+        if res.data:
+            data = res.data[0]
+            
             if data.get("mac_programi"):
                 mp_df = pd.DataFrame(data["mac_programi"])
                 if "T1 Oyuncu" not in mp_df.columns: mp_df["T1 Oyuncu"] = ""; mp_df["T2 Oyuncu"] = ""
@@ -723,8 +743,36 @@ def ortak_veriyi_yukle():
             st.session_state.takim_pinleri = data.get("takim_pinleri", {})
             st.session_state.esame_kasasi = data.get("esame_kasasi", {})
             st.session_state.esame_onayli = data.get("esame_onayli", {})
-        except Exception:
-            pass 
+        
+        maclar_res = supabase.table("maclar").select("*").execute()
+        if maclar_res.data:
+            mac_listesi = []
+            for m in maclar_res.data:
+                mac_listesi.append({
+                    "id": m.get("id"),
+                    "Grup": m.get("grup_adi"),
+                    "Gün": m.get("musabaka_gunu"),
+                    "Eşleşme": m.get("eslesme"),
+                    "Branş": m.get("brans"),
+                    "Takım 1": m.get("takim_a"),
+                    "Takım 2": m.get("takim_b"),
+                    "T1_Oyuncu": m.get("oyuncu_a"),
+                    "T2_Oyuncu": m.get("oyuncu_b"),
+                    "1.Set T1": m.get("set1_a"),
+                    "1.Set T2": m.get("set1_b"),
+                    "2.Set T1": m.get("set2_a"),
+                    "2.Set T2": m.get("set2_b"),
+                    "3.Set T1": m.get("set3_a"),
+                    "3.Set T2": m.get("set3_b"),
+                    "Durum": m.get("durum"),
+                    "STB": m.get("stb")
+                })
+            st.session_state.skor_tablosu = pd.DataFrame(mac_listesi)
+        else:
+            st.session_state.skor_tablosu = pd.DataFrame(columns=["id", "Grup", "Gün", "Eşleşme", "Branş", "Takım 1", "Takım 2", "T1_Oyuncu", "T2_Oyuncu", "1.Set T1", "1.Set T2", "2.Set T1", "2.Set T2", "3.Set T1", "3.Set T2", "Durum", "STB"])
+            
+    except Exception as e:
+        st.error(f"Supabase Yükleme Hatası: {e}")
 
 def show_pdf(file_path):
     with open(file_path, "rb") as f:
@@ -752,25 +800,25 @@ if "havuz_yas_gruplari" not in st.session_state: st.session_state.havuz_yas_grup
 if "grup_siralamalari" not in st.session_state: st.session_state.grup_siralamalari = {}
 if "grup_tamamlandi" not in st.session_state: st.session_state.grup_tamamlandi = {}
 if "grup_yas_gruplari" not in st.session_state: st.session_state.grup_yas_gruplari = {}
-
 if "takim_pinleri" not in st.session_state: st.session_state.takim_pinleri = {}
 if "esame_kasasi" not in st.session_state: st.session_state.esame_kasasi = {}
 if "esame_onayli" not in st.session_state: st.session_state.esame_onayli = {}
-
 if "current_page" not in st.session_state: st.session_state.current_page = "Home"
 if "aktif_asama" not in st.session_state: st.session_state.aktif_asama = "1. Aşama"
 
 if 'skor_tablosu' not in st.session_state:
-    if os.path.exists(VERI_DOSYASI):
-        ortak_veriyi_yukle()
-    else:
-        st.session_state.skor_tablosu = pd.DataFrame(columns=["Grup", "Gün", "Eşleşme", "Branş", "Takım 1", "Takım 2", "T1_Oyuncu", "T2_Oyuncu", "1.Set T1", "1.Set T2", "2.Set T1", "2.Set T2", "3.Set T1", "3.Set T2", "Durum", "STB"])
+    ortak_veriyi_yukle()
+    if 'skor_tablosu' not in st.session_state or st.session_state.skor_tablosu.empty:
+        st.session_state.skor_tablosu = pd.DataFrame(columns=["id", "Grup", "Gün", "Eşleşme", "Branş", "Takım 1", "Takım 2", "T1_Oyuncu", "T2_Oyuncu", "1.Set T1", "1.Set T2", "2.Set T1", "2.Set T2", "3.Set T1", "3.Set T2", "Durum", "STB"])
+    if 'mac_programi' not in st.session_state or st.session_state.mac_programi.empty:
         st.session_state.mac_programi = pd.DataFrame(columns=["Maç Saati", "Tarih", "Gün Adı", "Kort", "Grup", "Gün", "Branş", "Eşleşme", "Takım 1", "Takım 2", "T1 Oyuncu", "T2 Oyuncu", "Canlı Skor", "Kazanan"])
 
 if 'skor_tablosu' in st.session_state and 'Durum' not in st.session_state.skor_tablosu.columns:
     st.session_state.skor_tablosu['Durum'] = "Tamamlandı"
 if 'skor_tablosu' in st.session_state and 'STB' not in st.session_state.skor_tablosu.columns:
     st.session_state.skor_tablosu['STB'] = False
+if 'skor_tablosu' in st.session_state and 'id' not in st.session_state.skor_tablosu.columns:
+    st.session_state.skor_tablosu['id'] = [str(uuid.uuid4()) for _ in range(len(st.session_state.skor_tablosu))]
 
 if 'mac_programi' in st.session_state:
     if st.session_state.mac_programi.empty and len(st.session_state.mac_programi.columns) < 5:
@@ -2466,13 +2514,13 @@ else:
             c_sv, c_ld = st.columns(2)
             with c_sv:
                 export_data = {
-                    "skor_tablosu": st.session_state.skor_tablosu.to_dict(orient="records"),
-                    "mac_programi": st.session_state.mac_programi.to_dict(orient="records"),
-                    "takim_kadrolari": st.session_state.takim_kadrolari,
+                    "skor_tablosu": st.session_state.skor_tablosu.to_dict(orient="records") if not st.session_state.skor_tablosu.empty else [],
+                    "mac_programi": st.session_state.mac_programi.to_dict(orient="records") if not st.session_state.mac_programi.empty else [],
+                    "takim_kadrolari": st.session_state.get("takim_kadrolari", {}),
                     "grup_formatlari": st.session_state.get("grup_formatlari", {}),
                     "grup_kategorileri": st.session_state.get("grup_kategorileri", {}),
                     "grup_asamalari": st.session_state.get("grup_asamalari", {}),
-                    "duyuru_metni": st.session_state.duyuru_metni,
+                    "duyuru_metni": st.session_state.get("duyuru_metni", ""),
                     "gunluk_notlar": st.session_state.get("gunluk_notlar", {}),
                     "takim_havuzu": st.session_state.get("takim_havuzu", {}),
                     "havuz_kategorileri": st.session_state.get("havuz_kategorileri", {}),
@@ -2492,9 +2540,9 @@ else:
                 if up_file is not None and st.button("📤 Seçilen Yedeği Sisteme Entegre Et"):
                     try:
                         d = json.load(up_file)
-                        st.session_state.skor_tablosu = pd.DataFrame(d["skor_tablosu"])
-                        st.session_state.mac_programi = pd.DataFrame(d["mac_programi"])
-                        st.session_state.takim_kadrolari = d["takim_kadrolari"]
+                        st.session_state.skor_tablosu = pd.DataFrame(d.get("skor_tablosu", []))
+                        st.session_state.mac_programi = pd.DataFrame(d.get("mac_programi", []))
+                        st.session_state.takim_kadrolari = d.get("takim_kadrolari", {})
                         st.session_state.grup_formatlari = d.get("grup_formatlari", {})
                         st.session_state.grup_kategorileri = d.get("grup_kategorileri", {})
                         st.session_state.grup_asamalari = d.get("grup_asamalari", {})
@@ -2529,12 +2577,31 @@ else:
                 st.warning("⚠️ DİKKAT: Tüm turnuva verileri (maçlar, kadrolar, skorlar, yüklenen belgeler) kalıcı olarak silinecektir. Bu işlem geri alınamaz!")
                 col_evet, col_hayir = st.columns(2)
                 if col_evet.button("✅ Evet, Tüm Verileri Sil"):
-                    if os.path.exists(VERI_DOSYASI): os.remove(VERI_DOSYASI)
+                    if supabase:
+                        try:
+                            # Supabase tablosundaki verileri sil
+                            res = supabase.table("maclar").select("id").execute()
+                            if res.data:
+                                ids = [item['id'] for item in res.data]
+                                for i in range(0, len(ids), 100):
+                                    batch_ids = ids[i:i+100]
+                                    supabase.table("maclar").delete().in_("id", batch_ids).execute()
+                            
+                            bos_ayarlar = {
+                                "takim_kadrolari": {}, "grup_formatlari": {}, "grup_kategorileri": {}, "grup_asamalari": {},
+                                "duyuru_metni": "", "gunluk_notlar": {}, "takim_havuzu": {}, "havuz_kategorileri": {},
+                                "havuz_yas_gruplari": {}, "grup_siralamalari": {}, "grup_tamamlandi": {}, "grup_yas_gruplari": {},
+                                "takim_pinleri": {}, "esame_kasasi": {}, "esame_onayli": {}, "mac_programi": []
+                            }
+                            supabase.table("turnuva_ayarlari").update(bos_ayarlar).eq("id", 1).execute()
+                        except Exception as e:
+                            st.error(f"Veritabanı silinirken hata oluştu: {e}")
+
                     if os.path.exists(BELGELER_KLASORU): shutil.rmtree(BELGELER_KLASORU)
-                    if os.path.exists(LOCK_DOSYASI): os.remove(LOCK_DOSYASI)
                     st.session_state.clear()
                     st.session_state.confirm_reset = False
                     st.success("Tüm veritabanı başarıyla temizlendi!")
+                    time.sleep(1.5)
                     st.rerun()
                 if col_hayir.button("❌ Vazgeç"):
                     st.session_state.confirm_reset = False
