@@ -1375,6 +1375,7 @@ else:
                                             st.error("Sistem meşgul, lütfen tekrar deneyin.")
 
     # --- BAŞHAKEM SAYFASI: ESAME KONTROL MERKEZİ ---
+# --- BAŞHAKEM SAYFASI: ESAME KONTROL MERKEZİ ---
     elif menu_secim == "📝 Esame Kontrol Merkezi":
         if st.session_state.admin_mi:
             st.info("ℹ️ Kaptanların girdikleri kadrolar (kapalı zarflar) burada toplanır. Sen 'Onayla' diyene kadar bu isimler maç programında veya skor ekranında görünmez.")
@@ -1403,7 +1404,7 @@ else:
                     
                     with st.expander(f"{saat} | {kort} | {grup} | {t1} ({durum_ikon_t1})  VS  {t2} ({durum_ikon_t2})", expanded=not is_approved):
                         if is_approved:
-                            st.success("Bu esameler onaylanmış ve fikstüre yansıtılmıştır.")
+                            st.success("Bu esameler onaylanmış ve Maç Programına yansıtılmıştır.")
                         
                         c1, c2 = st.columns(2)
                         with c1:
@@ -1418,7 +1419,7 @@ else:
                             else: st.warning("Kaptan henüz giriş yapmadı.")
                             
                         if not is_approved:
-                            if st.button("📢 Esameleri Onayla ve Fikstüre Yansıt (Zarfları Aç)", key=f"onay_{match_key}", type="primary"):
+                            if st.button("📢 Esameleri Onayla ve Maç Programına Yansıt (Zarfları Aç)", key=f"onay_{match_key}", type="primary"):
                                 st.session_state.esame_onayli[match_key] = True
                                 
                                 skor_mask = (st.session_state.skor_tablosu['Grup'] == grup) & (st.session_state.skor_tablosu['Gün'] == gun) & (st.session_state.skor_tablosu['Eşleşme'] == eslesme)
@@ -1428,7 +1429,7 @@ else:
                                     if t2_girdi: st.session_state.skor_tablosu.at[idx, 'T2_Oyuncu'] = kasadaki_veri[t2].get(brans, "")
                                 
                                 if ortak_veriyi_kaydet():
-                                    st.success("Esameler başarıyla açıldı ve Skor Girişi sayfasına gönderildi!")
+                                    st.success("Esameler başarıyla açıldı ve Skor Girişi ile Maç Programı sayfalarına gönderildi!")
                                     st.rerun()
                                 else:
                                     st.error("⚠️ Sistem şu an meşgul. Çakışma önlendi, lütfen tekrar deneyin.")
@@ -1648,7 +1649,7 @@ else:
                         takimlar.append(t_isim)
                         grup_kadrolari[t_isim] = oyuncu_listesi if oyuncu_listesi else ["Belirtilmedi"]
 
-            if st.button("🚀 Grubu ve Fikstürü Oluştur / Güncelle"):
+            if st.button("🚀 Grubu ve Maç Programını Oluştur / Güncelle"):
                 cakisan_takimlar = [t for t in takimlar if t in baska_gruplardaki_takimlar]
                 if cakisan_takimlar:
                     hata_detay = ", ".join([f"'{t}' ({baska_gruplardaki_takimlar[t]})" for t in cakisan_takimlar])
@@ -1670,7 +1671,7 @@ else:
                     
                     if not st.session_state.skor_tablosu.empty and grup_adi_temiz in st.session_state.skor_tablosu['Grup'].unique():
                         if ortak_veriyi_kaydet():
-                            st.success("Mevcut grup bulundu! Kadrolar başarıyla güncellendi, eski fikstür korundu.")
+                            st.success("Mevcut grup bulundu! Kadrolar başarıyla güncellendi, eski maç programı korundu.")
                         else:
                             st.error("Sistem meşgul, lütfen tekrar deneyin.")
                     else:
@@ -1703,7 +1704,7 @@ else:
     # --- SAYFA 2: SKOR GİRİŞİ ---
     elif menu_secim == "✍️ Skor Girişi":
         if st.session_state.admin_mi:
-            st.info("💡 **Not:** Kaptanların girdiği isimler 'Esame Kontrol Merkezi'nde onaylandıktan sonra buraya otomatik düşer. Düşen isimleri burada istediğiniz gibi manuel değiştirebilirsiniz (Örn: Çiftler maçı öncesi taktiksel değişiklik).")
+            st.info("💡 **Not:** Kaptanların girdiği (veya sizin girdiğiniz) isimler onaylandıktan sonra buraya otomatik düşer. Düşen isimleri burada manuel değiştirdiğiniz anda, sistem o maçın esamesini başhakem yetkisiyle 'Onaylı' hale getirir ve Maç Programı'nda herkese yayınlar.")
             if not st.session_state.skor_tablosu.empty:
                 gecerli_gruplar_t2 = [g for g in st.session_state.skor_tablosu['Grup'].unique() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama]
                 
@@ -1810,7 +1811,7 @@ else:
                         form_verileri[idx] = {
                             "T1_Oyuncu": t1_oyuncu_str, "T2_Oyuncu": t2_oyuncu_str,
                             "1.Set T1": s1t1, "1.Set T2": s1t2, "2.Set T1": s2t1, "2.Set T2": s2t2, "3.Set T1": s3t1, "3.Set T2": s3t2,
-                            "Durum": secilen_durum, "STB": secilen_stb
+                            "Durum": secilen_durum, "STB": secilen_stb, "Eşleşme": str(row['Eşleşme'])
                         }
                         st.divider()
 
@@ -1880,7 +1881,7 @@ else:
                         
                         if uyarilar: st.warning(f"⚠️ **Sıralama Uyarısı ({takim_ismi} | Eşleşme: {eslesme}):**\n\n" + "\n".join([f"- {u}" for u in uyarilar]) + "\n\n*(Başhakem olarak bu uyarıya rağmen kaydetme yetkiniz bulunmaktadır.)*")
 
-                if st.button("✅ Tüm Skorları ve Esameleri Kaydet"):
+                if st.button("✅ Tüm Skorları ve Esameleri Kaydet (Maç Programına Yansıt)"):
                     hata_mesajlari = []
                     for idx, guncel_row in form_verileri.items():
                         mac_tanimi = f"{secilen_gun} - {st.session_state.skor_tablosu.loc[idx]['Branş']}"
@@ -1916,13 +1917,29 @@ else:
                         for h in hata_mesajlari: st.error(h)
                     else:
                         for idx, guncel_row in form_verileri.items():
-                            for k, v in guncel_row.items():
-                                st.session_state.skor_tablosu.at[idx, k] = v
+                            eslesme_val = guncel_row["Eşleşme"]
+                            match_key = f"{secilen_grup}_{secilen_gun}_{eslesme_val}"
+                            
+                            st.session_state.skor_tablosu.at[idx, "T1_Oyuncu"] = guncel_row["T1_Oyuncu"]
+                            st.session_state.skor_tablosu.at[idx, "T2_Oyuncu"] = guncel_row["T2_Oyuncu"]
+                            st.session_state.skor_tablosu.at[idx, "1.Set T1"] = guncel_row["1.Set T1"]
+                            st.session_state.skor_tablosu.at[idx, "1.Set T2"] = guncel_row["1.Set T2"]
+                            st.session_state.skor_tablosu.at[idx, "2.Set T1"] = guncel_row["2.Set T1"]
+                            st.session_state.skor_tablosu.at[idx, "2.Set T2"] = guncel_row["2.Set T2"]
+                            st.session_state.skor_tablosu.at[idx, "3.Set T1"] = guncel_row["3.Set T1"]
+                            st.session_state.skor_tablosu.at[idx, "3.Set T2"] = guncel_row["3.Set T2"]
+                            st.session_state.skor_tablosu.at[idx, "Durum"] = guncel_row["Durum"]
+                            st.session_state.skor_tablosu.at[idx, "STB"] = guncel_row["STB"]
+                            
+                            # Eğer burada bir isim girilmişse, otomatik olarak bu esameyi ONAYLA ve MAÇ PROGRAMINDA göster!
+                            if guncel_row["T1_Oyuncu"] or guncel_row["T2_Oyuncu"]:
+                                st.session_state.esame_onayli[match_key] = True
+
                         if ortak_veriyi_kaydet():
-                            st.success("Veriler başarıyla işlendi ve kaydedildi!")
+                            st.success("Veriler ve Manuel Esameler başarıyla kaydedilip Maç Programına yansıtıldı!")
                             st.rerun()
                         else:
-                            st.error("⚠️ Sistem şu an başka bir takımın kaydını işliyor (Meşgul). Çakışma önlendi, lütfen tekrar deneyin.")
+                            st.error("⚠️ Sistem şu an meşgul. Çakışma önlendi, lütfen tekrar deneyin.")
 
                 st.markdown("---")
                 with st.expander(f"📊 {secilen_grup} Anlık Puan Durumu (Görüntülemek için tıklayın)"):
