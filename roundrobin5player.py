@@ -970,14 +970,14 @@ if st.session_state.current_page == "Home":
         c1, c2, c3, c4 = st.columns(4)
         with c1: render_big_button("📝", "Esame Bildirimi", "👨‍✈️ Kaptan Esame Girişi")
         with c2: render_big_button("🛡️", "Takım Kadroları", "🛡️ Takım Kadroları")
-        with c3: render_big_button("📅", "Maç Fikstürü", "📅 Maç Programı")
+        with c3: render_big_button("📅", "Maç Programı", "📅 Maç Programı")
         with c4: render_big_button("🏆", "Puan Durumu", "🏆 Puan Durumu")
         
     elif st.session_state.hakem_mi:
         st.markdown(f"<h4 style='text-align:center;'>👮‍♂️ Hakem Paneli ({st.session_state.aktif_hakem})</h4><br>", unsafe_allow_html=True)
         c1, c2, c3 = st.columns(3)
         with c1: render_big_button("✍️", "Görevli Olduğum Maçlar", "✍️ Hakem Paneli")
-        with c2: render_big_button("📅", "Tüm Maç Fikstürü", "📅 Maç Programı")
+        with c2: render_big_button("📅", "Tüm Maç Programı", "📅 Maç Programı")
         with c3: render_big_button("🏆", "Puan Durumu", "🏆 Puan Durumu")
 
     else:
@@ -987,7 +987,7 @@ if st.session_state.current_page == "Home":
         with c2: render_big_button("👮‍♂️", "Hakem Girişi", "👮‍♂️ Hakem Girişi")
         with c3: render_big_button("🛡️", "Takım Kadroları", "🛡️ Takım Kadroları")
         with c4: render_big_button("🏆", "Puan Durumu", "🏆 Puan Durumu")
-        with c5: render_big_button("📅", "Maç Fikstürü", "📅 Maç Programı")
+        with c5: render_big_button("📅", "Maç Programı", "📅 Maç Programı")
         with c6: render_big_button("📢", "Duyurular", "📢 Duyurular")
         
     st.markdown("</div>", unsafe_allow_html=True)
