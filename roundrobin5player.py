@@ -139,14 +139,7 @@ def get_pdf_bytes(pdf):
     out = pdf.output(dest='S')
     return out.encode('latin-1') if isinstance(out, str) else bytes(out)
 
-def pdf_cell_fit(pdf, w, h, txt, border=1, align='C', is_bold=False, fill=False):
-    size = 10 if is_bold else 9
-    apply_font(pdf, bold=is_bold, size=size)
-    while pdf.get_string_width(to_pdf_text(txt)) > (w - 2) and size > 5:
-        size -= 0.5
-        apply_font(pdf, bold=is_bold, size=size)
-    pdf.cell(w, h, to_pdf_text(txt), border=border, align=align, fill=fill)
-    apply_font(pdf, bold=False, size=9)
+
 def pdf_cell_fit(pdf, w, h, txt, border=1, align='C', is_bold=False, fill=False, base_size=9):
     size = base_size
     apply_font(pdf, bold=is_bold, size=size)
