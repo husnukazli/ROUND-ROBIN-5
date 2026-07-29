@@ -1801,8 +1801,9 @@ else:
                         for t_isim in dogal_sirala(list(g_kadro.keys())):
                             st.markdown(f"**🛡️ {t_isim}**")
                             if g_kadro[t_isim] and g_kadro[t_isim] != ["Belirtilmedi"]:
-                                liste_metni = "\n".join([f"**{i+1}.** {oyuncu}" for i, oyuncu in enumerate(g_kadro[t_isim])])
-                                st.markdown(liste_metni)
+                                # SADECE ALTTAKİ İKİ SATIR DEĞİŞTİ ( \n yerine <br> ve unsafe_allow_html eklendi )
+                                liste_metni = "<br>".join([f"**{i+1}.** {oyuncu}" for i, oyuncu in enumerate(g_kadro[t_isim])])
+                                st.markdown(liste_metni, unsafe_allow_html=True)
                             else:
                                 st.write("Oyuncu yok")
                             st.markdown("---")
