@@ -772,9 +772,9 @@ def ortak_veriyi_yukle():
             except:
                 pass # Hata durumunda boş geç, eski veri kalsın
 
-if data:
+    if data:
         st.session_state.sistem_kilitli = data.get("sistem_kilitli", False)
-        st.session_state.cevrimdisi_mod = st.session_state.sistem_kilitli  # <-- Sayfa yenilense de durumu korur
+        st.session_state.cevrimdisi_mod = st.session_state.sistem_kilitli  # Sayfa yenilense de korur
         
         if data.get("mac_programi"):
             mp_df = pd.DataFrame(data["mac_programi"])
