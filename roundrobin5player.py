@@ -1972,8 +1972,7 @@ for eslesme, data in eslesme_dict.items():
                                     uyarilar.append(f"Çiftler Sıralama Hatası: Seçilen 4 oyuncu arasındaki güç dengesine göre, 1. Çiftler daha güçlü veya eşit (Toplam: {toplam_c1}) olmalıdır. Mevcut durumda 2. Çiftler (Toplam: {toplam_c2}) daha güçlü görünüyor.")
                         
                         if uyarilar: st.warning(f"⚠️ **Sıralama Uyarısı ({takim_ismi} | Eşleşme: {eslesme}):**\n\n" + "\n".join([f"- {u}" for u in uyarilar]) + "\n\n*(Başhakem olarak bu uyarıya rağmen kaydetme yetkiniz bulunmaktadır.)*")
-
-                if st.button("✅ Tüm Skorları ve Esameleri Kaydet (Maç Programına Yansıt)"):
+                    if st.button("✅ Tüm Skorları ve Esameleri Kaydet (Maç Programına Yansıt)"):
                     hata_mesajlari = []
                     for idx, guncel_row in form_verileri.items():
                         mac_tanimi = f"{secilen_gun} - {st.session_state.skor_tablosu.loc[idx]['Branş']}"
