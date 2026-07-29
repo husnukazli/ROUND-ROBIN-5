@@ -1782,7 +1782,7 @@ else:
         else:
             st.warning("🔒 Bu panel dışarıya kapalıdır. Lütfen giriş yapınız.")
 
-    # --- SAYFA 2: SKOR GİRİŞİ ---
+# --- SAYFA 2: SKOR GİRİŞİ ---
     elif menu_secim == "✍️ Skor Girişi":
         if st.session_state.admin_mi:
             st.info("💡 **Not:** Kaptanların girdiği (veya sizin girdiğiniz) isimler onaylandıktan sonra buraya otomatik düşer. Düşen isimleri burada manuel değiştirdiğiniz anda, sistem o maçın esamesini başhakem yetkisiyle 'Onaylı' hale getirir ve Maç Programı'nda herkese yayınlar.")
@@ -1896,153 +1896,144 @@ else:
                         }
                         st.divider()
 
-                eslesme_dict = {}
-form_verileri = {}  # <--- SADECE BU SATIRI EKLİYORSUN (İçi boş bir sözlük olarak tanımlıyoruz)
-
-# Sonra senin kodun olduğu gibi devam ediyor...
-for idx, g_row in form_verileri.items():
-    # ...
-                    row_data = df_gun.loc[idx]
-                    eslesme = row_data["Eşleşme"]
-                    brans = row_data["Branş"]
-                    if eslesme not in eslesme_dict:
-                        eslesme_dict[eslesme] = {"T1": {"isim": row_data["Takım 1"], "secimler": {}}, "T2": {"isim": row_data["Takım 2"], "secimler": {}}}
-                    eslesme_dict[eslesme]["T1"]["secimler"][brans] = g_row["T1_Oyuncu"]
-                    eslesme_dict[eslesme]["T2"]["secimler"][brans] = g_row["T2_Oyuncu"]
+                    eslesme_dict = {}
+                    for idx, g_row in form_verileri.items():
+                        row_data = df_gun.loc[idx]
+                        eslesme = row_data["Eşleşme"]
+                        brans = row_data["Branş"]
+                        if eslesme not in eslesme_dict:
+                            eslesme_dict[eslesme] = {"T1": {"isim": row_data["Takım 1"], "secimler": {}}, "T2": {"isim": row_data["Takım 2"], "secimler": {}}}
+                        eslesme_dict[eslesme]["T1"]["secimler"][brans] = g_row["T1_Oyuncu"]
+                        eslesme_dict[eslesme]["T2"]["secimler"][brans] = g_row["T2_Oyuncu"]
                 
-if secilen_grup != "Seçiniz":
-        # Bir üst satır (örneğin if veya for bloğu) içeriden başlıyorsa, bu da tam onun hizasında olmalıdır:
-        grup_kadro_dict = st.session_state.takim_kadrolari.get(secilen_grup, {})
-        baska_bir_degisken = True
-# Üstteki kod nereden başlıyorsa...
-baska_bir_islem = True
-# Bu döngü de tam onun hizasında başlamalı! (Daha sağda değil)
-for eslesme, data in eslesme_dict.items():
-    # Döngünün içi doğal olarak bir tık içeride olur...
-                    for team_key in ["T1", "T2"]:
-                        takim_ismi = data[team_key]["isim"]
-                        havuz = grup_kadro_dict.get(takim_ismi, [])
-                        secimler = data[team_key]["secimler"]
-                        o1 = secimler.get("1. Tekler")
-                        o2 = secimler.get("2. Tekler")
-                        o3 = secimler.get("3. Tekler")
-                        r1 = havuz.index(o1) if o1 in havuz else -1
-                        r2 = havuz.index(o2) if o2 in havuz else -1
-                        r3 = havuz.index(o3) if o3 in havuz else -1
-                        
-                        uyarilar = []
-                        for b in ["1. Çiftler", "2. Çiftler", "Çiftler"]:
-                            c_str = secimler.get(b, "")
-                            if c_str:
-                                c_list = [o.strip() for o in c_str.split("-") if o.strip()]
-                                if len(c_list) == 1:
-                                    uyarilar.append(f"**{b}** maçına tek bir oyuncu seçilmiş. Çiftler maçı için 2 kişi seçilmeli veya boş bırakılmalıdır.")
-                                    
-                        if r1 != -1 and r2 != -1 and r1 >= r2: uyarilar.append(f"**1. Tekler** oyuncusu ({o1}), **2. Tekler** oyuncusundan ({o2}) takım listesinde daha üst sırada olmalıdır.")
-                        if r2 != -1 and r3 != -1 and r2 >= r3: uyarilar.append(f"**2. Tekler** oyuncusu ({o2}), **3. Tekler** oyuncusundan ({o3}) takım listesinde daha üst sırada olmalıdır.")
-                        if r1 != -1 and r3 != -1 and r2 == -1 and r1 >= r3: uyarilar.append(f"**1. Tekler** oyuncusu ({o1}), **3. Tekler** oyuncusundan ({o3}) takım listesinde daha üst sırada olmalıdır.")
-                        
-                        if o1 and o1 == o2: uyarilar.append(f"Aynı oyuncuyu ({o1}) birden fazla tekler maçına yazamazsınız.")
-                        if o2 and o2 == o3: uyarilar.append(f"Aynı oyuncuyu ({o2}) birden fazla tekler maçına yazamazsınız.")
-                        if o1 and o1 == o3: uyarilar.append(f"Aynı oyuncuyu ({o1}) birden fazla tekler maçına yazamazsınız.")
-                        
-                        if "5 Maçlık" in format_secimi:
-                            c1_oyuncular = secimler.get("1. Çiftler", "")
-                            c2_oyuncular = secimler.get("2. Çiftler", "")
-                            c1_list = [o.strip() for o in c1_oyuncular.split("-") if o.strip()]
-                            c2_list = [o.strip() for o in c2_oyuncular.split("-") if o.strip()]
-                            
-                            ortak_oyuncular = set(c1_list).intersection(set(c2_list))
-                            if ortak_oyuncular:
-                                uyarilar.append(f"Aynı oyuncuyu ({', '.join(ortak_oyuncular)}) hem 1. Çiftler hem 2. Çiftler maçına yazamazsınız.")
-                            
-                            if len(c1_list) == 2 and len(c2_list) == 2 and not ortak_oyuncular:
-                                dortlu_havuz = []
-                                for p in c1_list + c2_list:
-                                    if p in havuz:
-                                        dortlu_havuz.append((p, havuz.index(p)))
-                                
-                                dortlu_sirali = sorted(dortlu_havuz, key=lambda x: x[1])
-                                yeni_ranking = {oyuncu: (i + 1) for i, (oyuncu, idx) in enumerate(dortlu_sirali)}
-                                
-                                toplam_c1 = yeni_ranking[c1_list[0]] + yeni_ranking[c1_list[1]]
-                                toplam_c2 = yeni_ranking[c2_list[0]] + yeni_ranking[c2_list[1]]
-                                
-                                if toplam_c1 > toplam_c2:
-                                    uyarilar.append(f"Çiftler Sıralama Hatası: Seçilen 4 oyuncu arasındaki güç dengesine göre, 1. Çiftler daha güçlü veya eşit (Toplam: {toplam_c1}) olmalıdır. Mevcut durumda 2. Çiftler (Toplam: {toplam_c2}) daha güçlü görünüyor.")
-                        
-                        if uyarilar: st.warning(f"⚠️ **Sıralama Uyarısı ({takim_ismi} | Eşleşme: {eslesme}):**\n\n" + "\n".join([f"- {u}" for u in uyarilar]) + "\n\n*(Başhakem olarak bu uyarıya rağmen kaydetme yetkiniz bulunmaktadır.)*")
-                    if st.button("✅ Tüm Skorları ve Esameleri Kaydet (Maç Programına Yansıt)"):
-                    hata_mesajlari = []
-                    for idx, guncel_row in form_verileri.items():
-                        mac_tanimi = f"{secilen_gun} - {st.session_state.skor_tablosu.loc[idx]['Branş']}"
-                        
-                        s1t1, s1t2 = guncel_row["1.Set T1"], guncel_row["1.Set T2"]
-                        s2t1, s2t2 = guncel_row["2.Set T1"], guncel_row["2.Set T2"]
-                        s3t1, s3t2 = guncel_row["3.Set T1"], guncel_row["3.Set T2"]
-                        durum = guncel_row["Durum"]
-                        
-                        ok1, msg1 = set_gecerli_mi(s1t1, s1t2, durum=durum)
-                        ok2, msg2 = set_gecerli_mi(s2t1, s2t2, durum=durum)
-                        ok3, msg3 = set_gecerli_mi(s3t1, s3t2, is_set3=True, durum=durum)
-                        
-                        if not ok1: hata_mesajlari.append(f"{mac_tanimi} Set 1: {msg1}")
-                        if not ok2: hata_mesajlari.append(f"{mac_tanimi} Set 2: {msg2}")
-                        if not ok3: hata_mesajlari.append(f"{mac_tanimi} Set 3: {msg3}")
-                        
-                        if durum == "Tamamlandı":
-                            t1_s1_kazandi = s1t1 > s1t2
-                            t2_s1_kazandi = s1t2 > s1t1
-                            t1_s2_kazandi = s2t1 > s2t2
-                            t2_s2_kazandi = s2t2 > s2t1
-                            
-                            if (t1_s1_kazandi and t1_s2_kazandi) or (t2_s1_kazandi and t2_s2_kazandi): 
-                                if s3t1 != 0 or s3t2 != 0:
-                                    hata_mesajlari.append(f"{mac_tanimi}: Maç 2-0 bittiği için 3. sete skor girilemez.")
-                            
-                            elif (t1_s1_kazandi and t2_s2_kazandi) or (t2_s1_kazandi and t1_s2_kazandi):
-                                if s3t1 == 0 and s3t2 == 0:
-                                    hata_mesajlari.append(f"{mac_tanimi}: Setlerde 1-1 eşitlik var, 3. set skoru girilmelidir.")
+                    grup_kadro_dict = st.session_state.takim_kadrolari.get(secilen_grup, {})
                     
-                    if hata_mesajlari:
-                        for h in hata_mesajlari: st.error(h)
-                    else:
+                    for eslesme, data in eslesme_dict.items():
+                        for team_key in ["T1", "T2"]:
+                            takim_ismi = data[team_key]["isim"]
+                            havuz = grup_kadro_dict.get(takim_ismi, [])
+                            secimler = data[team_key]["secimler"]
+                            o1 = secimler.get("1. Tekler")
+                            o2 = secimler.get("2. Tekler")
+                            o3 = secimler.get("3. Tekler")
+                            r1 = havuz.index(o1) if o1 in havuz else -1
+                            r2 = havuz.index(o2) if o2 in havuz else -1
+                            r3 = havuz.index(o3) if o3 in havuz else -1
+                            
+                            uyarilar = []
+                            for b in ["1. Çiftler", "2. Çiftler", "Çiftler"]:
+                                c_str = secimler.get(b, "")
+                                if c_str:
+                                    c_list = [o.strip() for o in c_str.split("-") if o.strip()]
+                                    if len(c_list) == 1:
+                                        uyarilar.append(f"**{b}** maçına tek bir oyuncu seçilmiş. Çiftler maçı için 2 kişi seçilmeli veya boş bırakılmalıdır.")
+                                        
+                            if r1 != -1 and r2 != -1 and r1 >= r2: uyarilar.append(f"**1. Tekler** oyuncusu ({o1}), **2. Tekler** oyuncusundan ({o2}) takım listesinde daha üst sırada olmalıdır.")
+                            if r2 != -1 and r3 != -1 and r2 >= r3: uyarilar.append(f"**2. Tekler** oyuncusu ({o2}), **3. Tekler** oyuncusundan ({o3}) takım listesinde daha üst sırada olmalıdır.")
+                            if r1 != -1 and r3 != -1 and r2 == -1 and r1 >= r3: uyarilar.append(f"**1. Tekler** oyuncusu ({o1}), **3. Tekler** oyuncusundan ({o3}) takım listesinde daha üst sırada olmalıdır.")
+                            
+                            if o1 and o1 == o2: uyarilar.append(f"Aynı oyuncuyu ({o1}) birden fazla tekler maçına yazamazsınız.")
+                            if o2 and o2 == o3: uyarilar.append(f"Aynı oyuncuyu ({o2}) birden fazla tekler maçına yazamazsınız.")
+                            if o1 and o1 == o3: uyarilar.append(f"Aynı oyuncuyu ({o1}) birden fazla tekler maçına yazamazsınız.")
+                            
+                            if "5 Maçlık" in format_secimi:
+                                c1_oyuncular = secimler.get("1. Çiftler", "")
+                                c2_oyuncular = secimler.get("2. Çiftler", "")
+                                c1_list = [o.strip() for o in c1_oyuncular.split("-") if o.strip()]
+                                c2_list = [o.strip() for o in c2_oyuncular.split("-") if o.strip()]
+                                
+                                ortak_oyuncular = set(c1_list).intersection(set(c2_list))
+                                if ortak_oyuncular:
+                                    uyarilar.append(f"Aynı oyuncuyu ({', '.join(ortak_oyuncular)}) hem 1. Çiftler hem 2. Çiftler maçına yazamazsınız.")
+                                
+                                if len(c1_list) == 2 and len(c2_list) == 2 and not ortak_oyuncular:
+                                    dortlu_havuz = []
+                                    for p in c1_list + c2_list:
+                                        if p in havuz:
+                                            dortlu_havuz.append((p, havuz.index(p)))
+                                    
+                                    dortlu_sirali = sorted(dortlu_havuz, key=lambda x: x[1])
+                                    yeni_ranking = {oyuncu: (i + 1) for i, (oyuncu, idx) in enumerate(dortlu_sirali)}
+                                    
+                                    toplam_c1 = yeni_ranking[c1_list[0]] + yeni_ranking[c1_list[1]]
+                                    toplam_c2 = yeni_ranking[c2_list[0]] + yeni_ranking[c2_list[1]]
+                                    
+                                    if toplam_c1 > toplam_c2:
+                                        uyarilar.append(f"Çiftler Sıralama Hatası: Seçilen 4 oyuncu arasındaki güç dengesine göre, 1. Çiftler daha güçlü veya eşit (Toplam: {toplam_c1}) olmalıdır. Mevcut durumda 2. Çiftler (Toplam: {toplam_c2}) daha güçlü görünüyor.")
+                            
+                            if uyarilar: st.warning(f"⚠️ **Sıralama Uyarısı ({takim_ismi} | Eşleşme: {eslesme}):**\n\n" + "\n".join([f"- {u}" for u in uyarilar]) + "\n\n*(Başhakem olarak bu uyarıya rağmen kaydetme yetkiniz bulunmaktadır.)*")
+                    
+                    if st.button("✅ Tüm Skorları ve Esameleri Kaydet (Maç Programına Yansıt)"):
+                        hata_mesajlari = []
                         for idx, guncel_row in form_verileri.items():
-                            eslesme_val = guncel_row["Eşleşme"]
-                            match_key = f"{secilen_grup}_{secilen_gun}_{eslesme_val}"
+                            mac_tanimi = f"{secilen_gun} - {st.session_state.skor_tablosu.loc[idx]['Branş']}"
                             
-                            st.session_state.skor_tablosu.at[idx, "T1_Oyuncu"] = guncel_row["T1_Oyuncu"]
-                            st.session_state.skor_tablosu.at[idx, "T2_Oyuncu"] = guncel_row["T2_Oyuncu"]
-                            st.session_state.skor_tablosu.at[idx, "1.Set T1"] = guncel_row["1.Set T1"]
-                            st.session_state.skor_tablosu.at[idx, "1.Set T2"] = guncel_row["1.Set T2"]
-                            st.session_state.skor_tablosu.at[idx, "2.Set T1"] = guncel_row["2.Set T1"]
-                            st.session_state.skor_tablosu.at[idx, "2.Set T2"] = guncel_row["2.Set T2"]
-                            st.session_state.skor_tablosu.at[idx, "3.Set T1"] = guncel_row["3.Set T1"]
-                            st.session_state.skor_tablosu.at[idx, "3.Set T2"] = guncel_row["3.Set T2"]
-                            st.session_state.skor_tablosu.at[idx, "Durum"] = guncel_row["Durum"]
-                            st.session_state.skor_tablosu.at[idx, "STB"] = guncel_row["STB"]
+                            s1t1, s1t2 = guncel_row["1.Set T1"], guncel_row["1.Set T2"]
+                            s2t1, s2t2 = guncel_row["2.Set T1"], guncel_row["2.Set T2"]
+                            s3t1, s3t2 = guncel_row["3.Set T1"], guncel_row["3.Set T2"]
+                            durum = guncel_row["Durum"]
                             
-                            # Eğer burada bir isim girilmişse, otomatik olarak bu esameyi ONAYLA ve MAÇ PROGRAMINDA göster!
-                            if guncel_row["T1_Oyuncu"] or guncel_row["T2_Oyuncu"]:
-                                st.session_state.esame_onayli[match_key] = True
-
-                        if ortak_veriyi_kaydet():
-                            st.success("Veriler ve Manuel Esameler başarıyla kaydedilip Maç Programına yansıtıldı!")
-                            st.rerun()
+                            ok1, msg1 = set_gecerli_mi(s1t1, s1t2, durum=durum)
+                            ok2, msg2 = set_gecerli_mi(s2t1, s2t2, durum=durum)
+                            ok3, msg3 = set_gecerli_mi(s3t1, s3t2, is_set3=True, durum=durum)
+                            
+                            if not ok1: hata_mesajlari.append(f"{mac_tanimi} Set 1: {msg1}")
+                            if not ok2: hata_mesajlari.append(f"{mac_tanimi} Set 2: {msg2}")
+                            if not ok3: hata_mesajlari.append(f"{mac_tanimi} Set 3: {msg3}")
+                            
+                            if durum == "Tamamlandı":
+                                t1_s1_kazandi = s1t1 > s1t2
+                                t2_s1_kazandi = s1t2 > s1t1
+                                t1_s2_kazandi = s2t1 > s2t2
+                                t2_s2_kazandi = s2t2 > s2t1
+                                
+                                if (t1_s1_kazandi and t1_s2_kazandi) or (t2_s1_kazandi and t2_s2_kazandi): 
+                                    if s3t1 != 0 or s3t2 != 0:
+                                        hata_mesajlari.append(f"{mac_tanimi}: Maç 2-0 bittiği için 3. sete skor girilemez.")
+                                
+                                elif (t1_s1_kazandi and t2_s2_kazandi) or (t2_s1_kazandi and t1_s2_kazandi):
+                                    if s3t1 == 0 and s3t2 == 0:
+                                        hata_mesajlari.append(f"{mac_tanimi}: Setlerde 1-1 eşitlik var, 3. set skoru girilmelidir.")
+                        
+                        if hata_mesajlari:
+                            for h in hata_mesajlari: st.error(h)
                         else:
-                            st.error("⚠️ Sistem şu an meşgul. Çakışma önlendi, lütfen tekrar deneyin.")
+                            for idx, guncel_row in form_verileri.items():
+                                eslesme_val = guncel_row["Eşleşme"]
+                                match_key = f"{secilen_grup}_{secilen_gun}_{eslesme_val}"
+                                
+                                st.session_state.skor_tablosu.at[idx, "T1_Oyuncu"] = guncel_row["T1_Oyuncu"]
+                                st.session_state.skor_tablosu.at[idx, "T2_Oyuncu"] = guncel_row["T2_Oyuncu"]
+                                st.session_state.skor_tablosu.at[idx, "1.Set T1"] = guncel_row["1.Set T1"]
+                                st.session_state.skor_tablosu.at[idx, "1.Set T2"] = guncel_row["1.Set T2"]
+                                st.session_state.skor_tablosu.at[idx, "2.Set T1"] = guncel_row["2.Set T1"]
+                                st.session_state.skor_tablosu.at[idx, "2.Set T2"] = guncel_row["2.Set T2"]
+                                st.session_state.skor_tablosu.at[idx, "3.Set T1"] = guncel_row["3.Set T1"]
+                                st.session_state.skor_tablosu.at[idx, "3.Set T2"] = guncel_row["3.Set T2"]
+                                st.session_state.skor_tablosu.at[idx, "Durum"] = guncel_row["Durum"]
+                                st.session_state.skor_tablosu.at[idx, "STB"] = guncel_row["STB"]
+                                
+                                # Eğer burada bir isim girilmişse, otomatik olarak bu esameyi ONAYLA ve MAÇ PROGRAMINDA göster!
+                                if guncel_row["T1_Oyuncu"] or guncel_row["T2_Oyuncu"]:
+                                    st.session_state.esame_onayli[match_key] = True
 
-                st.markdown("---")
-                with st.expander(f"📊 {secilen_grup} Anlık Puan Durumu (Görüntülemek için tıklayın)"):
-                    df_guncel = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] == secilen_grup].copy()
-                    if not df_guncel.empty:
-                        grup_stats = hesapla_tum_puan_durumu(df_guncel)
-                        if not grup_stats.empty:
-                            grup_df_display = grup_stats.drop(columns=['Grup'])
-                            grup_df_display = sirala_grup_df(grup_df_display, secilen_grup)
-                            st.dataframe(grup_df_display, use_container_width=True)
-                        else:
-                            st.info("Bu grup için henüz puan durumu oluşmadı.")
+                            if ortak_veriyi_kaydet():
+                                st.success("Veriler ve Manuel Esameler başarıyla kaydedilip Maç Programına yansıtıldı!")
+                                st.rerun()
+                            else:
+                                st.error("⚠️ Sistem şu an meşgul. Çakışma önlendi, lütfen tekrar deneyin.")
+
+                    st.markdown("---")
+                    with st.expander(f"📊 {secilen_grup} Anlık Puan Durumu (Görüntülemek için tıklayın)"):
+                        df_guncel = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] == secilen_grup].copy()
+                        if not df_guncel.empty:
+                            grup_stats = hesapla_tum_puan_durumu(df_guncel)
+                            if not grup_stats.empty:
+                                grup_df_display = grup_stats.drop(columns=['Grup'])
+                                grup_df_display = sirala_grup_df(grup_df_display, secilen_grup)
+                                st.dataframe(grup_df_display, use_container_width=True)
+                            else:
+                                st.info("Bu grup için henüz puan durumu oluşmadı.")
             else:
                 st.info("Aktif grup bulunamadı.")
         else:
