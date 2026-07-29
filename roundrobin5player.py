@@ -147,7 +147,7 @@ def pdf_cell_fit(pdf, w, h, txt, border=1, align='C', is_bold=False, fill=False)
         apply_font(pdf, bold=is_bold, size=size)
     pdf.cell(w, h, to_pdf_text(txt), border=border, align=align, fill=fill)
     apply_font(pdf, bold=False, size=9)
-def generate_pdf(df, baslik, not_metni=""): fonksiyonunu bul. Bu fonksiyonun tamamını (def generate_combined_standings_pdf yazan yere kadar) silip yerine şunu yapıştır:  Pythondef generate_pdf(df, baslik, not_metni=""):
+def generate_pdf(df, baslik, not_metni=""):
     pdf = FPDF(orientation='P', unit='mm', format='A4')
     pdf.add_page()
     setup_pdf_fonts(pdf)
