@@ -1167,21 +1167,27 @@ else:
                         if not oyuncu_havuzu or oyuncu_havuzu == ["Belirtilmedi"]:
                             st.error("Takımınızın oyuncu havuzu boş. Lütfen Başhakem ile iletişime geçin.")
                         else:
-                            kasadaki_veri = st.session_state.esame_kasasi.get(match_key, {}).get(takim_adi, {})
+kasadaki_veri = st.session_state.esame_kasasi.get(match_key, {}).get(takim_adi, {})
                             
                             format_secimi = st.session_state.grup_formatlari.get(grup, "3 Maçlık (2 Tek, 1 Çift)")
                             
-                            branslar_kaptan_form = ["1. Tekler", "2. Tekler", "3. Tekler", "1. Çiftler", "2. Çiftler"] if "5 Maçlık" in format_secimi else ["1. Tekler", "2. Tekler", "Çiftler"]
-                            
-                            label_map = {
-                                "1. Tekler": "🥇 1. Tekler Oyuncusu (Takımın en iyisi - Günün 3. Maçına Çıkar)",
-                                "2. Tekler": "🥈 2. Tekler Oyuncusu (Günün 2. Maçına Çıkar)",
-                                "3. Tekler": "🥉 3. Tekler Oyuncusu (Günün 1. Maçına Çıkar)",
-                                "1. Çiftler": "👥 1. Çiftler Oyuncuları (En iyi çift - Günün 5. Maçına Çıkar)",
-                                "2. Çiftler": "👥 2. Çiftler Oyuncuları (Günün 4. Maçına Çıkar)",
-                                "Çiftler": "👥 Çiftler Oyuncuları (Günün Son Maçına Çıkar)"
-                            }
-                            
+                            if "5 Maçlık" in format_secimi:
+                                branslar_kaptan_form = ["3. Tekler", "2. Tekler", "1. Tekler", "2. Çiftler", "1. Çiftler"]
+                                label_map = {
+                                    "3. Tekler": "🥉 3. Tekler Oyuncusu (Günün 1. Maçına Çıkar)",
+                                    "2. Tekler": "🥈 2. Tekler Oyuncusu (Günün 2. Maçına Çıkar)",
+                                    "1. Tekler": "🥇 1. Tekler Oyuncusu (Takımın en iyisi - Günün 3. Maçına Çıkar)",
+                                    "2. Çiftler": "👥 2. Çiftler Oyuncuları (Günün 4. Maçına Çıkar)",
+                                    "1. Çiftler": "👥 1. Çiftler Oyuncuları (En iyi çift - Günün 5. Maçına Çıkar)"
+                                }
+                            else:
+                                branslar_kaptan_form = ["2. Tekler", "1. Tekler", "Çiftler"]
+                                label_map = {
+                                    "2. Tekler": "🥈 2. Tekler Oyuncusu (Günün 1. Maçına Çıkar)",
+                                    "1. Tekler": "🥇 1. Tekler Oyuncusu (Takımın en iyisi - Günün 2. Maçına Çıkar)",
+                                    "Çiftler": "👥 Çiftler Oyuncuları (Günün 3. ve Son Maçına Çıkar)"
+                                }
+                                
                             form_secimleri = {}
                             
                             with st.form(key=f"esame_form_{match_key}"):
