@@ -1202,7 +1202,7 @@ else:
                                             st.error("⚠️ Sistem şu an başka bir takımın kaydını işliyor (Meşgul). Çakışma önlendi, lütfen 3 saniye bekleyip butona tekrar basınız.")
                     st.divider()
 
-    # --- HAKEM SAYFASI: GİRİŞ ---
+# --- HAKEM SAYFASI: GİRİŞ ---
     elif menu_secim == "👮‍♂️ Hakem Girişi":
         if not st.session_state.hakem_mi:
             st.info("Kendi maçlarınızı yönetmek ve skor girmek için PIN kodunuzla giriş yapınız.")
@@ -1219,7 +1219,7 @@ else:
                         st.session_state.hakem_mi = True
                         st.session_state.admin_mi = False
                         st.session_state.kaptan_mi = False
-st.session_state.aktif_hakem = secilen_hakem_login
+                        st.session_state.aktif_hakem = secilen_hakem_login
                         st.success(f"Hoş Geldiniz, {secilen_hakem_login}!")
                         st.session_state.current_page = "✍️ Gözlemci Hakem Paneli"
                         st.rerun()
