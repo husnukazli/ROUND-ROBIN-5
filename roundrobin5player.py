@@ -2652,8 +2652,21 @@ else:
                     if not df_pdf_export.empty and secilen_pdf_cols:
                         final_pdf_df = df_pdf_export[secilen_pdf_cols]
                         pdf_notu = st.session_state.gunluk_notlar.get(formatted_tarih, "")
-                        pdf_bytes_admin = generate_pdf(final_pdf_df, f"Mac Programi - {formatted_tarih}", not_metni=pdf_notu)
-                        st.download_button("📥 Programı PDF Olarak İndir", data=pdf_bytes_admin, file_name=f"mac_programi_{formatted_tarih}.pdf", mime="application/pdf", key="pdf_admin")
+                        
+                        st.markdown("<br>", unsafe_allow_html=True)
+                        pdf_turu = st.radio("📄 Belge Başlığı (PDF'te ne yazsın?):", ["Maç Programı (Sabah)", "Günün Sonuçları (Akşam)"], horizontal=True)
+                        
+                        if "Sonuçları" in pdf_turu:
+                            baslik_metni = f"Mac Sonuclari - {formatted_tarih}"
+                            dosya_adi = f"mac_sonuclari_{formatted_tarih}.pdf"
+                            buton_adi = "📥 Günün Sonuçlarını PDF Olarak İndir"
+                        else:
+                            baslik_metni = f"Mac Programi - {formatted_tarih}"
+                            dosya_adi = f"mac_programi_{formatted_tarih}.pdf"
+                            buton_adi = "📥 Maç Programını PDF Olarak İndir"
+                            
+                        pdf_bytes_admin = generate_pdf(final_pdf_df, baslik_metni, not_metni=pdf_notu)
+                        st.download_button(buton_adi, data=pdf_bytes_admin, file_name=dosya_adi, mime="application/pdf", key="pdf_admin")
 
             # MİSAFİR & KAPTAN & GÖZLEMCİ HAKEM (İZLEYİCİ GÖRÜNÜMÜ)
             else:
