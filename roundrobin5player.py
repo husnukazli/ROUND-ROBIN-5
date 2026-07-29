@@ -1897,7 +1897,11 @@ else:
                         st.divider()
 
                 eslesme_dict = {}
-                for idx, g_row in form_verileri.items():
+form_verileri = {}  # <--- SADECE BU SATIRI EKLİYORSUN (İçi boş bir sözlük olarak tanımlıyoruz)
+
+# Sonra senin kodun olduğu gibi devam ediyor...
+for idx, g_row in form_verileri.items():
+    # ...
                     row_data = df_gun.loc[idx]
                     eslesme = row_data["Eşleşme"]
                     brans = row_data["Branş"]
