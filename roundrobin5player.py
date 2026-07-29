@@ -1914,7 +1914,11 @@ if secilen_grup != "Seçiniz":
         # Bir üst satır (örneğin if veya for bloğu) içeriden başlıyorsa, bu da tam onun hizasında olmalıdır:
         grup_kadro_dict = st.session_state.takim_kadrolari.get(secilen_grup, {})
         baska_bir_degisken = True
-                for eslesme, data in eslesme_dict.items():
+# Üstteki kod nereden başlıyorsa...
+baska_bir_islem = True
+# Bu döngü de tam onun hizasında başlamalı! (Daha sağda değil)
+for eslesme, data in eslesme_dict.items():
+    # Döngünün içi doğal olarak bir tık içeride olur...
                     for team_key in ["T1", "T2"]:
                         takim_ismi = data[team_key]["isim"]
                         havuz = grup_kadro_dict.get(takim_ismi, [])
