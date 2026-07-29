@@ -896,7 +896,7 @@ with st.sidebar:
     elif st.session_state.hakem_mi:
         menu_items_side = ["🏠 Ana Sayfa", "✍️ Gözlemci Hakem Paneli", "📅 Maç Programı"]
     else:
-        menu_items_side = ["🏠 Ana Sayfa", "👨‍✈️ Kaptan Girişi", "👮‍♂️ Hakem Girişi", "🛡️ Takım Kadroları", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular"]
+        menu_items_side = ["🏠 Ana Sayfa", "👨‍✈️ Kaptan Girişi", "👮‍♂️ Gözlemci Hakem Girişi", "🛡️ Takım Kadroları", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular"]
 
     for menu in menu_items_side:
         target = "Home" if menu == "🏠 Ana Sayfa" else menu
@@ -985,7 +985,7 @@ if st.session_state.current_page == "Home":
         st.markdown(f"<h4 style='text-align:center;'>İzleyici Paneli ({st.session_state.aktif_asama})</h4><br>", unsafe_allow_html=True)
         c1, c2, c3, c4, c5, c6 = st.columns(6)
         with c1: render_big_button("👨‍✈️", "Kaptan Girişi", "👨‍✈️ Kaptan Girişi")
-        with c2: render_big_button("👮‍♂️", "Hakem Girişi", "👮‍♂️ Hakem Girişi")
+        with c2: render_big_button("👮‍♂️", "Gözlemci Hakem Girişi", "👮‍♂️ Gözlemci Hakem Girişi")
         with c3: render_big_button("🛡️", "Takım Kadroları", "🛡️ Takım Kadroları")
         with c4: render_big_button("🏆", "Puan Durumu", "🏆 Puan Durumu")
         with c5: render_big_button("📅", "Maç Programı", "📅 Maç Programı")
@@ -1031,7 +1031,7 @@ else:
     elif st.session_state.hakem_mi:
         menu_items_top = ["🏠 Ana Sayfa", "✍️ Gözlemci Hakem Paneli", "📅 Maç Programı"]
     else:
-        menu_items_top = ["🏠 Ana Sayfa", "👨‍✈️ Kaptan Girişi", "👮‍♂️ Hakem Girişi", "🛡️ Takım Kadroları", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular"]
+        menu_items_top = ["🏠 Ana Sayfa", "👨‍✈️ Kaptan Girişi", "👮‍♂️ Gözlemci Hakem Girişi", "🛡️ Takım Kadroları", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular"]
 
     nav_cols = st.columns(len(menu_items_top))
     for i, menu in enumerate(menu_items_top):
@@ -1203,7 +1203,7 @@ else:
                     st.divider()
 
 # --- HAKEM SAYFASI: GİRİŞ ---
-    elif menu_secim == "👮‍♂️ Hakem Girişi":
+    elif menu_secim == "👮‍♂️ Gözlemci Hakem Girişi":
         if not st.session_state.hakem_mi:
             st.info("Kendi maçlarınızı yönetmek ve skor girmek için PIN kodunuzla giriş yapınız.")
             col_h1, col_h2 = st.columns([2, 1])
