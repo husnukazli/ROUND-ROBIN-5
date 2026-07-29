@@ -932,10 +932,34 @@ with st.sidebar:
             st.rerun()
 
 # --- UÇAK MODU ANAHTARI (SADECE BAŞHAKEM) ---
+# --- UÇAK MODU ANAHTARI (SADECE BAŞHAKEM) ---
     if st.session_state.admin_mi:
         st.markdown("---")
         st.markdown("**⚙️ Bağlantı Modu**")
-        ucak_modu = st.toggle("✈️ Çevrimdışı Çalış (Diğerlerini Kilitle)", value=st.session_state.get("cevrimdisi_mod", False))
+        
+        # Hafızadaki son duruma göre toggle'ın açık/kapalı gelmesini sağla
+        aktif_durum = st.session_state.get("cevrimdisi_mod", False)
+        ucak_modu = st.toggle("✈️ Çevrimdışı Çalış (Diğerlerini Kilitle)", value=aktif_durum)
+        
+        if ucak_modu != aktif_durum:
+            st.session_state.cevrimdisi_mod = ucak_modu
+            st.session_state.sistem_kilitli = ucak_modu
+            if ucak_modu: # Uçak Modu AÇILDI
+                if supabase: 
+                    try:
+                        supabase.table("turnuva_ayarlari").upsert({"id": 1, "sistem_kilitli": True}).execute()
+                    except:
+                        pass
+                ortak_veriyi_kaydet()
+                st.rerun()
+            else: # Uçak Modu KAPATILDI (İnternete Eşitle)
+                if supabase:
+                    try:
+                        supabase.table("turnuva_ayarlari").upsert({"id": 1, "sistem_kilitli": False}).execute()
+                    except:
+                        pass
+                ortak_veriyi_kaydet()
+                st.rerun()
         
         if ucak_modu != st.session_state.get("cevrimdisi_mod", False):
             if ucak_modu: # Uçak Modu AÇILDI
