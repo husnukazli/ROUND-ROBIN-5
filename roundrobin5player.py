@@ -871,6 +871,8 @@ def render_big_button(icon, title, target_page):
 # ==============================================================================
 # YAN MENÜ (SIDEBAR) - HER YERDEN ERİŞİLEBİLİR
 # ==============================================================================
+# YAN MENÜ (SIDEBAR) - HER YERDEN ERİŞİLEBİLİR
+# ==============================================================================
 with st.sidebar:
     st.markdown("<h3 style='text-align: center;'>🎾 Menü</h3>", unsafe_allow_html=True)
     st.markdown("---")
@@ -887,7 +889,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("**Sayfalar:**")
     
-if st.session_state.admin_mi:
+    if st.session_state.admin_mi:
         menu_items_side = ["🏠 Ana Sayfa", "👥 Grup Ayarları", "📝 Esame Kontrol Merkezi", "✍️ Skor Girişi", "👮‍♂️ Hakem Yönetimi", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular", "⚙️ Yönetim & Dosya"]
     elif st.session_state.kaptan_mi:
         menu_items_side = ["🏠 Ana Sayfa", "👨‍✈️ Kaptan Esame Girişi", "🛡️ Takım Kadroları", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular"]
@@ -973,7 +975,7 @@ if st.session_state.current_page == "Home":
         with c3: render_big_button("📅", "Maç Programı", "📅 Maç Programı")
         with c4: render_big_button("🏆", "Puan Durumu", "🏆 Puan Durumu")
         
-elif st.session_state.hakem_mi:
+    elif st.session_state.hakem_mi:
         st.markdown(f"<h4 style='text-align:center;'>👮‍♂️ Gözlemci Hakem Paneli ({st.session_state.aktif_hakem})</h4><br>", unsafe_allow_html=True)
         c1, c2 = st.columns(2)
         with c1: render_big_button("✍️", "Görevli Olduğum Maçlar", "✍️ Gözlemci Hakem Paneli")
@@ -1021,7 +1023,7 @@ else:
     aktif_asama = st.session_state.aktif_asama
     menu_secim = st.session_state.current_page
     
-# --- İÇ SAYFA YATAY NAVBAR ---
+    # --- İÇ SAYFA YATAY NAVBAR ---
     if st.session_state.admin_mi:
         menu_items_top = ["🏠 Ana Sayfa", "👥 Grup Ayarları", "📝 Esame Kontrol Merkezi", "✍️ Skor Girişi", "👮‍♂️ Hakem Yönetimi", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular", "⚙️ Yönetim"]
     elif st.session_state.kaptan_mi:
@@ -1048,7 +1050,6 @@ else:
 
     st.markdown("---")
     st.markdown(f"<h3 style='margin-top: -10px;'>{menu_secim} ({aktif_asama})</h3>", unsafe_allow_html=True)
-
     # --- KAPTAN SAYFASI: ESAME BİLDİRİMİ ---
     if menu_secim == "👨‍✈️ Kaptan Esame Girişi":
         if not st.session_state.kaptan_mi:
