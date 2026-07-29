@@ -1167,7 +1167,7 @@ else:
                         if not oyuncu_havuzu or oyuncu_havuzu == ["Belirtilmedi"]:
                             st.error("Takımınızın oyuncu havuzu boş. Lütfen Başhakem ile iletişime geçin.")
                         else:
-kasadaki_veri = st.session_state.esame_kasasi.get(match_key, {}).get(takim_adi, {})
+                            kasadaki_veri = st.session_state.esame_kasasi.get(match_key, {}).get(takim_adi, {})
                             
                             format_secimi = st.session_state.grup_formatlari.get(grup, "3 Maçlık (2 Tek, 1 Çift)")
                             
