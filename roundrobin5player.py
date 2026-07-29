@@ -2890,6 +2890,13 @@ else:
                                     g_hedef = yeni_grup_adi if yeni_grup_adi.strip() != "" else sec_g
                                     
                                     if fikstur_sifirlanacak_mi:
+                                        # --- YENİ EKLENEN: Eski fikstürü veritabanından kalıcı olarak sil ---
+                                        try:
+                                            if "supabase" in globals() and supabase:
+                                                supabase.table("maclar").delete().eq("Grup", sec_g).execute()
+                                        except Exception:
+                                            pass
+                                            
                                         st.session_state.skor_tablosu = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] != sec_g]
                                         st.session_state.mac_programi = st.session_state.mac_programi[st.session_state.mac_programi['Grup'] != sec_g]
                                         
@@ -2959,6 +2966,13 @@ else:
                     st.warning(f"⚠️ DİKKAT: '{secilen_sil_grup}' grubunu ve bu gruba ait tüm fikstür/kadro kayıtlarını kalıcı olarak sileceksiniz!")
                     
                     if st.button(f"🚨 '{secilen_sil_grup}' Grubunu Tamamen Sil"):
+                        # --- YENİ EKLENEN: Silinen grubun maçlarını veritabanından kalıcı olarak temizle ---
+                        try:
+                            if "supabase" in globals() and supabase:
+                                supabase.table("maclar").delete().eq("Grup", secilen_sil_grup).execute()
+                        except Exception:
+                            pass
+                            
                         st.session_state.skor_tablosu = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] != secilen_sil_grup]
                         st.session_state.mac_programi = st.session_state.mac_programi[st.session_state.mac_programi['Grup'] != secilen_sil_grup]
                         
