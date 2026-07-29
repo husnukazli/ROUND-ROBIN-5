@@ -1243,7 +1243,7 @@ else:
                                     for b in branslar_kaptan_form:
                                         if "Çiftler" in b:
                                             c_str = form_secimleri.get(b, "")
-                                            c_list = [o.strip() for o in c_str.split("-") if o.strip()]
+                                            c_list = [o.strip() for o in c_str.split(",") if o.strip()]
                                             if len(c_list) == 1:
                                                 hatalar.append(f"{b} maçına tek oyuncu yazılamaz. Lütfen {b} için 2 kişi seçin veya maçı tamamen boş bırakın.")
                                     
