@@ -1229,7 +1229,7 @@ else:
 # --- HAKEM SAYFASI: SKOR GİRİŞ PANELİ ---
     elif menu_secim == "✍️ Gözlemci Hakem Paneli":
         if not st.session_state.hakem_mi:
-        if not st.session_state.hakem_mi:
+        
             st.warning("Bu paneli görüntülemek için lütfen hakem olarak giriş yapın.")
         else:
             aktif_hakem = st.session_state.aktif_hakem
