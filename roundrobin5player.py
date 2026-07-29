@@ -166,16 +166,23 @@ def generate_pdf(df, baslik, not_metni=""):
         
         # İçerik satırları
         for _, row in df.iterrows():
-            # Bu satırın ana takım eşleşmesi mi yoksa alt maç mı olduğunu tespit et
+            # --- AKILLI SATIR TESPİTİ ---
             is_takim_satiri = False
+            
+            # 1. İhtimal: Kullanıcı "Branş" sütununu PDF'e eklediyse
             for val in row.values:
                 if "**TAKIM EŞLEŞMESİ**" in str(val):
                     is_takim_satiri = True
                     break
+                    
+            # 2. İhtimal (GİZLİ KONTROL): Eğer Branş seçilmediyse, Takım 1 ve Takım 2'nin ikisinin de kalın (**) olduğu TEK SATIR takım satırıdır!
+            if not is_takim_satiri and "Takım 1" in df.columns and "Takım 2" in df.columns:
+                if str(row["Takım 1"]).startswith("**") and str(row["Takım 2"]).startswith("**"):
+                    is_takim_satiri = True
             
-            # Ana eşleşmeyse arka plan çok açık gri
+            # Ana eşleşmeyse arka plan rengini belirgin gri (225) yap
             if is_takim_satiri:
-                pdf.set_fill_color(242, 242, 242)
+                pdf.set_fill_color(225, 225, 225)
             
             for i, item in enumerate(row): 
                 text = str(item)
@@ -196,10 +203,10 @@ def generate_pdf(df, baslik, not_metni=""):
                 if is_bold and FONT_YUKLENDI and not FONT_BOLD_YUKLENDI:
                     text = f"{text} *" 
                     
+                # Takım satırıysa arka plan rengiyle (fill=True) çiz
                 pdf_cell_fit(pdf, col_widths[i], 8, text, is_bold=is_bold, fill=is_takim_satiri, base_size=hedef_punto)
             pdf.ln()
     return get_pdf_bytes(pdf)
-
 def set_gecerli_mi(t1, t2, is_set3=False, durum="Tamamlandı"):
     if durum != "Tamamlandı": return True, ""
     if t1 == 0 and t2 == 0: return True, ""
