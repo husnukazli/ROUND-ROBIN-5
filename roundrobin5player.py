@@ -1800,7 +1800,11 @@ else:
                         g_kadro = st.session_state.takim_kadrolari[g_isim]
                         for t_isim in dogal_sirala(list(g_kadro.keys())):
                             st.markdown(f"**🛡️ {t_isim}**")
-                            st.write(", ".join(g_kadro[t_isim]) if g_kadro[t_isim] else "Oyuncu yok")
+                            if g_kadro[t_isim] and g_kadro[t_isim] != ["Belirtilmedi"]:
+                                liste_metni = "\n".join([f"**{i+1}.** {oyuncu}" for i, oyuncu in enumerate(g_kadro[t_isim])])
+                                st.markdown(liste_metni)
+                            else:
+                                st.write("Oyuncu yok")
                             st.markdown("---")
         else:
             st.warning("🔒 Bu panel dışarıya kapalıdır. Lütfen giriş yapınız.")
