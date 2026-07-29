@@ -147,56 +147,14 @@ def pdf_cell_fit(pdf, w, h, txt, border=1, align='C', is_bold=False, fill=False)
         apply_font(pdf, bold=is_bold, size=size)
     pdf.cell(w, h, to_pdf_text(txt), border=border, align=align, fill=fill)
     apply_font(pdf, bold=False, size=9)
-def generate_pdf(df, baslik, not_metni=""):
-    pdf = FPDF(orientation='P', unit='mm', format='A4')
-    pdf.add_page()
-    setup_pdf_fonts(pdf)
-    
-    apply_font(pdf, bold=True, size=14)
-    pdf.cell(0, 10, to_pdf_text(baslik), ln=True, align='C')
-    
-    if not_metni:
-        pdf.ln(2)
-        apply_font(pdf, bold=False, size=10)
-        pdf.multi_cell(0, 6, to_pdf_text(f"Bashakem Notu: {not_metni}"), align='C')
-        pdf.ln(5)
-    else:
-        pdf.ln(5)
-    
-    if len(df.columns) > 0:
-        col_widths = get_proportional_widths(pdf, df)
-        
-        # En üst başlık (Sütun İsimleri) satırını Koyu Gri yap
-        pdf.set_fill_color(200, 200, 200)
-        for i, col in enumerate(df.columns): 
-            pdf_cell_fit(pdf, col_widths[i], 10, col, is_bold=True, fill=True)
-        pdf.ln()
-        
-        # Veri satırları
-        for _, row in df.iterrows():
-            # Bu satırın "Takım Eşleşmesi" satırı olup olmadığını kontrol et
-            is_takim_satiri = False
-            for val in row.values:
-                if "**TAKIM EŞLEŞMESİ**" in str(val):
-                    is_takim_satiri = True
-                    break
-            
-            # Eğer takım satırıysa arka planı açık gri yap
-            if is_takim_satiri:
-                pdf.set_fill_color(230, 230, 230)
-            
-            for i, item in enumerate(row): 
-                text = str(item)
-                is_bold = False
-                if text.startswith("**") and text.endswith("**"):
-                    text = text[2:-2]
-                    is_bold = True
-                if is_bold and FONT_YUKLENDI and not FONT_BOLD_YUKLENDI:
-                    text = f"{text} *" 
-                # Takım satırıysa arka plan rengiyle (fill) çiz
-                pdf_cell_fit(pdf, col_widths[i], 8, text, is_bold=is_bold, fill=is_takim_satiri)
-            pdf.ln()
-    return get_pdf_bytes(pdf)
+def pdf_cell_fit(pdf, w, h, txt, border=1, align='C', is_bold=False, fill=False, base_size=9):
+    size = base_size
+    apply_font(pdf, bold=is_bold, size=size)
+    while pdf.get_string_width(to_pdf_text(txt)) > (w - 2) and size > 5:
+        size -= 0.5
+        apply_font(pdf, bold=is_bold, size=size)
+    pdf.cell(w, h, to_pdf_text(txt), border=border, align=align, fill=fill)
+    apply_font(pdf, bold=False, size=9)
 
 def generate_combined_standings_pdf(gruplar_dict):
     pdf = FPDF(orientation='P', unit='mm', format='A4')
