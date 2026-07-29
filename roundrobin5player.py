@@ -930,7 +930,7 @@ with st.sidebar:
             st.session_state.current_page = "Home"
             st.rerun()
 
-    # --- UÇAK MODU ANAHTARI (SADECE BAŞHAKEM) ---
+# --- UÇAK MODU ANAHTARI (SADECE BAŞHAKEM) ---
     if st.session_state.admin_mi:
         st.markdown("---")
         st.markdown("**⚙️ Bağlantı Modu**")
@@ -939,16 +939,24 @@ with st.sidebar:
         if ucak_modu != st.session_state.get("cevrimdisi_mod", False):
             if ucak_modu: # Uçak Modu AÇILDI
                 st.session_state.sistem_kilitli = True
-                # Önce Supabase'e kilidi yolla ki herkes kitlensin
                 if supabase: 
-                    supabase.table("turnuva_ayarlari").update({"sistem_kilitli": True}).eq("id", 1).execute()
+                    try:
+                        # Önce upsert deneyelim (id=1 yoksa oluşturur, varsa günceller)
+                        supabase.table("turnuva_ayarlari").upsert({"id": 1, "sistem_kilitli": True}).execute()
+                    except:
+                        pass
                 st.session_state.cevrimdisi_mod = True
-                ortak_veriyi_kaydet() # Sonra verileri yerel JSON'a kaydet
+                ortak_veriyi_kaydet()
                 st.rerun()
             else: # Uçak Modu KAPATILDI (İnternete Eşitle)
                 st.session_state.cevrimdisi_mod = False
                 st.session_state.sistem_kilitli = False
-                ortak_veriyi_kaydet() # Yerel JSON'daki tüm güncel veriyi Supabase'e fırlat
+                if supabase:
+                    try:
+                        supabase.table("turnuva_ayarlari").upsert({"id": 1, "sistem_kilitli": False}).execute()
+                    except:
+                        pass
+                ortak_veriyi_kaydet()
                 st.rerun()
 
 # ==============================================================================
