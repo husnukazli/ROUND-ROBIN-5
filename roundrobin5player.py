@@ -1021,7 +1021,7 @@ else:
     aktif_asama = st.session_state.aktif_asama
     menu_secim = st.session_state.current_page
     
-    # --- İÇ SAYFA YATAY NAVBAR ---
+# --- İÇ SAYFA YATAY NAVBAR ---
     if st.session_state.admin_mi:
         menu_items_top = ["🏠 Ana Sayfa", "👥 Grup Ayarları", "📝 Esame Kontrol Merkezi", "✍️ Skor Girişi", "👮‍♂️ Hakem Yönetimi", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular", "⚙️ Yönetim"]
     elif st.session_state.kaptan_mi:
