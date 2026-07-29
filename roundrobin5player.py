@@ -119,7 +119,7 @@ def pdf_cell_fit(pdf, w, h, txt, border=1, align='C', is_bold=False, fill=False,
         size -= 0.5
         apply_font(pdf, bold=is_bold, size=size)
     pdf.cell(w, h, to_pdf_text(txt), border=border, align=align, fill=fill)
-    apply_font(pdf, bold=False, size=9)
+    apply_font(pdf, bold=False, size=9) 
 
 def get_proportional_widths(pdf, df, usable_width=190):
     col_widths = []
@@ -139,40 +139,65 @@ def get_pdf_bytes(pdf):
     out = pdf.output(dest='S')
     return out.encode('latin-1') if isinstance(out, str) else bytes(out)
 
-
-def pdf_cell_fit(pdf, w, h, txt, border=1, align='C', is_bold=False, fill=False, base_size=9):
-    size = base_size
-    apply_font(pdf, bold=is_bold, size=size)
-    while pdf.get_string_width(to_pdf_text(txt)) > (w - 2) and size > 5:
-        size -= 0.5
-        apply_font(pdf, bold=is_bold, size=size)
-    pdf.cell(w, h, to_pdf_text(txt), border=border, align=align, fill=fill)
-    apply_font(pdf, bold=False, size=9)
-
-def generate_combined_standings_pdf(gruplar_dict):
+def generate_pdf(df, baslik, not_metni=""):
     pdf = FPDF(orientation='P', unit='mm', format='A4')
     pdf.add_page()
     setup_pdf_fonts(pdf)
     
-    for grup_adi, df in gruplar_dict.items():
-        satir_sayisi = len(df)
-        gerekli_yukseklik = 10 + 8 + (satir_sayisi * 8) + 10 
-        if pdf.get_y() + gerekli_yukseklik > 280: 
-            pdf.add_page()
-
-        apply_font(pdf, bold=True, size=12)
-        pdf.cell(0, 10, to_pdf_text(grup_adi + " Puan Durumu"), ln=True, align='L')
-        
-        if len(df.columns) > 0:
-            col_widths = get_proportional_widths(pdf, df)
-            for i, col in enumerate(df.columns): 
-                pdf_cell_fit(pdf, col_widths[i], 8, col, is_bold=True)
-            pdf.ln()
-            for _, row in df.iterrows():
-                for i, item in enumerate(row): 
-                    pdf_cell_fit(pdf, col_widths[i], 8, str(item), is_bold=False)
-                pdf.ln()
+    apply_font(pdf, bold=True, size=14)
+    pdf.cell(0, 10, to_pdf_text(baslik), ln=True, align='C')
+    
+    if not_metni:
+        pdf.ln(2)
+        apply_font(pdf, bold=False, size=10)
+        pdf.multi_cell(0, 6, to_pdf_text(f"Bashakem Notu: {not_metni}"), align='C')
         pdf.ln(5)
+    else:
+        pdf.ln(5)
+    
+    if len(df.columns) > 0:
+        col_widths = get_proportional_widths(pdf, df)
+        
+        # En üstteki başlık satırı (Koyu gri arka plan, 10 punto, kalın)
+        pdf.set_fill_color(200, 200, 200)
+        for i, col in enumerate(df.columns): 
+            pdf_cell_fit(pdf, col_widths[i], 10, col, is_bold=True, fill=True, base_size=10)
+        pdf.ln()
+        
+        # İçerik satırları
+        for _, row in df.iterrows():
+            # Bu satırın ana takım eşleşmesi mi yoksa alt maç mı olduğunu tespit et
+            is_takim_satiri = False
+            for val in row.values:
+                if "**TAKIM EŞLEŞMESİ**" in str(val):
+                    is_takim_satiri = True
+                    break
+            
+            # Ana eşleşmeyse arka plan çok açık gri
+            if is_takim_satiri:
+                pdf.set_fill_color(242, 242, 242)
+            
+            for i, item in enumerate(row): 
+                text = str(item)
+                is_bold = False
+                
+                # Çift yıldızlı (**) metinleri temizleme
+                if text.startswith("**") and text.endswith("**"):
+                    text = text[2:-2]
+                    is_bold = True
+                
+                # --- HİYERARŞİ VE GÖRÜNÜM AYARI ---
+                if is_takim_satiri:
+                    is_bold = True       # Takım satırının tamamı kalın font olur
+                    hedef_punto = 10.5   # Fontu alt maçlardan daha büyük olur
+                else:
+                    hedef_punto = 9      # Bireysel maçlar standart 9 punto olur
+                    
+                if is_bold and FONT_YUKLENDI and not FONT_BOLD_YUKLENDI:
+                    text = f"{text} *" 
+                    
+                pdf_cell_fit(pdf, col_widths[i], 8, text, is_bold=is_bold, fill=is_takim_satiri, base_size=hedef_punto)
+            pdf.ln()
     return get_pdf_bytes(pdf)
 
 def set_gecerli_mi(t1, t2, is_set3=False, durum="Tamamlandı"):
