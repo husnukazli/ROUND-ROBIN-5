@@ -207,6 +207,32 @@ def generate_pdf(df, baslik, not_metni=""):
                 pdf_cell_fit(pdf, col_widths[i], 8, text, is_bold=is_bold, fill=is_takim_satiri, base_size=hedef_punto)
             pdf.ln()
     return get_pdf_bytes(pdf)
+
+def generate_combined_standings_pdf(gruplar_dict):
+    pdf = FPDF(orientation='P', unit='mm', format='A4')
+    pdf.add_page()
+    setup_pdf_fonts(pdf)
+    
+    for grup_adi, df in gruplar_dict.items():
+        satir_sayisi = len(df)
+        gerekli_yukseklik = 10 + 8 + (satir_sayisi * 8) + 10 
+        if pdf.get_y() + gerekli_yukseklik > 280: 
+            pdf.add_page()
+
+        apply_font(pdf, bold=True, size=12)
+        pdf.cell(0, 10, to_pdf_text(grup_adi + " Puan Durumu"), ln=True, align='L')
+        
+        if len(df.columns) > 0:
+            col_widths = get_proportional_widths(pdf, df)
+            for i, col in enumerate(df.columns): 
+                pdf_cell_fit(pdf, col_widths[i], 8, col, is_bold=True)
+            pdf.ln()
+            for _, row in df.iterrows():
+                for i, item in enumerate(row): 
+                    pdf_cell_fit(pdf, col_widths[i], 8, str(item), is_bold=False)
+                pdf.ln()
+        pdf.ln(5)
+    return get_pdf_bytes(pdf)
 def set_gecerli_mi(t1, t2, is_set3=False, durum="Tamamlandı"):
     if durum != "Tamamlandı": return True, ""
     if t1 == 0 and t2 == 0: return True, ""
