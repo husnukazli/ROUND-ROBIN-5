@@ -112,14 +112,14 @@ def apply_font(pdf, bold=False, size=10):
     else:
         pdf.set_font("Arial", 'B' if bold else '', size)
 
-def pdf_cell_fit(pdf, w, h, txt, border=1, align='C', is_bold=False):
+def pdf_cell_fit(pdf, w, h, txt, border=1, align='C', is_bold=False, fill=False):
     size = 10 if is_bold else 9
     apply_font(pdf, bold=is_bold, size=size)
     while pdf.get_string_width(to_pdf_text(txt)) > (w - 2) and size > 5:
         size -= 0.5
         apply_font(pdf, bold=is_bold, size=size)
-    pdf.cell(w, h, to_pdf_text(txt), border=border, align=align)
-    apply_font(pdf, bold=False, size=9) 
+    pdf.cell(w, h, to_pdf_text(txt), border=border, align=align, fill=fill)
+    apply_font(pdf, bold=False, size=9)
 
 def get_proportional_widths(pdf, df, usable_width=190):
     col_widths = []
