@@ -973,12 +973,11 @@ if st.session_state.current_page == "Home":
         with c3: render_big_button("📅", "Maç Programı", "📅 Maç Programı")
         with c4: render_big_button("🏆", "Puan Durumu", "🏆 Puan Durumu")
         
-    elif st.session_state.hakem_mi:
-        st.markdown(f"<h4 style='text-align:center;'>👮‍♂️ Hakem Paneli ({st.session_state.aktif_hakem})</h4><br>", unsafe_allow_html=True)
-        c1, c2, c3 = st.columns(3)
-        with c1: render_big_button("✍️", "Görevli Olduğum Maçlar", "✍️ Hakem Paneli")
+elif st.session_state.hakem_mi:
+        st.markdown(f"<h4 style='text-align:center;'>👮‍♂️ Gözlemci Hakem Paneli ({st.session_state.aktif_hakem})</h4><br>", unsafe_allow_html=True)
+        c1, c2 = st.columns(2)
+        with c1: render_big_button("✍️", "Görevli Olduğum Maçlar", "✍️ Gözlemci Hakem Paneli")
         with c2: render_big_button("📅", "Tüm Maç Programı", "📅 Maç Programı")
-        with c3: render_big_button("🏆", "Puan Durumu", "🏆 Puan Durumu")
 
     else:
         st.markdown(f"<h4 style='text-align:center;'>İzleyici Paneli ({st.session_state.aktif_asama})</h4><br>", unsafe_allow_html=True)
