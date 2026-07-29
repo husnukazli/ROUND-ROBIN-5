@@ -1267,9 +1267,8 @@ else:
                                         c1_oyuncular = form_secimleri.get("1. Çiftler", "")
                                         c2_oyuncular = form_secimleri.get("2. Çiftler", "")
                                         
-                                        c1_list = [o.strip() for o in c1_oyuncular.split("-") if o.strip()]
-                                        c2_list = [o.strip() for o in c2_oyuncular.split("-") if o.strip()]
-                                        
+                                        c1_list = [o.strip() for o in c1_oyuncular.split(",") if o.strip()]
+                                        c2_list = [o.strip() for o in c2_oyuncular.split(",") if o.strip()]
                                         ortak_oyuncular = set(c1_list).intersection(set(c2_list))
                                         if ortak_oyuncular:
                                             hatalar.append(f"Aynı oyuncuyu ({', '.join(ortak_oyuncular)}) hem 1. Çiftler hem de 2. Çiftler maçına yazamazsınız.")
