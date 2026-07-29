@@ -932,7 +932,6 @@ with st.sidebar:
             st.rerun()
 
 # --- UÇAK MODU ANAHTARI (SADECE BAŞHAKEM) ---
-# --- UÇAK MODU ANAHTARI (SADECE BAŞHAKEM) ---
     if st.session_state.admin_mi:
         st.markdown("---")
         st.markdown("**⚙️ Bağlantı Modu**")
@@ -959,29 +958,14 @@ with st.sidebar:
                     except:
                         pass
                 ortak_veriyi_kaydet()
-                st.rerun()
-        
-        if ucak_modu != st.session_state.get("cevrimdisi_mod", False):
-            if ucak_modu: # Uçak Modu AÇILDI
-                st.session_state.sistem_kilitli = True
-                if supabase: 
-                    try:
-                        # Önce upsert deneyelim (id=1 yoksa oluşturur, varsa günceller)
-                        supabase.table("turnuva_ayarlari").upsert({"id": 1, "sistem_kilitli": True}).execute()
-                    except:
-                        pass
-                st.session_state.cevrimdisi_mod = True
-                ortak_veriyi_kaydet()
-                st.rerun()
-            else: # Uçak Modu KAPATILDI (İnternete Eşitle)
-                st.session_state.cevrimdisi_mod = False
-                st.session_state.sistem_kilitli = False
-                if supabase:
-                    try:
-                        supabase.table("turnuva_ayarlari").upsert({"id": 1, "sistem_kilitli": False}).execute()
-                    except:
-                        pass
-                ortak_veriyi_kaydet()
+                
+                # --- EŞİTLEME SONRASI 5 SANİYELİK MESAJ ---
+                msg_kutu = st.empty()
+                msg_kutu.success("🌐 İNTERNET BAĞLANTISI SAĞLANDI! Veritabanı ile tüm veriler başarıyla eşitlendi.")
+                time.sleep(5)
+                msg_kutu.empty()
+                # ------------------------------------------
+                
                 st.rerun()
 
 # ==============================================================================
