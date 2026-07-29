@@ -1226,15 +1226,16 @@ else:
                         st.session_state.hakem_mi = True
                         st.session_state.admin_mi = False
                         st.session_state.kaptan_mi = False
-                        st.session_state.aktif_hakem = secilen_hakem_login
+st.session_state.aktif_hakem = secilen_hakem_login
                         st.success(f"Hoş Geldiniz, {secilen_hakem_login}!")
-                        st.session_state.current_page = "✍️ Hakem Paneli"
+                        st.session_state.current_page = "✍️ Gözlemci Hakem Paneli"
                         st.rerun()
                     else:
                         st.error("❌ Hatalı PIN kodu!")
 
 # --- HAKEM SAYFASI: SKOR GİRİŞ PANELİ ---
-    elif menu_secim == "✍️ Hakem Paneli":
+    elif menu_secim == "✍️ Gözlemci Hakem Paneli":
+        if not st.session_state.hakem_mi:
         if not st.session_state.hakem_mi:
             st.warning("Bu paneli görüntülemek için lütfen hakem olarak giriş yapın.")
         else:
