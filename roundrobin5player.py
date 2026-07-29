@@ -1858,7 +1858,7 @@ else:
                                 for char in ["[", "]", "'", '"']: eski_kayit1 = eski_kayit1.replace(char, "")
                                 eski_oyuncular1 = [o.strip() for o in eski_kayit1.split(",") if o.strip() and o.strip() in t1_havuz and o.strip() != "Seçiniz"]
                                 t1_oyuncu = st.multiselect("T1 Oyuncular", options=t1_havuz, default=eski_oyuncular1, max_selections=2, key=f"t1_o_{idx}", label_visibility="collapsed")
-                                t2_oyuncu_str = ", ".join(t2_oyuncu)
+                                t1_oyuncu_str = ", ".join(t1_oyuncu)
                             else:
                                 opts1 = ["Seçiniz"] + [o for o in t1_havuz if o != "Belirtilmedi"]
                                 eski_veri1 = str(row['T1_Oyuncu']).strip()
@@ -1872,10 +1872,9 @@ else:
                             if "Çiftler" in str(row['Branş']):
                                 eski_kayit2 = str(row['T2_Oyuncu'])
                                 for char in ["[", "]", "'", '"']: eski_kayit2 = eski_kayit2.replace(char, "")
-                                ayirici2 = ' - ' if ' - ' in eski_kayit2 else ','
-                                eski_oyuncular2 = [o.strip() for o in eski_kayit2.split(ayirici2) if o.strip() and o.strip() in t2_havuz and o.strip() != "Seçiniz"]
+                                eski_oyuncular2 = [o.strip() for o in eski_kayit2.split(",") if o.strip() and o.strip() in t2_havuz and o.strip() != "Seçiniz"]
                                 t2_oyuncu = st.multiselect("T2 Oyuncular", options=t2_havuz, default=eski_oyuncular2, max_selections=2, key=f"t2_o_{idx}", label_visibility="collapsed")
-                                t2_oyuncu_str = " - ".join(t2_oyuncu)
+                                t2_oyuncu_str = ", ".join(t2_oyuncu)
                             else:
                                 opts2 = ["Seçiniz"] + [o for o in t2_havuz if o != "Belirtilmedi"]
                                 eski_veri2 = str(row['T2_Oyuncu']).strip()
