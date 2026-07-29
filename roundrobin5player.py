@@ -1858,7 +1858,7 @@ else:
                                 for char in ["[", "]", "'", '"']: eski_kayit1 = eski_kayit1.replace(char, "")
                                 eski_oyuncular1 = [o.strip() for o in eski_kayit1.split(",") if o.strip() and o.strip() in t1_havuz and o.strip() != "Seçiniz"]
                                 t1_oyuncu = st.multiselect("T1 Oyuncular", options=t1_havuz, default=eski_oyuncular1, max_selections=2, key=f"t1_o_{idx}", label_visibility="collapsed")
-                                t1_oyuncu_str = ", ".join(t1_oyuncu)
+                                t2_oyuncu_str = ", ".join(t2_oyuncu)
                             else:
                                 opts1 = ["Seçiniz"] + [o for o in t1_havuz if o != "Belirtilmedi"]
                                 eski_veri1 = str(row['T1_Oyuncu']).strip()
