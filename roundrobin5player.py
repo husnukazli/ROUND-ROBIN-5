@@ -1856,10 +1856,9 @@ else:
                             if "Çiftler" in str(row['Branş']):
                                 eski_kayit1 = str(row['T1_Oyuncu'])
                                 for char in ["[", "]", "'", '"']: eski_kayit1 = eski_kayit1.replace(char, "")
-                                ayirici1 = ' - ' if ' - ' in eski_kayit1 else ','
-                                eski_oyuncular1 = [o.strip() for o in eski_kayit1.split(ayirici1) if o.strip() and o.strip() in t1_havuz and o.strip() != "Seçiniz"]
+                                eski_oyuncular1 = [o.strip() for o in eski_kayit1.split(",") if o.strip() and o.strip() in t1_havuz and o.strip() != "Seçiniz"]
                                 t1_oyuncu = st.multiselect("T1 Oyuncular", options=t1_havuz, default=eski_oyuncular1, max_selections=2, key=f"t1_o_{idx}", label_visibility="collapsed")
-                                t1_oyuncu_str = " - ".join(t1_oyuncu)
+                                t1_oyuncu_str = ", ".join(t1_oyuncu)
                             else:
                                 opts1 = ["Seçiniz"] + [o for o in t1_havuz if o != "Belirtilmedi"]
                                 eski_veri1 = str(row['T1_Oyuncu']).strip()
@@ -1951,7 +1950,7 @@ else:
                             for b in ["1. Çiftler", "2. Çiftler", "Çiftler"]:
                                 c_str = secimler.get(b, "")
                                 if c_str:
-                                    c_list = [o.strip() for o in c_str.split("-") if o.strip()]
+                                    c_list = [o.strip() for o in c_str.split(",") if o.strip()]
                                     if len(c_list) == 1:
                                         uyarilar.append(f"**{b}** maçına tek bir oyuncu seçilmiş. Çiftler maçı için 2 kişi seçilmeli veya boş bırakılmalıdır.")
                                         
@@ -1966,8 +1965,8 @@ else:
                             if "5 Maçlık" in format_secimi:
                                 c1_oyuncular = secimler.get("1. Çiftler", "")
                                 c2_oyuncular = secimler.get("2. Çiftler", "")
-                                c1_list = [o.strip() for o in c1_oyuncular.split("-") if o.strip()]
-                                c2_list = [o.strip() for o in c2_oyuncular.split("-") if o.strip()]
+                                c1_list = [o.strip() for o in c1_oyuncular.split(",") if o.strip()]
+                                c2_list = [o.strip() for o in c2_oyuncular.split(",") if o.strip()]
                                 
                                 ortak_oyuncular = set(c1_list).intersection(set(c2_list))
                                 if ortak_oyuncular:
