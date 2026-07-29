@@ -1229,9 +1229,9 @@ else:
                                     
                                     if "Çiftler" in b:
                                         eski_cift_str = kasadaki_veri.get(b, "")
-                                        eski_cift_liste = [o.strip() for o in eski_cift_str.split("-") if o.strip() in oyuncu_havuzu]
+                                        eski_cift_liste = [o.strip() for o in eski_cift_str.split(",") if o.strip() in oyuncu_havuzu]
                                         secim = st.multiselect(gorsel_label, options=oyuncu_havuzu, default=eski_cift_liste, max_selections=2)
-                                        form_secimleri[b] = " - ".join(secim)
+                                        form_secimleri[b] = ", ".join(secim)
                                     else:
                                         eski_tek = kasadaki_veri.get(b, "Seçiniz")
                                         idx = (["Seçiniz"] + oyuncu_havuzu).index(eski_tek) if eski_tek in oyuncu_havuzu else 0
