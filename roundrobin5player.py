@@ -1910,7 +1910,10 @@ for idx, g_row in form_verileri.items():
                     eslesme_dict[eslesme]["T1"]["secimler"][brans] = g_row["T1_Oyuncu"]
                     eslesme_dict[eslesme]["T2"]["secimler"][brans] = g_row["T2_Oyuncu"]
                 
-                grup_kadro_dict = st.session_state.takim_kadrolari.get(secilen_grup, {})
+if secilen_grup != "Seçiniz":
+        # Bir üst satır (örneğin if veya for bloğu) içeriden başlıyorsa, bu da tam onun hizasında olmalıdır:
+        grup_kadro_dict = st.session_state.takim_kadrolari.get(secilen_grup, {})
+        baska_bir_degisken = True
                 for eslesme, data in eslesme_dict.items():
                     for team_key in ["T1", "T2"]:
                         takim_ismi = data[team_key]["isim"]
