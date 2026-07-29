@@ -2494,8 +2494,7 @@ else:
                     if not is_bireysel_pdf:
                         tum_kolonlar = [c for c in tum_kolonlar if c not in ["T1 Oyuncu", "T2 Oyuncu"]]
                         
-                    secilen_pdf_cols = st.multiselect("PDF'e eklenecek sütunları seçin:", options=tum_kolonlar, default=["Kort", "Maç Saati", "Grup", "Branş", "Takım 1", "Takım 2", "Canlı Skor", "Hakem"])
-
+                    secilen_pdf_cols = st.multiselect("PDF'e eklenecek sütunları seçin:", options=tum_kolonlar, default=["Maç Saati", "Kort", "Grup", "Takım 1", "Takım 2"])
                     if is_bireysel_pdf:
                         pdf_rows = []
                         for (grup_adi, eslesme_adi), g_df in df_gunluk_safe.groupby(['Grup', 'Eşleşme'], dropna=False):
