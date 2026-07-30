@@ -1168,7 +1168,6 @@ else:
             st.info("Kendi takımınızın maç kadrosunu (esame) bildirmek için PIN kodunuzla giriş yapınız.")
             col_k1, col_k2 = st.columns([2, 1])
             with col_k1:
-                # --- YENİ TAKIM SEÇİM KODU ---
                 detayli_takimlar = []
                 for t_isim in dogal_sirala(list(st.session_state.takim_havuzu.keys())):
                     kategori = st.session_state.havuz_kategorileri.get(t_isim, "")
@@ -1182,7 +1181,6 @@ else:
                         
                 secilen_detayli_takim = st.selectbox("Takımınızı Seçin:", ["Seçiniz"] + detayli_takimlar)
                 secilen_takim_login = secilen_detayli_takim.split(" (")[0].strip() if secilen_detayli_takim != "Seçiniz" else "Seçiniz"
-                
                 girilen_pin = st.text_input("4 Haneli PIN Kodu:", type="password", key="login_pin_page")
                 
                 if st.button("🚀 Kaptan Olarak Giriş Yap", type="primary"):
