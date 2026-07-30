@@ -1,7 +1,1 @@
-[theme]
-base="dark"
-primaryColor="#E86C43"          # Canlı kiremit/turuncu (Görseldeki toprak lekeleriyle birebir uyumlu, butonları öne çıkarır)
-backgroundColor="#111827"       # Derin lacivert-gri (Görselin koyu alanlarını destekleyen ana zemin)
-secondaryBackgroundColor="#273444" # Açıklama barları, input kutuları ve menüler için NET ve belirgin bir arduvaz-mavi (Görselin içinde asla kaybolmaz)
-textColor="#FAFAFA"             # Tertemiz krem-beyaz (Görselin açık tonlarıyla bütünleşen net yazı rengi)
-font="sans serif"
+
