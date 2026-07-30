@@ -193,13 +193,12 @@ def generate_pdf(df, baslik, not_metni=""):
                     text = text[2:-2]
                     is_bold = True
                 
-                # --- HİYERARŞİ VE GÖRÜNÜM AYARI ---
+
                 # --- HİYERARŞİ VE GÖRÜNÜM AYARI ---
                 if is_takim_satiri:
-                    is_bold = True       # Takım satırının tamamı kalın font olur
-                    hedef_punto = 10.5   # Fontu alt maçlardan daha büyük olur
+                    hedef_punto = 10.5   
                 else:
-                    hedef_punto = 9      # Bireysel maçlar standart 9 punto olur
+                    hedef_punto = 9
                     
                 if is_bold and FONT_YUKLENDI and not FONT_BOLD_YUKLENDI:
                     text = f"{text} *" 
@@ -2694,10 +2693,12 @@ else:
                                 header_row = {
                                     "Kort": kort, "Maç Saati": saat, "Tarih": tarih_str, "Gün Adı": gun_isim, 
                                     "Grup": grup_adi, "Gün": gun_val, "Eşleşme": eslesme_adi,
-                                    "Branş": "**TAKIM EŞLEŞMESİ**",
-                                    "Takım 1": f"**{t1}**", "Takım 2": f"**{t2}**",
+                                    "Branş": "TAKIM EŞLEŞMESİ",
+                                    "Takım 1": f"**{t1}**" if team_winner == "T1" else t1, 
+                                    "Takım 2": f"**{t2}**" if team_winner == "T2" else t2,
                                     "T1 Oyuncu": "", "T2 Oyuncu": "",
-                                    "Skor": f"**{team_score}**", "Kazanan": "", "Hakem": ""
+                                    "Skor": team_score, "Kazanan": "", "Hakem": ""
+                                }
                                 }
                                 pdf_rows.append(header_row)
                                 
