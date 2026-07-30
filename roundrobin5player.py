@@ -1498,61 +1498,78 @@ else:
     # --- BAŞHAKEM SAYFASI: ESAME KONTROL MERKEZİ ---
     elif menu_secim == "📝 Esame Kontrol Merkezi":
         if st.session_state.admin_mi:
-            st.info("ℹ️ Kaptanların girdikleri kadrolar (kapalı zarflar) burada toplanır. Sen 'Onayla' diyene kadar bu isimler maç programında veya skor ekranında görünmez.")
+            st.info("ℹ️ Kaptanların girdikleri kadrolar (kapalı zarflar) burada toplanır. Geçmiş veya gelecek tüm esameleri tarih seçerek inceleyebilirsin.")
             
-            bugun = datetime.date.today().strftime("%d.%m.%Y")
-            df_bugun = st.session_state.mac_programi[st.session_state.mac_programi['Tarih'] == bugun]
+            # 1. Turnuvadaki tüm benzersiz tarihleri bul
+            tum_tarihler = st.session_state.mac_programi['Tarih'].dropna().unique().tolist()
             
-            if df_bugun.empty:
-                st.success("Bugün için planlanmış maç bulunmuyor.")
+            if not tum_tarihler:
+                st.warning("Henüz maç programında tarihli bir maç bulunmuyor.")
             else:
-                for (grup, gun, eslesme), match_df in df_bugun.groupby(['Grup', 'Gün', 'Eşleşme']):
-                    t1 = match_df.iloc[0]['Takım 1']
-                    t2 = match_df.iloc[0]['Takım 2']
-                    kort = match_df.iloc[0]['Kort']
-                    saat = match_df.iloc[0]['Maç Saati']
-                    
-                    match_key = f"{grup}_{gun}_{eslesme}"
-                    is_approved = st.session_state.esame_onayli.get(match_key, False)
-                    kasadaki_veri = st.session_state.esame_kasasi.get(match_key, {})
-                    
-                    t1_girdi = t1 in kasadaki_veri
-                    t2_girdi = t2 in kasadaki_veri
-                    
-                    durum_ikon_t1 = "✅ Teslim Etti" if t1_girdi else "❌ Bekleniyor"
-                    durum_ikon_t2 = "✅ Teslim Etti" if t2_girdi else "❌ Bekleniyor"
-                    
-                    with st.expander(f"{saat} | {kort} | {grup} | {t1} ({durum_ikon_t1})  VS  {t2} ({durum_ikon_t2})", expanded=not is_approved):
-                        if is_approved:
-                            st.success("Bu esameler onaylanmış ve Maç Programına yansıtılmıştır.")
+                # 2. Bugünün tarihini bul ve listede varsa otomatik seçili gelmesini sağla
+                bugun = datetime.date.today().strftime("%d.%m.%Y")
+                try:
+                    varsayilan_index = tum_tarihler.index(bugun)
+                except ValueError:
+                    varsayilan_index = len(tum_tarihler) - 1 # Bugün yoksa listedeki en son günü seç
+                
+                # 3. Başhakem için Tarih Seçici Kutu
+                secilen_tarih = st.selectbox("📅 Görüntülenecek Tarihi Seçin (Arşiv):", tum_tarihler, index=varsayilan_index)
+                st.divider()
+                
+                # Sadece seçilen güne ait maçları filtrele
+                df_secilen_gun = st.session_state.mac_programi[st.session_state.mac_programi['Tarih'] == secilen_tarih]
+                
+                if df_secilen_gun.empty:
+                    st.success(f"{secilen_tarih} tarihi için planlanmış maç bulunmuyor.")
+                else:
+                    for (grup, gun, eslesme), match_df in df_secilen_gun.groupby(['Grup', 'Gün', 'Eşleşme']):
+                        t1 = match_df.iloc[0]['Takım 1']
+                        t2 = match_df.iloc[0]['Takım 2']
+                        kort = match_df.iloc[0]['Kort']
+                        saat = match_df.iloc[0]['Maç Saati']
                         
-                        c1, c2 = st.columns(2)
-                        with c1:
-                            st.markdown(f"**🛡️ {t1} Kadrosu**")
-                            if t1_girdi:
-                                for k, v in kasadaki_veri[t1].items(): st.write(f"- {k}: **{v}**")
-                            else: st.warning("Kaptan henüz giriş yapmadı.")
-                        with c2:
-                            st.markdown(f"**🛡️ {t2} Kadrosu**")
-                            if t2_girdi:
-                                for k, v in kasadaki_veri[t2].items(): st.write(f"- {k}: **{v}**")
-                            else: st.warning("Kaptan henüz giriş yapmadı.")
+                        match_key = f"{grup}_{gun}_{eslesme}"
+                        is_approved = st.session_state.esame_onayli.get(match_key, False)
+                        kasadaki_veri = st.session_state.esame_kasasi.get(match_key, {})
+                        
+                        t1_girdi = t1 in kasadaki_veri
+                        t2_girdi = t2 in kasadaki_veri
+                        
+                        durum_ikon_t1 = "✅ Teslim Etti" if t1_girdi else "❌ Bekleniyor"
+                        durum_ikon_t2 = "✅ Teslim Etti" if t2_girdi else "❌ Bekleniyor"
+                        
+                        with st.expander(f"{saat} | {kort} | {grup} | {t1} ({durum_ikon_t1})  VS  {t2} ({durum_ikon_t2})", expanded=not is_approved):
+                            if is_approved:
+                                st.success(f"Bu esameler onaylanmış ve {secilen_tarih} tarihli Maç Programına yansıtılmıştır.")
                             
-                        if not is_approved:
-                            if st.button("📢 Esameleri Onayla ve Maç Programına Yansıt (Zarfları Aç)", key=f"onay_{match_key}", type="primary"):
-                                st.session_state.esame_onayli[match_key] = True
+                            c1, c2 = st.columns(2)
+                            with c1:
+                                st.markdown(f"**🛡️ {t1} Kadrosu**")
+                                if t1_girdi:
+                                    for k, v in kasadaki_veri[t1].items(): st.write(f"- {k}: **{v}**")
+                                else: st.warning("Kaptan henüz giriş yapmadı.")
+                            with c2:
+                                st.markdown(f"**🛡️ {t2} Kadrosu**")
+                                if t2_girdi:
+                                    for k, v in kasadaki_veri[t2].items(): st.write(f"- {k}: **{v}**")
+                                else: st.warning("Kaptan henüz giriş yapmadı.")
                                 
-                                skor_mask = (st.session_state.skor_tablosu['Grup'] == grup) & (st.session_state.skor_tablosu['Gün'] == gun) & (st.session_state.skor_tablosu['Eşleşme'] == eslesme)
-                                for idx, row in st.session_state.skor_tablosu[skor_mask].iterrows():
-                                    brans = row['Branş']
-                                    if t1_girdi: st.session_state.skor_tablosu.at[idx, 'T1_Oyuncu'] = kasadaki_veri[t1].get(brans, "")
-                                    if t2_girdi: st.session_state.skor_tablosu.at[idx, 'T2_Oyuncu'] = kasadaki_veri[t2].get(brans, "")
-                                
-                                if ortak_veriyi_kaydet():
-                                    st.success("Esameler başarıyla açıldı ve Skor Girişi ile Maç Programı sayfalarına gönderildi!")
-                                    st.rerun()
-                                else:
-                                    st.error("⚠️ Sistem şu an meşgul. Çakışma önlendi, lütfen tekrar deneyin.")
+                            if not is_approved:
+                                if st.button("📢 Esameleri Onayla ve Maç Programına Yansıt (Zarfları Aç)", key=f"onay_{match_key}", type="primary"):
+                                    st.session_state.esame_onayli[match_key] = True
+                                    
+                                    skor_mask = (st.session_state.skor_tablosu['Grup'] == grup) & (st.session_state.skor_tablosu['Gün'] == gun) & (st.session_state.skor_tablosu['Eşleşme'] == eslesme)
+                                    for idx, row in st.session_state.skor_tablosu[skor_mask].iterrows():
+                                        brans = row['Branş']
+                                        if t1_girdi: st.session_state.skor_tablosu.at[idx, 'T1_Oyuncu'] = kasadaki_veri[t1].get(brans, "")
+                                        if t2_girdi: st.session_state.skor_tablosu.at[idx, 'T2_Oyuncu'] = kasadaki_veri[t2].get(brans, "")
+                                    
+                                    if ortak_veriyi_kaydet():
+                                        st.success("Esameler başarıyla açıldı ve Skor Girişi ile Maç Programı sayfalarına gönderildi!")
+                                        st.rerun()
+                                    else:
+                                        st.error("⚠️ Sistem şu an meşgul. Çakışma önlendi, lütfen tekrar deneyin.")
 
     # --- SAYFA 1: GRUP AYARLARI ---
     elif menu_secim == "👥 Grup Ayarları":
