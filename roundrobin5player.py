@@ -2346,7 +2346,8 @@ else:
                                 
                             if tablo_verisi:
                                 gosterim_df = pd.DataFrame(tablo_verisi)
-                                gosterim_df['Sıra_Yardimci'] = gosterim_df['Grup'].apply(lambda x: [int(c) if c.isdigit() else c.lower() for c in re.split(r'(\d+)', str(x))])
+                                
+                                gosterim_df['Sıra_Yardimci'] = gosterim_df['Grup'].apply(lambda x: tuple([int(c) if c.isdigit() else c.lower() for c in re.split(r'(\d+)', str(x))]))
                                 gosterim_df = gosterim_df.sort_values(by=['Sıra_Yardimci', 'Eşleşme']).drop(columns=['Sıra_Yardimci'])
                                 st.dataframe(gosterim_df, use_container_width=True, hide_index=True)
                             else:
