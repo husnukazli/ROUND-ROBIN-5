@@ -1198,7 +1198,7 @@ else:
                     else:
                         st.error("❌ Hatalı PIN kodu!")
         else:
-        else:
+
             takim_adi = st.session_state.kaptan_takim
             st.info(f"Hoş geldin, **{takim_adi}** Kaptanı. Aşağıda bugün oynayacağınız maçlar listelenmiştir. Lütfen kadronuzu seçip kasaya gönderin.")
             
