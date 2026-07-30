@@ -2693,11 +2693,12 @@ else:
                                 header_row = {
                                     "Kort": kort, "Maç Saati": saat, "Tarih": tarih_str, "Gün Adı": gun_isim, 
                                     "Grup": grup_adi, "Gün": gun_val, "Eşleşme": eslesme_adi,
-                                    "Branş": "TAKIM EŞLEŞMESİ",
+                                    "Branş": "**TAKIM EŞLEŞMESİ**",
                                     "Takım 1": f"**{t1}**" if team_winner == "T1" else t1, 
                                     "Takım 2": f"**{t2}**" if team_winner == "T2" else t2,
                                     "T1 Oyuncu": "", "T2 Oyuncu": "",
                                     "Skor": team_score, "Kazanan": "", "Hakem": ""
+                                }
                                 }
                                 pdf_rows.append(header_row)
                                 
