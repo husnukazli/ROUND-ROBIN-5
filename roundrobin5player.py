@@ -936,17 +936,20 @@ with st.sidebar:
     c_as1, c_as2 = st.columns(2)
     with c_as1:
         if st.button("1. Aşama", type="primary" if st.session_state.aktif_asama == "1. Aşama" else "secondary", use_container_width=True, key="side_1"):
-            st.session_state.aktif_asama = "1. Aşama"; st.rerun()
+            st.session_state.aktif_asama = "1. Aşama"
+            st.rerun()
     with c_as2:
         if st.button("2. Aşama", type="primary" if st.session_state.aktif_asama == "2. Aşama" else "secondary", use_container_width=True, key="side_2"):
-            st.session_state.aktif_asama = "2. Aşama"; st.rerun()
+            st.session_state.aktif_asama = "2. Aşama"
+            st.rerun()
             
     st.markdown("---")
     st.markdown("**Sayfalar:**")
     
     if st.session_state.admin_mi:
         menu_items_side = ["🏠 Ana Sayfa", "👥 Grup Ayarları", "📝 Esame Kontrol Merkezi", "✍️ Skor Girişi", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular", "👮‍♂️ Hakem Yönetimi", "⚙️ Yönetim & Dosya"]
-        menu_items_side = ["🏠 Ana Sayfa", "👨‍✈️ Kaptan Esame Girişi", "🛡️ Takım Kadroları", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular"]
+        # DÜZELTME: Aşağıdaki satır üstteki admin menüsünü siliyordu, o yüzden iptal ettim. 
+        # menu_items_side = ["🏠 Ana Sayfa", "👨‍✈️ Kaptan Esame Girişi", "🛡️ Takım Kadroları", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular"]
     elif st.session_state.hakem_mi:
         menu_items_side = ["🏠 Ana Sayfa", "✍️ Gözlemci Hakem Paneli", "📅 Maç Programı"]
     else:
@@ -970,7 +973,7 @@ with st.sidebar:
             st.session_state.current_page = "Home"
             st.rerun()
 
-# --- UÇAK MODU ANAHTARI (SADECE BAŞHAKEM) ---
+    # --- UÇAK MODU ANAHTARI (SADECE BAŞHAKEM) ---
     if st.session_state.admin_mi:
         st.markdown("---")
         st.markdown("**⚙️ Bağlantı Modu**")
@@ -1007,6 +1010,14 @@ with st.sidebar:
                 
                 st.rerun()
 
+    # ==============================================================================
+    # YENİ EKLENEN BÖLÜM: VERİLERİ GÜNCELLE BUTONU
+    # ==============================================================================
+    st.divider()
+    if st.button("🔄 Verileri Güncelle", use_container_width=True):
+        with st.spinner("Kortlardaki son durum çekiliyor..."):
+            ortak_veriyi_yukle()
+        st.rerun()
 # ==============================================================================
 # EN ÜST BÖLÜM (LOGOLAR VE AŞAMA SEÇİMİ)
 # ==============================================================================
