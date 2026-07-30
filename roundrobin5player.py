@@ -26,7 +26,7 @@ def arkaplan_ekle(resim_yolu):
             f"""
             <style>
             .stApp {{
-                background-image: linear-gradient(rgba(27, 34, 40, 0.85), rgba(27, 34, 40, 0.95)), url("data:image/jpg;base64,{encoded_string}");
+                background-image: url("data:image/jpg;base64,{encoded_string}");
                 background-size: cover;
                 background-position: center;
                 background-attachment: fixed;
