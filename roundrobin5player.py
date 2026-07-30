@@ -169,11 +169,17 @@ def generate_pdf(df, baslik, not_metni=""):
             # --- AKILLI SATIR TESPİTİ ---
             is_takim_satiri = False
             
-            # 1. İhtimal: Kullanıcı "Branş" sütununu PDF'e eklediyse
-            for val in row.values:
-                if "**TAKIM EŞLEŞMESİ**" in str(val):
-                    is_takim_satiri = True
-                    break
+            # --- AKILLI SATIR TESPİTİ ---
+            is_takim_satiri = False
+            
+            # GİZLİ KONTROL: Takım satırının "Skor" hücresini her zaman ** ile işaretliyoruz ki sistem her PDF ayarında tanısın.
+            if "Skor" in df.columns and str(row["Skor"]).startswith("**"):
+                is_takim_satiri = True
+            else:
+                for val in row.values:
+                    if "**TAKIM EŞLEŞMESİ**" in str(val):
+                        is_takim_satiri = True
+                        break
                     
             # 2. İhtimal (GİZLİ KONTROL): Eğer Branş seçilmediyse, Takım 1 ve Takım 2'nin ikisinin de kalın (**) olduğu TEK SATIR takım satırıdır!
             if not is_takim_satiri and "Takım 1" in df.columns and "Takım 2" in df.columns:
@@ -2686,9 +2692,11 @@ else:
                                 gun_val = g_df.iloc[0]['Gün']
                                 
                                 team_score = "Oynanmadı"
+                                team_winner = ""
                                 ozet_df = df_team_summary[(df_team_summary['Grup'] == grup_adi) & (df_team_summary['Eşleşme'] == eslesme_adi)]
                                 if not ozet_df.empty:
                                     team_score = ozet_df.iloc[0]['Skor']
+                                    team_winner = ozet_df.iloc[0]['Kazanan']
                                 
                                 header_row = {
                                     "Kort": kort, "Maç Saati": saat, "Tarih": tarih_str, "Gün Adı": gun_isim, 
@@ -2697,7 +2705,7 @@ else:
                                     "Takım 1": f"**{t1}**" if team_winner == "T1" else t1, 
                                     "Takım 2": f"**{t2}**" if team_winner == "T2" else t2,
                                     "T1 Oyuncu": "", "T2 Oyuncu": "",
-                                    "Skor": team_score, "Kazanan": "", "Hakem": ""
+                                    "Skor": f"**{team_score}**", "Kazanan": "", "Hakem": ""
                                 }
                                 pdf_rows.append(header_row)
                                 
