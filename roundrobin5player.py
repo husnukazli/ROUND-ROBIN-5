@@ -2699,7 +2699,6 @@ else:
                                     "T1 Oyuncu": "", "T2 Oyuncu": "",
                                     "Skor": team_score, "Kazanan": "", "Hakem": ""
                                 }
-                                }
                                 pdf_rows.append(header_row)
                                 
                                 for _, row in sort_maclar(g_df).iterrows():
