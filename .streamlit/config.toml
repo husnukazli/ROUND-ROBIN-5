@@ -1,7 +1,7 @@
 [theme]
 base="dark"
-primaryColor="#A89BCA"          
-backgroundColor="#2A2438"       
-secondaryBackgroundColor="#352F44" 
-textColor="#EAE6F0"             
+primaryColor="#C45532"          # Kiremit/Toprak tozu rengi (Butonlar ve vurgular için)
+backgroundColor="#1B2228"       # Koyu arduvaz / Asfalt grisi (Ana arka plan)
+secondaryBackgroundColor="#263038"# Bir ton açık arduvaz (Yan menü ve seçim kutuları)
+textColor="#E2E8F0"             # Buz beyazı (Okunabilirlik için)
 font="sans serif"
