@@ -1191,6 +1191,32 @@ else:
                         st.warning("Lütfen takımınızı seçin.")
                     elif secilen_takim_login not in st.session_state.takim_pinleri:
                         st.error("Bu takım için henüz PIN üretilmemiş. Başhakeme başvurunuz.")
+                    elif not st.session_state.kaptan_mi:
+            st.info("Kendi takımınızın maç kadrosunu (esame) bildirmek için PIN kodunuzla giriş yapınız.")
+            col_k1, col_k2 = st.columns([2, 1])
+            with col_k1:
+                # --- YENİ TAKIM SEÇİM KODU ---
+                detayli_takimlar = []
+                for t_isim in dogal_sirala(list(st.session_state.takim_havuzu.keys())):
+                    kategori = st.session_state.havuz_kategorileri.get(t_isim, "")
+                    yas = st.session_state.havuz_yas_gruplari.get(t_isim, "")
+                    ek_bilgi = kategori if yas == "Yaş Belirtme" else f"{yas} {kategori}".strip()
+                    
+                    if ek_bilgi:
+                        detayli_takimlar.append(f"{t_isim} ({ek_bilgi})")
+                    else:
+                        detayli_takimlar.append(t_isim)
+                        
+                secilen_detayli_takim = st.selectbox("Takımınızı Seçin:", ["Seçiniz"] + detayli_takimlar)
+                secilen_takim_login = secilen_detayli_takim.split(" (")[0].strip() if secilen_detayli_takim != "Seçiniz" else "Seçiniz"
+                
+                girilen_pin = st.text_input("4 Haneli PIN Kodu:", type="password", key="login_pin_page")
+                
+                if st.button("🚀 Kaptan Olarak Giriş Yap", type="primary"):
+                    if secilen_takim_login == "Seçiniz":
+                        st.warning("Lütfen takımınızı seçin.")
+                    elif secilen_takim_login not in st.session_state.takim_pinleri:
+                        st.error("Bu takım için henüz PIN üretilmemiş. Başhakeme başvurunuz.")
                     elif girilen_pin == str(st.session_state.takim_pinleri[secilen_takim_login]):
                         st.session_state.kaptan_mi = True
                         st.session_state.admin_mi = False
