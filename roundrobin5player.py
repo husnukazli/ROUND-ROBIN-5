@@ -194,6 +194,7 @@ def generate_pdf(df, baslik, not_metni=""):
                     is_bold = True
                 
                 # --- HİYERARŞİ VE GÖRÜNÜM AYARI ---
+                # --- HİYERARŞİ VE GÖRÜNÜM AYARI ---
                 if is_takim_satiri:
                     is_bold = True       # Takım satırının tamamı kalın font olur
                     hedef_punto = 10.5   # Fontu alt maçlardan daha büyük olur
