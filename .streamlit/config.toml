@@ -1,7 +1,7 @@
 [theme]
 base="light"
-primaryColor="#0068c9"
-backgroundColor="#f0f2f6"
-secondaryBackgroundColor="#ffffff"
-textColor="#31333F"
+primaryColor="#8C7335"  # Zengin bir altın sarısı (Koyu hardal)
+backgroundColor="#F4F4F6" # Çok açık bir gri-kırık beyaz 
+secondaryBackgroundColor="#1C2331"  # Çok derin bir lacivert-antrasit
+textColor="#2B2D42" # Kömür karası 
 font="sans serif"
