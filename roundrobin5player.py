@@ -15,7 +15,28 @@ import time
 import uuid
 from supabase import create_client, Client
 from fpdf import FPDF
+import base64
 
+def arkaplan_ekle(resim_yolu):
+    try:
+        with open(resim_yolu, "rb") as image_file:
+            encoded_string = base64.b64encode(image_file.read()).decode()
+            
+        st.markdown(
+            f"""
+            <style>
+            .stApp {{
+                background-image: linear-gradient(rgba(42, 36, 56, 0.85), rgba(42, 36, 56, 0.95)), url("data:image/jpg;base64,{encoded_string}");
+                background-size: cover;
+                background-position: center;
+                background-attachment: fixed;
+            }}
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
+    except FileNotFoundError:
+        pass
 # --- GENEL SAYFA AYARLARI ---
 st.set_page_config(page_title="Tenis Turnuva Otomasyonu", page_icon="🎾", layout="wide", initial_sidebar_state="collapsed")
 
