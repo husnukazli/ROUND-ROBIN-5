@@ -1,7 +1,7 @@
 [theme]
 base="dark"
-primaryColor="#C45532"          # Kiremit/Toprak tozu rengi (Butonlar ve vurgular için)
-backgroundColor="#1B2228"       # Koyu arduvaz / Asfalt grisi (Ana arka plan)
-secondaryBackgroundColor="#263038"# Bir ton açık arduvaz (Yan menü ve seçim kutuları)
-textColor="#E2E8F0"             # Buz beyazı (Okunabilirlik için)
+primaryColor="#E86C43"          # Canlı kiremit/turuncu (Görseldeki toprak lekeleriyle birebir uyumlu, butonları öne çıkarır)
+backgroundColor="#111827"       # Derin lacivert-gri (Görselin koyu alanlarını destekleyen ana zemin)
+secondaryBackgroundColor="#273444" # Açıklama barları, input kutuları ve menüler için NET ve belirgin bir arduvaz-mavi (Görselin içinde asla kaybolmaz)
+textColor="#FAFAFA"             # Tertemiz krem-beyaz (Görselin açık tonlarıyla bütünleşen net yazı rengi)
 font="sans serif"
