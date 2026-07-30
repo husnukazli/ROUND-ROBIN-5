@@ -1,7 +1,7 @@
 [theme]
-base="light"
-primaryColor="#B28F40"          # Biraz daha parlatılmış Altın/Hardal rengi (vurgular ve butonlar için)
-backgroundColor="#FFFFFF"       # Ana ekran tam beyaz (içerik ve tablolar net olsun diye)
-secondaryBackgroundColor="#F0F4F8" # Yan menü çok hafif ve şık bir buz mavisi-gri 
-textColor="#1E293B"             # Yazılar derin lacivert-antrasit (siyah yerine çok daha şık)
+base="dark"
+primaryColor="#A89BCA"          
+backgroundColor="#2A2438"       
+secondaryBackgroundColor="#352F44" 
+textColor="#EAE6F0"             
 font="sans serif"
