@@ -1191,7 +1191,7 @@ else:
                         st.warning("Lütfen takımınızı seçin.")
                     elif secilen_takim_login not in st.session_state.takim_pinleri:
                         st.error("Bu takım için henüz PIN üretilmemiş. Başhakeme başvurunuz.")
-     elif not st.session_state.kaptan_mi:
+            elif not st.session_state.kaptan_mi:
             st.info("Kendi takımınızın maç kadrosunu (esame) bildirmek için PIN kodunuzla giriş yapınız.")
             col_k1, col_k2 = st.columns([2, 1])
             with col_k1:
