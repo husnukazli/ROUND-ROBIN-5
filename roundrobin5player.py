@@ -9,7 +9,7 @@ import datetime
 import base64
 import shutil
 import re
-import html
+import htmlF
 import random
 import time
 import uuid
@@ -39,7 +39,7 @@ def arkaplan_ekle(resim_yolu):
         pass
 # --- GENEL SAYFA AYARLARI ---
 st.set_page_config(page_title="Tenis Turnuva Otomasyonu", page_icon="🎾", layout="wide", initial_sidebar_state="collapsed")
-arkaplan_ekle("arkaplan.jpg")
+# arkaplan_ekle("arkaplan.jpg")
 # --- SUPABASE BAĞLANTISI ---
 @st.cache_resource
 def init_supabase() -> Client:
