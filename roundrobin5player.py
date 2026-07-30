@@ -818,7 +818,7 @@ def ortak_veriyi_yukle():
             if "Hakem" not in mp_df.columns: mp_df["Hakem"] = ""
             st.session_state.mac_programi = mp_df
         else:
-            st.session_state.mac_programi = pd.DataFrame(columns=["Maç Saati", "Tarih", "Gün Adı", "Kort", "Grup", "Gün", "Branş", "Eşleşme", "Takım 1", "Takım 2", "T1 Oyuncu", "T2 Oyuncu", "Canlı Skor", "Kazanan", "Hakem"])
+            st.session_state.mac_programi = pd.DataFrame(columns=["Maç Saati", "Tarih", "Gün Adı", "Kort", "Grup", "Gün", "Branş", "Eşleşme", "Takım 1", "Takım 2", "T1 Oyuncu", "T2 Oyuncu", "Skor", "Kazanan", "Hakem"])
 
         st.session_state.takim_kadrolari = data.get("takim_kadrolari", {})
         st.session_state.grup_formatlari = data.get("grup_formatlari", {})
@@ -896,7 +896,7 @@ if 'skor_tablosu' not in st.session_state:
     if 'skor_tablosu' not in st.session_state or st.session_state.skor_tablosu.empty:
         st.session_state.skor_tablosu = pd.DataFrame(columns=["id", "Grup", "Gün", "Eşleşme", "Branş", "Takım 1", "Takım 2", "T1_Oyuncu", "T2_Oyuncu", "1.Set T1", "1.Set T2", "2.Set T1", "2.Set T2", "3.Set T1", "3.Set T2", "Durum", "STB"])
     if 'mac_programi' not in st.session_state or st.session_state.mac_programi.empty:
-        st.session_state.mac_programi = pd.DataFrame(columns=["Maç Saati", "Tarih", "Gün Adı", "Kort", "Grup", "Gün", "Branş", "Eşleşme", "Takım 1", "Takım 2", "T1 Oyuncu", "T2 Oyuncu", "Canlı Skor", "Kazanan", "Hakem"])
+        st.session_state.mac_programi = pd.DataFrame(columns=["Maç Saati", "Tarih", "Gün Adı", "Kort", "Grup", "Gün", "Branş", "Eşleşme", "Takım 1", "Takım 2", "T1 Oyuncu", "T2 Oyuncu", "Skor", "Kazanan", "Hakem"])
 
 if 'skor_tablosu' in st.session_state and 'Durum' not in st.session_state.skor_tablosu.columns:
     st.session_state.skor_tablosu['Durum'] = "Tamamlandı"
@@ -907,7 +907,7 @@ if 'skor_tablosu' in st.session_state and 'id' not in st.session_state.skor_tabl
 
 if 'mac_programi' in st.session_state:
     if st.session_state.mac_programi.empty and len(st.session_state.mac_programi.columns) < 5:
-         st.session_state.mac_programi = pd.DataFrame(columns=["Maç Saati", "Tarih", "Gün Adı", "Kort", "Grup", "Gün", "Branş", "Eşleşme", "Takım 1", "Takım 2", "T1 Oyuncu", "T2 Oyuncu", "Canlı Skor", "Kazanan", "Hakem"])
+         st.session_state.mac_programi = pd.DataFrame(columns=["Maç Saati", "Tarih", "Gün Adı", "Kort", "Grup", "Gün", "Branş", "Eşleşme", "Takım 1", "Takım 2", "T1 Oyuncu", "T2 Oyuncu", "Skor", "Kazanan", "Hakem"])
     else:
         if "T1 Oyuncu" not in st.session_state.mac_programi.columns: st.session_state.mac_programi["T1 Oyuncu"] = ""
         if "T2 Oyuncu" not in st.session_state.mac_programi.columns: st.session_state.mac_programi["T2 Oyuncu"] = ""
@@ -2424,13 +2424,13 @@ else:
                         st.session_state.mac_programi.at[idx, "T2 Oyuncu"] = t2_o
                         
                         if durum == "Çift Taraflı W/O":
-                            st.session_state.mac_programi.at[idx, "Canlı Skor"] = "Çift Taraflı W/O"
+                            st.session_state.mac_programi.at[idx, "Skor"] = "Çift Taraflı W/O"
                             st.session_state.mac_programi.at[idx, "Kazanan"] = ""
                         elif durum == "Takım 1 Kazandı (W/O)":
-                            st.session_state.mac_programi.at[idx, "Canlı Skor"] = "W/O"
+                            st.session_state.mac_programi.at[idx, "Skor"] = "W/O"
                             st.session_state.mac_programi.at[idx, "Kazanan"] = "T1"
                         elif durum == "Takım 2 Kazandı (W/O)":
-                            st.session_state.mac_programi.at[idx, "Canlı Skor"] = "W/O"
+                            st.session_state.mac_programi.at[idx, "Skor"] = "W/O"
                             st.session_state.mac_programi.at[idx, "Kazanan"] = "T2"
                         else:
                             s1t1, s1t2 = int(m['1.Set T1']), int(m['1.Set T2'])
@@ -2445,7 +2445,7 @@ else:
                                 if durum == "Takım 1 Kazandı (Ret.)": skor_str += " Ret."
                                 if durum == "Takım 2 Kazandı (Ret.)": skor_str += " Ret."
                                 
-                                st.session_state.mac_programi.at[idx, "Canlı Skor"] = skor_str
+                                st.session_state.mac_programi.at[idx, "Skor"] = skor_str
                                 
                                 if durum == "Takım 1 Kazandı (Ret.)":
                                     st.session_state.mac_programi.at[idx, "Kazanan"] = "T1"
@@ -2456,7 +2456,7 @@ else:
                                     t2_set_sayisi = (s1t2 > s1t1) + (s2t2 > s2t1) + (s3t2 > s3t1)
                                     st.session_state.mac_programi.at[idx, "Kazanan"] = "T1" if t1_set_sayisi >= 2 else ("T2" if t2_set_sayisi >= 2 else "")
                             else:
-                                st.session_state.mac_programi.at[idx, "Canlı Skor"] = "Oynanmadı"
+                                st.session_state.mac_programi.at[idx, "Skor"] = "Oynanmadı"
                                 st.session_state.mac_programi.at[idx, "Kazanan"] = ""
     
                 df_gunluk_safe = st.session_state.mac_programi[(st.session_state.mac_programi['Tarih'] == formatted_tarih) & (st.session_state.mac_programi['Grup'].isin(gecerli_gruplar_t4))].copy()
@@ -2468,7 +2468,7 @@ else:
                 for (saat, tarih, gun, kort, grup, match_gun, eslesme, takim1, takim2), g_df in df_gunluk_safe.groupby(
                     ['Maç Saati', 'Tarih', 'Gün Adı', 'Kort', 'Grup', 'Gün', 'Eşleşme', 'Takım 1', 'Takım 2'], dropna=False
                 ):
-                    played = (g_df['Canlı Skor'] != 'Oynanmadı').sum()
+                    played = (g_df['Skor'] != 'Oynanmadı').sum()
                     team_score = "Oynanmadı"
                     team_winner = ""
                     
@@ -2516,7 +2516,7 @@ else:
                         "Maç Saati": saat, "Tarih": tarih, "Gün Adı": gun, "Kort": kort,
                         "Grup": grup, "Gün": match_gun, "Branş": "Genel Skor", "Eşleşme": eslesme,
                         "Takım 1": takim1, "Takım 2": takim2, "T1 Oyuncu": "-", "T2 Oyuncu": "-",
-                        "Canlı Skor": team_score, "Kazanan": team_winner, "Hakem": hakem_ilk
+                        "Skor": team_score, "Kazanan": team_winner, "Hakem": hakem_ilk
                     })
                 df_team_summary = pd.DataFrame(df_team_summary_list)
     
@@ -2563,7 +2563,7 @@ else:
                                     yeni_kayitlar.append({
                                         "Maç Saati": "10:00", "Tarih": formatted_tarih, "Gün Adı": gun_adi, "Kort": "Kort 1",
                                         "Grup": r['Grup'], "Gün": r['Gün'], "Branş": r['Branş'], "Eşleşme": r['Eşleşme'],
-                                        "Takım 1": r['Takım 1'], "Takım 2": r['Takım 2'], "T1 Oyuncu": "", "T2 Oyuncu": "", "Canlı Skor": "Oynanmadı", "Kazanan": "", "Hakem": "Atanmadı"
+                                        "Takım 1": r['Takım 1'], "Takım 2": r['Takım 2'], "T1 Oyuncu": "", "T2 Oyuncu": "", "Skor": "Oynanmadı", "Kazanan": "", "Hakem": "Atanmadı"
                                     })
                                 
                                 st.session_state.mac_programi = pd.concat([st.session_state.mac_programi, pd.DataFrame(yeni_kayitlar)], ignore_index=True)
@@ -2607,7 +2607,7 @@ else:
                             if not df_team_summary.empty:
                                 ozet_satiri = df_team_summary[(df_team_summary['Grup'] == grup_adi) & (df_team_summary['Eşleşme'] == eslesme_adi)]
                                 if not ozet_satiri.empty:
-                                    val = ozet_satiri.iloc[0]['Canlı Skor']
+                                    val = ozet_satiri.iloc[0]['Skor']
                                     if val != "Oynanmadı": takim_skoru_etiketi = f"  🟢 SKOR: {val}"
                             
                             kort = grup_df.iloc[0]['Kort']
@@ -2628,7 +2628,7 @@ else:
                                 idx_h = opts.index(mevcut_hakem) if mevcut_hakem in opts else 0
                                 secilen_hakem = c_h.selectbox("👮‍♂️ Hakem (Tüm maçlara uygulanır):", options=opts, index=idx_h, key=f"hakem_{grup_adi}_{eslesme_adi}_{formatted_tarih}")
                                 
-                                grup_df_ordered = sort_maclar(grup_df)[["Branş", "T1 Oyuncu", "T2 Oyuncu", "Canlı Skor", "Grup", "Gün", "Eşleşme", "Takım 1", "Takım 2", "Tarih", "Gün Adı", "Kazanan", "Kort", "Maç Saati", "Hakem"]]
+                                grup_df_ordered = sort_maclar(grup_df)[["Branş", "T1 Oyuncu", "T2 Oyuncu", "Skor", "Grup", "Gün", "Eşleşme", "Takım 1", "Takım 2", "Tarih", "Gün Adı", "Kazanan", "Kort", "Maç Saati", "Hakem"]]
                                 disabled_cols = grup_df_ordered.columns.tolist()
                                 
                                 e_df = st.data_editor(
@@ -2668,7 +2668,7 @@ else:
                     with st.expander("📄 PDF Çıktı Ayarları"):
                         gosterim_sekli = st.radio("PDF Gösterim Şekli:", ["Bireysel Maçlar (Detaylı Hiyerarşik Çıktı)", "Takım Maçları (Sadece Genel Skor)"], horizontal=True)
                         is_bireysel_pdf = "Bireysel" in gosterim_sekli
-                        tum_kolonlar = ["Kort", "Maç Saati", "Tarih", "Gün Adı", "Grup", "Gün", "Branş", "Eşleşme", "Takım 1", "Takım 2", "T1 Oyuncu", "T2 Oyuncu", "Canlı Skor", "Kazanan", "Hakem"]
+                        tum_kolonlar = ["Kort", "Maç Saati", "Tarih", "Gün Adı", "Grup", "Gün", "Branş", "Eşleşme", "Takım 1", "Takım 2", "T1 Oyuncu", "T2 Oyuncu", "Skor", "Kazanan", "Hakem"]
                         
                         if not is_bireysel_pdf:
                             tum_kolonlar = [c for c in tum_kolonlar if c not in ["T1 Oyuncu", "T2 Oyuncu"]]
@@ -2689,7 +2689,7 @@ else:
                                 team_score = "Oynanmadı"
                                 ozet_df = df_team_summary[(df_team_summary['Grup'] == grup_adi) & (df_team_summary['Eşleşme'] == eslesme_adi)]
                                 if not ozet_df.empty:
-                                    team_score = ozet_df.iloc[0]['Canlı Skor']
+                                    team_score = ozet_df.iloc[0]['Skor']
                                 
                                 header_row = {
                                     "Kort": kort, "Maç Saati": saat, "Tarih": tarih_str, "Gün Adı": gun_isim, 
@@ -2697,7 +2697,7 @@ else:
                                     "Branş": "**TAKIM EŞLEŞMESİ**",
                                     "Takım 1": f"**{t1}**", "Takım 2": f"**{t2}**",
                                     "T1 Oyuncu": "", "T2 Oyuncu": "",
-                                    "Canlı Skor": f"**{team_score}**", "Kazanan": "", "Hakem": ""
+                                    "Skor": f"**{team_score}**", "Kazanan": "", "Hakem": ""
                                 }
                                 pdf_rows.append(header_row)
                                 
@@ -2723,7 +2723,7 @@ else:
                                     win = df_pdf_export.at[i, 'Kazanan']
                                     if win == 'T1': df_pdf_export.at[i, 'Takım 1'] = f"**{df_pdf_export.at[i, 'Takım 1']}**"
                                     elif win == 'T2': df_pdf_export.at[i, 'Takım 2'] = f"**{df_pdf_export.at[i, 'Takım 2']}**"
-                                    df_pdf_export.at[i, 'Canlı Skor'] = f"**{df_pdf_export.at[i, 'Canlı Skor']}**"
+                                    df_pdf_export.at[i, 'Skor'] = f"**{df_pdf_export.at[i, 'Skor']}**"
                                     
                         if not df_pdf_export.empty and secilen_pdf_cols:
                             final_pdf_df = df_pdf_export[secilen_pdf_cols]
@@ -2756,7 +2756,7 @@ else:
                             if not df_team_summary.empty:
                                 ozet_satiri = df_team_summary[(df_team_summary['Grup'] == grup_adi) & (df_team_summary['Eşleşme'] == eslesme_adi)]
                                 if not ozet_satiri.empty:
-                                    val = ozet_satiri.iloc[0]['Canlı Skor']
+                                    val = ozet_satiri.iloc[0]['Skor']
                                     if val != "Oynanmadı": takim_skoru_etiketi = f"  🟢 SKOR: {val}"
     
                             kort = grup_df.iloc[0]['Kort']
@@ -2776,7 +2776,7 @@ else:
                             with st.expander(expander_title, expanded=False):
                                 html_rows = ""
                                 for _, row in sort_maclar(grup_df).iterrows():
-                                    skor = str(row.get('Canlı Skor', 'Oynanmadı'))
+                                    skor = str(row.get('Skor', 'Oynanmadı'))
                                     skor_html = f"<span style='color:#28a745; font-weight:bold;'>{skor}</span>" if skor not in ["Oynanmadı", ""] else "<i>Bekleniyor</i>"
                                     
                                     if is_approved:
