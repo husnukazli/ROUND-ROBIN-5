@@ -563,7 +563,7 @@ def generate_matrix_pdf(grup_adi, takimlar, df_grup):
     col_width = 190 / len(cols) 
     
     for col in cols:
-        pdf_cell_fit(pdf, col_width, 10, col, is_bold=True)
+        pdf_cell_fit(pdf, col_width, 10, col, is_bold=True, base_size=11)
     pdf.ln()
     
     for t1 in takimlar:
@@ -575,7 +575,8 @@ def generate_matrix_pdf(grup_adi, takimlar, df_grup):
                 lines = len(val.split('\n'))
                 if lines > max_lines: max_lines = lines
         
-        row_height = max_lines * 4 + 4
+        # Fontlar büyüdüğü için kutu yüksekliğini (row_height) ve çarpanı artırdık
+        row_height = max_lines * 4.5 + 5
         x_start = pdf.get_x()
         y_start = pdf.get_y()
         
@@ -585,10 +586,10 @@ def generate_matrix_pdf(grup_adi, takimlar, df_grup):
             x_start = pdf.get_x()
             y_start = pdf.get_y()
         
-        # İlk hücre (Takım Adı)
+        # İlk hücre (Takım Adı) - Font 10 yapıldı
         pdf.rect(x_start, y_start, col_width, row_height)
         pdf.set_xy(x_start, y_start + (row_height/2) - 2)
-        apply_font(pdf, bold=True, size=9)
+        apply_font(pdf, bold=True, size=10)
         pdf_cell_fit(pdf, col_width, 4, to_pdf_text(t1), border=0, is_bold=True)
         
         for t2 in takimlar:
@@ -596,21 +597,21 @@ def generate_matrix_pdf(grup_adi, takimlar, df_grup):
             val = str(matrix.at[t1, t2])
             
             pdf.rect(x_start, y_start, col_width, row_height)
-            pdf.set_xy(x_start, y_start + 2)
+            pdf.set_xy(x_start, y_start + 2.5)
             
             if val == "X":
                 pdf.set_xy(x_start, y_start + (row_height/2) - 2)
-                apply_font(pdf, bold=True, size=10)
+                apply_font(pdf, bold=True, size=11)
                 pdf.cell(col_width, 4, "X", align='C')
             elif val != "":
                 lines = val.split('\n')
-                # Takım skoru (örn: 2 - 1)
-                apply_font(pdf, bold=True, size=9)
-                pdf.cell(col_width, 4, to_pdf_text(lines[0]), align='C', ln=2)
-                # Bireysel maçlar (örn: 1T: 6-4 6-2)
-                apply_font(pdf, bold=False, size=6.5)
+                # Takım skoru (örn: 2 - 1) - Font 10.5 yapıldı
+                apply_font(pdf, bold=True, size=10.5)
+                pdf.cell(col_width, 4.5, to_pdf_text(lines[0]), align='C', ln=2)
+                # Bireysel maçlar (örn: 1T: 6-4 6-2) - Font 7.5 yapıldı ve satır aralığı açıldı
+                apply_font(pdf, bold=False, size=7.5)
                 for line in lines[1:]:
-                    pdf.cell(col_width, 3.5, to_pdf_text(line), align='C', ln=2)
+                    pdf.cell(col_width, 4, to_pdf_text(line), align='C', ln=2)
         
         pdf.set_xy(10, y_start + row_height)
         
