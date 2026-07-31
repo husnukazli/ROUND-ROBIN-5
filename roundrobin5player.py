@@ -968,7 +968,7 @@ with st.sidebar:
     st.markdown("**Sayfalar:**")
     
     if st.session_state.admin_mi:
-        menu_items_side = ["🏠 Ana Sayfa", "👥 Grup Ayarları", "📝 Esame Kontrol Merkezi", "✍️ Skor Girişi", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular", "👮‍♂️ Hakem Yönetimi", "⚙️ Yönetim & Dosya"]
+        menu_items_side = ["🏠 Ana Sayfa", "👥 Grup Ayarları", "📝 Esame Kontrol Merkezi", "✍️ Skor Girişi", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular", "👮‍♂️ Hakem Yönetimi", "⚙️ Yönetim & Dosya", "📈 İstatistikler"]
         # DÜZELTME: Aşağıdaki satır üstteki admin menüsünü siliyordu, o yüzden iptal ettim. 
         # menu_items_side = ["🏠 Ana Sayfa", "👨‍✈️ Kaptan Esame Girişi", "🛡️ Takım Kadroları", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular"]
     elif st.session_state.hakem_mi:
@@ -1148,7 +1148,7 @@ if st.session_state.current_page == "Home":
 # ==============================================================================
 # ALT SAYFALARIN İÇERİKLERİ (YATAY MENÜ SADECE BURADA ÇIKAR)
 # ==============================================================================
-elif sekme == "📈 İstatistikler":
+elif st.session_state.current_page == "📈 İstatistikler":
         st.header("📊 Turnuva Genel İstatistikleri")
         st.markdown("---")
 
