@@ -573,7 +573,7 @@ def generate_matrix_pdf(grup_adi, takimlar, df_grup):
     
     # --- BİLGİ NOTU EKLENDİ ---
     apply_font(pdf, bold=False, size=8)
-    pdf.cell(0, 4, to_pdf_text("Not: Skorun yanındaki (*) yıldız işareti, averaj veya tie-break ile eşleşmeyi kazanan takımı gösterir."), ln=True, align='C')
+    pdf.cell(0, 4, to_pdf_text("Not: Skorun yanındaki (*) yıldız işareti, kazanan takımı gösterir."), ln=True, align='C')
     pdf.ln(5)
     
     cols = ["Takımlar"] + takimlar
