@@ -2946,7 +2946,7 @@ else:
                     if st.button("🔄 Tüm Bireysel Maçları Ekranda Göster / Gizle"):
                         st.session_state.expand_all = not st.session_state.expand_all; st.rerun()
                     
-                   with st.expander("📄 PDF Çıktı Ayarları"):
+                  with st.expander("📄 PDF Çıktı Ayarları"):
                         gosterim_sekli = st.radio("PDF Gösterim Şekli:", ["Bireysel Maçlar (Detaylı Hiyerarşik Çıktı)", "Takım Maçları (Sadece Genel Skor)"], horizontal=True)
                         is_bireysel_pdf = "Bireysel" in gosterim_sekli
                         tum_kolonlar = ["Kort", "Maç Saati", "Tarih", "Gün Adı", "Grup", "Gün", "Branş", "Eşleşme", "Takım 1", "Takım 2", "T1 Oyuncu", "T2 Oyuncu", "Skor", "Kazanan", "Hakem"]
