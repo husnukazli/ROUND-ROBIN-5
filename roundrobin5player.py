@@ -1352,7 +1352,7 @@ else:
                                         else:
                                             st.error("⚠️ Sistem şu an başka bir takımın kaydını işliyor (Meşgul). Çakışma önlendi, lütfen 3 saniye bekleyip butona tekrar basınız.")
                     st.divider()
-elif sekme == "📈 İstatistikler":
+        elif sekme == "📈 İstatistikler":
         st.header("📊 Turnuva Genel İstatistikleri")
         st.markdown("---")
 
