@@ -176,36 +176,42 @@ def generate_pdf(df, baslik, not_metni=""):
     else:
         pdf.ln(5)
     
-    if len(df.columns) > 0:
-        col_widths = get_proportional_widths(pdf, df)
+    df_print = df.copy()
+    
+    # GİZLİ KOLON KONTROLÜ: Sistemi kandırmak yerine doğrudan gizli işareti arıyoruz
+    has_header_col = "_IS_HEADER_" in df_print.columns
+    if has_header_col:
+        header_flags = df_print["_IS_HEADER_"].tolist()
+        df_print = df_print.drop(columns=["_IS_HEADER_"])
+    
+    if len(df_print.columns) > 0:
+        col_widths = get_proportional_widths(pdf, df_print)
         
         # En üstteki başlık satırı (Koyu gri arka plan, 10 punto, kalın)
         pdf.set_fill_color(200, 200, 200)
-        for i, col in enumerate(df.columns): 
+        for i, col in enumerate(df_print.columns): 
             pdf_cell_fit(pdf, col_widths[i], 10, col, is_bold=True, fill=True, base_size=10)
         pdf.ln()
         
         # İçerik satırları
-        for _, row in df.iterrows():
-            # --- AKILLI SATIR TESPİTİ ---
+        for row_idx, row in df_print.reset_index(drop=True).iterrows():
             is_takim_satiri = False
             
-            # --- AKILLI SATIR TESPİTİ ---
-            is_takim_satiri = False
-            
-            # GİZLİ KONTROL: Takım satırının "Skor" hücresini her zaman ** ile işaretliyoruz ki sistem her PDF ayarında tanısın.
-            if "Skor" in df.columns and str(row["Skor"]).startswith("**"):
-                is_takim_satiri = True
+            # Yeni ve Kusursuz Tespit Yöntemi
+            if has_header_col:
+                is_takim_satiri = bool(header_flags[row_idx])
             else:
-                for val in row.values:
-                    if "**TAKIM EŞLEŞMESİ**" in str(val):
-                        is_takim_satiri = True
-                        break
-                    
-            # 2. İhtimal (GİZLİ KONTROL): Eğer Branş seçilmediyse, Takım 1 ve Takım 2'nin ikisinin de kalın (**) olduğu TEK SATIR takım satırıdır!
-            if not is_takim_satiri and "Takım 1" in df.columns and "Takım 2" in df.columns:
-                if str(row["Takım 1"]).startswith("**") and str(row["Takım 2"]).startswith("**"):
+                # Eski yöntemler (Geriye dönük uyumluluk için)
+                if "Skor" in df_print.columns and str(row["Skor"]).startswith("**"):
                     is_takim_satiri = True
+                else:
+                    for val in row.values:
+                        if "**TAKIM EŞLEŞMESİ**" in str(val):
+                            is_takim_satiri = True
+                            break
+                    if not is_takim_satiri and "Takım 1" in df_print.columns and "Takım 2" in df_print.columns:
+                        if str(row["Takım 1"]).startswith("**") and str(row["Takım 2"]).startswith("**"):
+                            is_takim_satiri = True
             
             # Ana eşleşmeyse arka plan rengini belirgin gri (225) yap
             if is_takim_satiri:
@@ -215,22 +221,15 @@ def generate_pdf(df, baslik, not_metni=""):
                 text = str(item)
                 is_bold = False
                 
-                # Çift yıldızlı (**) metinleri temizleme
                 if text.startswith("**") and text.endswith("**"):
                     text = text[2:-2]
                     is_bold = True
                 
-
-                # --- HİYERARŞİ VE GÖRÜNÜM AYARI ---
-                if is_takim_satiri:
-                    hedef_punto = 10.5   
-                else:
-                    hedef_punto = 9
+                hedef_punto = 10.5 if is_takim_satiri else 9
                     
                 if is_bold and FONT_YUKLENDI and not FONT_BOLD_YUKLENDI:
                     text = f"{text} *" 
                     
-                # Takım satırıysa arka plan rengiyle (fill=True) çiz
                 pdf_cell_fit(pdf, col_widths[i], 8, text, is_bold=is_bold, fill=is_takim_satiri, base_size=hedef_punto)
             pdf.ln()
     return get_pdf_bytes(pdf)
