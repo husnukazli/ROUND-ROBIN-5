@@ -2066,12 +2066,11 @@ else:
                     f_kat = st.session_state.grup_kategorileri.get(g_isim, "Erkekler")
                     f_yas = st.session_state.grup_yas_gruplari.get(g_isim, "Yaş Belirtme")
                     
-                        with st.expander(f"📁 {g_isim} ({f_yas} | {f_kat} | {f_turu})"):
+                    with st.expander(f"📁 {g_isim} ({f_yas} | {f_kat} | {f_turu})"):
                         g_kadro = st.session_state.takim_kadrolari[g_isim]
                         for t_isim in dogal_sirala(list(g_kadro.keys())):
                             st.markdown(f"**🛡️ {t_isim}**")
                             if g_kadro[t_isim] and g_kadro[t_isim] != ["Belirtilmedi"]:
-                                # SADECE ALTTAKİ İKİ SATIR DEĞİŞTİ ( \n yerine <br> ve unsafe_allow_html eklendi )
                                 liste_metni = "<br>".join([f"**{i+1}.** {oyuncu}" for i, oyuncu in enumerate(g_kadro[t_isim])])
                                 st.markdown(liste_metni, unsafe_allow_html=True)
                             else:
