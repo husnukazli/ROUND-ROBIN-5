@@ -1578,7 +1578,42 @@ else:
                     st.divider()
         
     # --- HAKEM SAYFASI: SKOR GİRİŞ PANELİ ---
-    elif menu_secim == "✍️ Gözlemci Hakem Paneli":
+    # --- HAKEM GİRİŞ SAYFASI ---
+    elif menu_secim == "👮‍♂️ Gözlemci Hakem Girişi":
+        if st.session_state.get("sistem_kilitli", False) and not st.session_state.admin_mi:
+            st.error("🚨 SİSTEM BAKIMDA: Başhakem şu an çevrimdışı (Uçak) modunda maç programını düzenliyor. Lütfen skorlarınızı kağıt üzerinde Başhakem masasına iletiniz.")
+        elif not st.session_state.hakem_mi:
+            st.info("Görevli olduğunuz maçların skorlarını girmek için hakem PIN kodunuzla giriş yapınız.")
+            
+            if not st.session_state.hakem_listesi:
+                st.warning("Sisteme henüz hakem eklenmemiş. Lütfen Başhakem ile iletişime geçin.")
+            else:
+                col_h1, col_h2 = st.columns([2, 1])
+                with col_h1:
+                    secilen_hakem = st.selectbox("Hakem Seçin:", ["Seçiniz"] + st.session_state.hakem_listesi)
+                    girilen_hakem_pin = st.text_input("4 Haneli Hakem PIN Kodu:", type="password", key="login_hakem_pin")
+                    
+                    if st.button("🚀 Hakem Olarak Giriş Yap", type="primary"):
+                        if secilen_hakem == "Seçiniz":
+                            st.warning("Lütfen isminizi seçin.")
+                        elif secilen_hakem not in st.session_state.hakem_pinleri:
+                            st.error("Sizin için henüz PIN üretilmemiş. Başhakeme başvurunuz.")
+                        elif girilen_hakem_pin == str(st.session_state.hakem_pinleri[secilen_hakem]):
+                            st.session_state.hakem_mi = True
+                            st.session_state.admin_mi = False
+                            st.session_state.kaptan_mi = False
+                            st.session_state.aktif_hakem = secilen_hakem
+                            # Giriş başarılı olunca direkt skor girme paneline yönlendiriyoruz
+                            st.session_state.current_page = "✍️ Gözlemci Hakem Paneli"
+                            st.success(f"Hoş Geldiniz, {secilen_hakem}!")
+                            st.rerun()
+                        else:
+                            st.error("❌ Hatalı PIN kodu!")
+        else:
+            st.success(f"Zaten {st.session_state.aktif_hakem} olarak giriş yaptınız.")
+            if st.button("✍️ Hakem Paneline Git"):
+                st.session_state.current_page = "✍️ Gözlemci Hakem Paneli"
+                st.rerun()
         if st.session_state.get("sistem_kilitli", False) and not st.session_state.admin_mi:
             st.error("🚨 SİSTEM BAKIMDA: Başhakem şu an çevrimdışı (Uçak) modunda maç programı düzenliyor. Lütfen skor değişikliklerini kağıt üzerinde Başhakem masasına iletiniz.")
         elif not st.session_state.hakem_mi:
