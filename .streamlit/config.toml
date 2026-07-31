@@ -1,7 +1,7 @@
 [theme]
-base="dark"
-primaryColor="#ff4b4b"
-backgroundColor="#0e1117"
-secondaryBackgroundColor="#262730"
-textColor="#fafafa"
+base="light"
+primaryColor="#D4502C"             # Kiremit/Turuncu (Butonlar ve vurgular için koyulaştırılmış, beyazda net duran spor bir renk)
+backgroundColor="#FFFFFF"          # Saf Beyaz (Ana ekranın aydınlık ve ferah arka planı)
+secondaryBackgroundColor="#F1F5F9" # Çok uçuk gri-mavi (Yan menü, açıklama barları ve form kutuları için hafif bir ayrım)
+textColor="#0F172A"                # Çok koyu lacivert-siyah (Gözü yormayan, kağıt üzerindeki mürekkep gibi duran net yazı rengi)
 font="sans serif"
