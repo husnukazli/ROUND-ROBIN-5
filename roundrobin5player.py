@@ -259,6 +259,7 @@ def generate_combined_standings_pdf(gruplar_dict):
                 pdf.ln()
         pdf.ln(5)
     return get_pdf_bytes(pdf)
+
 def set_gecerli_mi(t1, t2, is_set3=False, durum="Tamamlandı"):
     if durum != "Tamamlandı": return True, ""
     if t1 == 0 and t2 == 0: return True, ""
@@ -488,7 +489,6 @@ def render_html_matrix(takimlar, df_grup):
     return html
 
 def generate_matrix_pdf(grup_adi, takimlar, df_grup):
-    # Alt maç skorlarını düz yazı formatına (PDF'e uygun) çeviren yardımcı fonksiyon
     def get_plain_score(row, target_t1):
         is_t1 = row['Takım 1'] == target_t1
         durum = str(row.get('Durum', 'Tamamlandı'))
@@ -547,7 +547,6 @@ def generate_matrix_pdf(grup_adi, takimlar, df_grup):
             if det2: t2_details.append(det2)
 
         if t1_total > 0 or t2_total > 0:
-            # --- GERÇEK KAZANANI BULMA (Tie-break / Averaj Kontrolü) ---
             temp_stats = hesapla_tum_puan_durumu(group)
             t1_galibiyet = 0
             t2_galibiyet = 0
@@ -570,7 +569,6 @@ def generate_matrix_pdf(grup_adi, takimlar, df_grup):
     apply_font(pdf, bold=True, size=14)
     pdf.cell(0, 8, to_pdf_text(f"{grup_adi} - Takım Maçları Matrisi"), ln=True, align='C')
     
-    # --- BİLGİ NOTU EKLENDİ ---
     apply_font(pdf, bold=False, size=8)
     pdf.cell(0, 4, to_pdf_text("Not: Skorun yanındaki (*) yıldız işareti, kazanan takımı gösterir."), ln=True, align='C')
     pdf.ln(5)
@@ -880,10 +878,8 @@ def ortak_veriyi_kaydet():
         "hakem_pinleri": st.session_state.get("hakem_pinleri", {})
     }
     
-    # SİSTEM KİLİDİNİ AYARLARA EKLE (UÇAK MODU KORUMASI)
     ayarlar["sistem_kilitli"] = st.session_state.get("sistem_kilitli", False)
 
-    # UÇAK MODUNDAYSA (ÇEVRİMDIŞI) SADECE YERELE KAYDET
     cevrimdisi = st.session_state.get("cevrimdisi_mod", False)
     
     if cevrimdisi:
@@ -896,7 +892,6 @@ def ortak_veriyi_kaydet():
         except:
             return False
     else:
-        # İNTERNET VARSA BULUTA (SUPABASE) KAYDET
         if not supabase: return False
         try:
             if mac_kayitlari:
@@ -912,7 +907,6 @@ def ortak_veriyi_yukle():
     maclar_data = None
     cevrimdisi = st.session_state.get("cevrimdisi_mod", False)
 
-    # EĞER UÇAK MODUNDAYSA DIREKT YERELDEN OKU
     if cevrimdisi:
         yerel_dosya = os.path.join(SISTEM_KLASORU, "cevrimdisi_veritabani.json")
         if os.path.exists(yerel_dosya):
@@ -924,7 +918,6 @@ def ortak_veriyi_yukle():
             except:
                 pass
     else:
-        # İNTERNET MODUNDAYSA SUPABASE'DEN ÇEK
         if supabase:
             try:
                 res = supabase.table("turnuva_ayarlari").select("*").eq("id", 1).execute()
@@ -932,11 +925,11 @@ def ortak_veriyi_yukle():
                 maclar_res = supabase.table("maclar").select("*").execute()
                 if maclar_res.data: maclar_data = maclar_res.data
             except:
-                pass # Hata durumunda boş geç, eski veri kalsın
+                pass 
 
     if data:
         st.session_state.sistem_kilitli = data.get("sistem_kilitli", False)
-        st.session_state.cevrimdisi_mod = st.session_state.sistem_kilitli  # Sayfa yenilense de korur
+        st.session_state.cevrimdisi_mod = st.session_state.sistem_kilitli
         
         if data.get("mac_programi"):
             mp_df = pd.DataFrame(data["mac_programi"])
@@ -1070,12 +1063,10 @@ with st.sidebar:
     
     if st.session_state.admin_mi:
         menu_items_side = ["🏠 Ana Sayfa", "👥 Grup Ayarları", "📝 Esame Kontrol Merkezi", "✍️ Skor Girişi", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular", "👮‍♂️ Hakem Yönetimi", "⚙️ Yönetim & Dosya", "📈 İstatistikler"]
-        # DÜZELTME: Aşağıdaki satır üstteki admin menüsünü siliyordu, o yüzden iptal ettim. 
-        # menu_items_side = ["🏠 Ana Sayfa", "👨‍✈️ Kaptan Esame Girişi", "🛡️ Takım Kadroları", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular"]
     elif st.session_state.hakem_mi:
         menu_items_side = ["🏠 Ana Sayfa", "✍️ Gözlemci Hakem Paneli", "📅 Maç Programı"]
     else:
-        menu_items_side = ["🏠 Ana Sayfa", "👨‍✈️ Kaptan Girişi", "👮‍♂️ Gözlemci Hakem Girişi", "🛡️ Takım Kadroları", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular"]
+        menu_items_side = ["🏠 Ana Sayfa", "👨‍✈️ Kaptan Esame Girişi", "👮‍♂️ Gözlemci Hakem Girişi", "🛡️ Takım Kadroları", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular"]
 
     for menu in menu_items_side:
         target = "Home" if menu == "🏠 Ana Sayfa" else menu
@@ -1100,14 +1091,13 @@ with st.sidebar:
         st.markdown("---")
         st.markdown("**⚙️ Bağlantı Modu**")
         
-        # Hafızadaki son duruma göre toggle'ın açık/kapalı gelmesini sağla
         aktif_durum = st.session_state.get("cevrimdisi_mod", False)
         ucak_modu = st.toggle("✈️ Çevrimdışı Çalış (Diğerlerini Kilitle)", value=aktif_durum)
         
         if ucak_modu != aktif_durum:
             st.session_state.cevrimdisi_mod = ucak_modu
             st.session_state.sistem_kilitli = ucak_modu
-            if ucak_modu: # Uçak Modu AÇILDI
+            if ucak_modu: 
                 if supabase: 
                     try:
                         supabase.table("turnuva_ayarlari").upsert({"id": 1, "sistem_kilitli": True}).execute()
@@ -1115,7 +1105,7 @@ with st.sidebar:
                         pass
                 ortak_veriyi_kaydet()
                 st.rerun()
-            else: # Uçak Modu KAPATILDI (İnternete Eşitle)
+            else:
                 if supabase:
                     try:
                         supabase.table("turnuva_ayarlari").upsert({"id": 1, "sistem_kilitli": False}).execute()
@@ -1123,23 +1113,19 @@ with st.sidebar:
                         pass
                 ortak_veriyi_kaydet()
                 
-                # --- EŞİTLEME SONRASI 5 SANİYELİK MESAJ ---
                 msg_kutu = st.empty()
                 msg_kutu.success("🌐 İNTERNET BAĞLANTISI SAĞLANDI! Veritabanı ile tüm veriler başarıyla eşitlendi.")
                 time.sleep(5)
                 msg_kutu.empty()
-                # ------------------------------------------
                 
                 st.rerun()
 
-    # ==============================================================================
-    # YENİ EKLENEN BÖLÜM: VERİLERİ GÜNCELLE BUTONU
-    # ==============================================================================
     st.divider()
     if st.button("🔄 Verileri Güncelle", use_container_width=True):
         with st.spinner("Kortlardaki son durum çekiliyor..."):
             ortak_veriyi_yukle()
         st.rerun()
+
 # ==============================================================================
 # EN ÜST BÖLÜM (LOGOLAR VE AŞAMA SEÇİMİ)
 # ==============================================================================
@@ -1169,7 +1155,6 @@ with c_logos:
 
 st.markdown("<hr style='margin-top: 5px; margin-bottom: 15px;'>", unsafe_allow_html=True)
 
-# BAKIM MODU GENEL UYARISI SADECE MİSAFİRLERE VE YETKİLİLERE
 if st.session_state.get("sistem_kilitli", False) and not st.session_state.admin_mi:
     st.error("🚨 **SİSTEM ÇEVRİMDIŞI BAKIM MODUNDA:** Başhakem şu an masaüstü programda veri girişi yapmaktadır. Kaptanların ve Hakemlerin giriş yetkileri geçici olarak durdurulmuştur.")
 
@@ -1214,7 +1199,7 @@ if st.session_state.current_page == "Home":
     else:
         st.markdown(f"<h4 style='text-align:center;'>İzleyici Paneli ({st.session_state.aktif_asama})</h4><br>", unsafe_allow_html=True)
         c1, c2, c3, c4, c5, c6 = st.columns(6)
-        with c1: render_big_button("👨‍✈️", "Kaptan Girişi", "👨‍✈️ Kaptan Girişi")
+        with c1: render_big_button("👨‍✈️", "Kaptan Girişi", "👨‍✈️ Kaptan Esame Girişi")
         with c2: render_big_button("👮‍♂️", "Gözlemci Hakem Girişi", "👮‍♂️ Gözlemci Hakem Girişi")
         with c3: render_big_button("🛡️", "Takım Kadroları", "🛡️ Takım Kadroları")
         with c4: render_big_button("🏆", "Puan Durumu", "🏆 Puan Durumu")
@@ -1254,20 +1239,16 @@ elif st.session_state.current_page == "📈 İstatistikler":
         
         st.header("📊 Turnuva İstatistikleri")
         
-        # Senin harika fikrin: Aşama veya Tüm Turnuva seçici butonu
         kapsam = st.radio("Hesaplanacak Veriler:", [f"Sadece {aktif_asama}", "Tüm Turnuva (Genel Toplam)"], horizontal=True)
         st.markdown("---")
 
-        # Bütün veriyi alıyoruz
         tum_fikstur = st.session_state.get('skor_tablosu', pd.DataFrame())
         tum_program = st.session_state.get('mac_programi', pd.DataFrame())
         
-        # Kullanıcının seçimine göre veriyi süzüyoruz
         if kapsam == "Tüm Turnuva (Genel Toplam)":
             df_fikstur = tum_fikstur
             df_program = tum_program
         else:
-            # Sadece o anki aşamaya ait grupları bulup filtreliyoruz
             gecerli_gruplar = [g for g, asama in st.session_state.get('grup_asamalari', {}).items() if asama == aktif_asama]
             df_fikstur = tum_fikstur[tum_fikstur['Grup'].isin(gecerli_gruplar)] if not tum_fikstur.empty else pd.DataFrame()
             df_program = tum_program[tum_program['Grup'].isin(gecerli_gruplar)] if not tum_program.empty else pd.DataFrame()
@@ -1377,21 +1358,18 @@ else:
     
     # --- İÇ SAYFA YATAY NAVBAR ---
     if st.session_state.admin_mi:
-        menu_items_top = ["🏠 Ana Sayfa", "👥 Grup Ayarları", "📝 Esame Kontrol Merkezi", "✍️ Skor Girişi", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular", "👮‍♂️ Hakem Yönetimi", "⚙️ Yönetim"]
+        menu_items_top = ["🏠 Ana Sayfa", "👥 Grup Ayarları", "📝 Esame Kontrol Merkezi", "✍️ Skor Girişi", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular", "👮‍♂️ Hakem Yönetimi", "⚙️ Yönetim & Dosya"]
     elif st.session_state.kaptan_mi:
         menu_items_top = ["🏠 Ana Sayfa", "👨‍✈️ Kaptan Esame Girişi", "🛡️ Takım Kadroları", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular"]
     elif st.session_state.hakem_mi:
         menu_items_top = ["🏠 Ana Sayfa", "✍️ Gözlemci Hakem Paneli", "📅 Maç Programı"]
     else:
-        menu_items_top = ["🏠 Ana Sayfa", "👨‍✈️ Kaptan Girişi", "👮‍♂️ Gözlemci Hakem Girişi", "🛡️ Takım Kadroları", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular"]
+        menu_items_top = ["🏠 Ana Sayfa", "👨‍✈️ Kaptan Esame Girişi", "👮‍♂️ Gözlemci Hakem Girişi", "🛡️ Takım Kadroları", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular"]
 
     nav_cols = st.columns(len(menu_items_top))
     for i, menu in enumerate(menu_items_top):
         with nav_cols[i]:
-            # Handle mapping for Kaptan and Hakem Guest buttons
-            if menu == "👨‍✈️ Kaptan Girişi": target_menu = "👨‍✈️ Kaptan Esame Girişi"
-            elif menu == "👮‍♂️ Gözlemci Hakem Girişi": target_menu = "👮‍♂️ Gözlemci Hakem Girişi"
-            elif menu == "⚙️ Yönetim": target_menu = "⚙️ Yönetim & Dosya"
+            if menu == "⚙️ Yönetim": target_menu = "⚙️ Yönetim & Dosya"
             elif menu == "🏠 Ana Sayfa": target_menu = "Home"
             else: target_menu = menu
             
@@ -1576,8 +1554,42 @@ else:
                                             st.error("⚠️ Sistem şu an başka bir takımın kaydını işliyor (Meşgul). Çakışma önlendi, lütfen 3 saniye bekleyip butona tekrar basınız.")
                     st.divider()
         
-    # --- HAKEM SAYFASI: SKOR GİRİŞ PANELİ ---
     # --- HAKEM GİRİŞ SAYFASI ---
+    elif menu_secim == "👮‍♂️ Gözlemci Hakem Girişi":
+        if st.session_state.get("sistem_kilitli", False) and not st.session_state.admin_mi:
+            st.error("🚨 SİSTEM BAKIMDA: Başhakem şu an çevrimdışı (Uçak) modunda maç programını düzenliyor. Lütfen skorlarınızı kağıt üzerinde Başhakem masasına iletiniz.")
+        elif not st.session_state.hakem_mi:
+            st.info("Görevli olduğunuz maçların skorlarını girmek için hakem PIN kodunuzla giriş yapınız.")
+            
+            if not st.session_state.hakem_listesi:
+                st.warning("Sisteme henüz hakem eklenmemiş. Lütfen Başhakem ile iletişime geçin.")
+            else:
+                col_h1, col_h2 = st.columns([2, 1])
+                with col_h1:
+                    secilen_hakem = st.selectbox("Hakem Seçin:", ["Seçiniz"] + st.session_state.hakem_listesi)
+                    girilen_hakem_pin = st.text_input("4 Haneli Hakem PIN Kodu:", type="password", key="login_hakem_pin")
+                    
+                    if st.button("🚀 Hakem Olarak Giriş Yap", type="primary"):
+                        if secilen_hakem == "Seçiniz":
+                            st.warning("Lütfen isminizi seçin.")
+                        elif secilen_hakem not in st.session_state.hakem_pinleri:
+                            st.error("Sizin için henüz PIN üretilmemiş. Başhakeme başvurunuz.")
+                        elif girilen_hakem_pin == str(st.session_state.hakem_pinleri[secilen_hakem]):
+                            st.session_state.hakem_mi = True
+                            st.session_state.admin_mi = False
+                            st.session_state.kaptan_mi = False
+                            st.session_state.aktif_hakem = secilen_hakem
+                            st.session_state.current_page = "✍️ Gözlemci Hakem Paneli"
+                            st.success(f"Hoş Geldiniz, {secilen_hakem}!")
+                            st.rerun()
+                        else:
+                            st.error("❌ Hatalı PIN kodu!")
+        else:
+            st.success(f"Zaten {st.session_state.aktif_hakem} olarak giriş yaptınız.")
+            if st.button("✍️ Hakem Paneline Git"):
+                st.session_state.current_page = "✍️ Gözlemci Hakem Paneli"
+                st.rerun()
+
     # --- HAKEM SAYFASI: SKOR GİRİŞ PANELİ ---
     elif menu_secim == "✍️ Gözlemci Hakem Paneli":
         if st.session_state.get("sistem_kilitli", False) and not st.session_state.admin_mi:
@@ -1588,7 +1600,6 @@ else:
             aktif_hakem = st.session_state.aktif_hakem
             st.info(f"Hoş geldin, **{aktif_hakem}**. Aşağıda turnuva boyunca üzerinize atanan tüm maçlar tarihlerine göre listelenmiştir.")
             
-            # Hakeme atanmış tüm maçları buluyoruz (Tarih filtresi olmadan hepsi)
             df_hakem_maclari = st.session_state.mac_programi[st.session_state.mac_programi['Hakem'] == aktif_hakem]
             
             if df_hakem_maclari.empty:
@@ -1596,7 +1607,6 @@ else:
             else:
                 bugun = datetime.date.today()
                 
-                # Tarihleri sıralı alalım ki liste düzgün görünsün
                 tarihler = df_hakem_maclari['Tarih'].dropna().unique()
                 tarihler_sirali = sorted(tarihler, key=lambda x: datetime.datetime.strptime(x, "%d.%m.%Y").date())
                 
@@ -1626,7 +1636,6 @@ else:
                         baslik_durumu = "🔒 (Kilitli)" if is_kilitli else "✍️ (Skor Girilebilir)"
                         expander_baslik = f"🎾 {saat} - {kort} | {grup_adi} | {t1} vs {t2} {baslik_durumu}"
                         
-                        # Geçmiş ve gelecek maçları varsayılan olarak kapalı (False) tutar, sadece bugünün maçları açık (True) gelir.
                         with st.expander(expander_baslik, expanded=not is_kilitli):
                             form_verileri = {}
                             
@@ -1737,24 +1746,20 @@ else:
         if st.session_state.admin_mi:
             st.info("ℹ️ Kaptanların girdikleri kadrolar (kapalı zarflar) burada toplanır. Geçmiş veya gelecek tüm esameleri tarih seçerek inceleyebilirsin.")
             
-            # 1. Turnuvadaki tüm benzersiz tarihleri bul
             tum_tarihler = st.session_state.mac_programi['Tarih'].dropna().unique().tolist()
             
             if not tum_tarihler:
                 st.warning("Henüz maç programında tarihli bir maç bulunmuyor.")
             else:
-                # 2. Bugünün tarihini bul ve listede varsa otomatik seçili gelmesini sağla
                 bugun = datetime.date.today().strftime("%d.%m.%Y")
                 try:
                     varsayilan_index = tum_tarihler.index(bugun)
                 except ValueError:
-                    varsayilan_index = len(tum_tarihler) - 1 # Bugün yoksa listedeki en son günü seç
+                    varsayilan_index = len(tum_tarihler) - 1 
                 
-                # 3. Başhakem için Tarih Seçici Kutu
                 secilen_tarih = st.selectbox("📅 Görüntülenecek Tarihi Seçin (Arşiv):", tum_tarihler, index=varsayilan_index)
                 st.divider()
                 
-                # Sadece seçilen güne ait maçları filtrele
                 df_secilen_gun = st.session_state.mac_programi[st.session_state.mac_programi['Tarih'] == secilen_tarih]
                 
                 if df_secilen_gun.empty:
@@ -2104,17 +2109,14 @@ else:
                     form_verileri = {}
                     
                     for idx, row in sort_maclar(df_gun).iterrows():
-                        # --- SKOR GİRİLMİŞ Mİ KONTROLÜ VE RENKLENDİRME ---
                         s1t1_k = int(row['1.Set T1'])
                         s1t2_k = int(row['1.Set T2'])
                         durum_k = str(row.get('Durum', 'Tamamlandı'))
                         skor_girilmis = s1t1_k > 0 or s1t2_k > 0 or durum_k != "Tamamlandı"
                         
                         if skor_girilmis:
-                            # Skor girildiyse turuncu kiremit rengi vurgu (Temanla aynı renk: #E86C43)
                             st.markdown(f"<div style='padding: 6px 10px; border-radius: 6px; background-color: rgba(232, 108, 67, 0.15); border-left: 4px solid #E86C43; margin-bottom: 5px;'><b style='color: #E86C43;'>✅ {row['Branş']} ({row['Eşleşme']}) - Skor Kayıtlı</b></div>", unsafe_allow_html=True)
                         else:
-                            # Skor girilmediyse standart soluk görünüm
                             st.markdown(f"<div style='padding: 6px 10px; margin-bottom: 5px; opacity: 0.8;'><b>🔹 {row['Branş']} ({row['Eşleşme']})</b></div>", unsafe_allow_html=True)
                         
                         h_cols = st.columns([2.8, 2.8, 2.6, 1.4, 0.2, 1.4, 0.2, 1.4])
@@ -2319,7 +2321,6 @@ else:
                                 st.session_state.skor_tablosu.at[idx, "Durum"] = guncel_row["Durum"]
                                 st.session_state.skor_tablosu.at[idx, "STB"] = guncel_row["STB"]
                                 
-                                # Eğer burada bir isim girilmişse, otomatik olarak bu esameyi ONAYLA ve MAÇ PROGRAMINDA göster!
                                 if guncel_row["T1_Oyuncu"] or guncel_row["T2_Oyuncu"]:
                                     st.session_state.esame_onayli[match_key] = True
 
@@ -2398,8 +2399,7 @@ else:
                         if ortak_veriyi_kaydet():
                             st.success(f"{sil_hakem} sistemden kaldırıldı.")
                             st.rerun()
-
-    # --- SAYFA 3: PUAN DURUMU ---
+          # --- SAYFA 3: PUAN DURUMU ---
     elif menu_secim == "🏆 Puan Durumu":
         if not st.session_state.skor_tablosu.empty:
             gecerli_gruplar_t3 = [g for g in st.session_state.skor_tablosu['Grup'].unique() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama]
@@ -2676,7 +2676,6 @@ else:
                     formatted_tarih = st.session_state.selected_date_filter.strftime("%d.%m.%Y")
                     gun_adi = turkce_gunler[st.session_state.selected_date_filter.weekday()]
     
-                # BAŞHAKEM NOTU - EN TEPEDE GÖSTERİM (MİSAFİR VE KAPTAN İÇİN)
                 gunluk_not_gosterim = st.session_state.gunluk_notlar.get(formatted_tarih, "")
                 if gunluk_not_gosterim:
                     st.warning(f"📢 **Başhakem Notu:** {gunluk_not_gosterim}")
@@ -2800,7 +2799,6 @@ else:
                     })
                 df_team_summary = pd.DataFrame(df_team_summary_list)
     
-                # ADMİN GÖRÜNÜMÜ
                 if st.session_state.admin_mi:
                     
                     st.markdown(f"### ➕ {formatted_tarih} Tarihine Takım Eşleşmesi Ekle ({aktif_asama})")
@@ -2939,7 +2937,6 @@ else:
                                 else:
                                     st.error("Sistem meşgul, lütfen tekrar deneyin.")
     
-                    # --- ALT KISMA TAŞINAN AYARLAR VE GÖSTER/GİZLE MENÜSÜ ---
                     st.markdown("---")
                     st.markdown("### ⚙️ Görünüm ve Çıktı Ayarları")
                     if st.button("🔄 Tüm Bireysel Maçları Ekranda Göster / Gizle"):
@@ -3008,450 +3005,4 @@ else:
                                 for i in df_pdf_export.index:
                                     win = df_pdf_export.at[i, 'Kazanan']
                                     if win == 'T1': df_pdf_export.at[i, 'Takım 1'] = f"**{df_pdf_export.at[i, 'Takım 1']}**"
-                                    elif win == 'T2': df_pdf_export.at[i, 'Takım 2'] = f"**{df_pdf_export.at[i, 'Takım 2']}**"
-                                    df_pdf_export.at[i, 'Skor'] = f"**{df_pdf_export.at[i, 'Skor']}**"
-                                    
-                        if not df_pdf_export.empty and secilen_pdf_cols:
-                            final_pdf_df = df_pdf_export[secilen_pdf_cols].copy()
-                            final_pdf_df["_IS_HEADER_"] = df_pdf_export["_IS_HEADER_"]
-                            
-                            pdf_notu = st.session_state.gunluk_notlar.get(formatted_tarih, "")
-                            
-                            st.markdown("<br>", unsafe_allow_html=True)
-                            pdf_turu = st.radio("📄 Belge Başlığı (PDF'te ne yazsın?):", ["Maç Programı (Sabah)", "Günün Sonuçları (Akşam)"], horizontal=True)
-                            
-                            if "Sonuçları" in pdf_turu:
-                                baslik_metni = f"Mac Sonuclari - {formatted_tarih}"
-                                dosya_adi = f"mac_sonuclari_{formatted_tarih}.pdf"
-                                buton_adi = "📥 Günün Sonuçlarını PDF Olarak İndir"
-                            else:
-                                baslik_metni = f"Mac Programi - {formatted_tarih}"
-                                dosya_adi = f"mac_programi_{formatted_tarih}.pdf"
-                                buton_adi = "📥 Maç Programını PDF Olarak İndir"
-                                
-                            pdf_bytes_admin = generate_pdf(final_pdf_df, baslik_metni, not_metni=pdf_notu)
-                            st.download_button(buton_adi, data=pdf_bytes_admin, file_name=dosya_adi, mime="application/pdf", key="pdf_admin")
-    
-                # MİSAFİR & KAPTAN & GÖZLEMCİ HAKEM (İZLEYİCİ GÖRÜNÜMÜ)
-                else:
-                    st.markdown(f"### 📋 {formatted_tarih} Tarihli Maç Akışı ({aktif_asama})")
-                    if df_gunluk_safe.empty:
-                        st.info("Bu tarihte planlanmış maç bulunmamaktadır.")
-                    else:
-                        st.divider()
-                        for (grup_adi, eslesme_adi), grup_df in df_gunluk_safe.groupby(['Grup', 'Eşleşme']):
-                            takim_skoru_etiketi = ""
-                            if not df_team_summary.empty:
-                                ozet_satiri = df_team_summary[(df_team_summary['Grup'] == grup_adi) & (df_team_summary['Eşleşme'] == eslesme_adi)]
-                                if not ozet_satiri.empty:
-                                    val = ozet_satiri.iloc[0]['Skor']
-                                    if val != "Oynanmadı": takim_skoru_etiketi = f"  🟢 SKOR: {val}"
-    
-                            kort = grup_df.iloc[0]['Kort']
-                            saat = grup_df.iloc[0]['Maç Saati']
-                            takim1 = grup_df.iloc[0]['Takım 1']
-                            takim2 = grup_df.iloc[0]['Takım 2']
-                            gun_kodu = grup_df.iloc[0]['Gün']
-                            mevcut_hakem = grup_df.iloc[0]['Hakem']
-                            if pd.isna(mevcut_hakem) or mevcut_hakem == "Atanmadı": mevcut_hakem = ""
-                            
-                            match_key = f"{grup_adi}_{gun_kodu}_{eslesme_adi}"
-                            is_approved = st.session_state.esame_onayli.get(match_key, False)
-                            
-                            hakem_baslik_etiketi = f" (👮‍♂️ {mevcut_hakem})" if mevcut_hakem else ""
-                            expander_title = f"🎾 {saat} | {kort} | {grup_adi} | {takim1} - {takim2}{takim_skoru_etiketi}{hakem_baslik_etiketi}"
-                            
-                            with st.expander(expander_title, expanded=False):
-                                html_rows = ""
-                                for _, row in sort_maclar(grup_df).iterrows():
-                                    skor = str(row.get('Skor', 'Oynanmadı'))
-                                    skor_html = f"<span style='color:#28a745; font-weight:bold;'>{skor}</span>" if skor not in ["Oynanmadı", ""] else "<i>Bekleniyor</i>"
-                                    
-                                    if is_approved:
-                                        t1_o = html.escape(str(row.get('T1 Oyuncu', '')).strip())
-                                        t2_o = html.escape(str(row.get('T2 Oyuncu', '')).strip())
-                                    else:
-                                        t1_o = "🔒 Esame Bekleniyor"
-                                        t2_o = "🔒 Esame Bekleniyor"
-                                    
-                                    if row.get('Kazanan') == 'T1' and is_approved: t1_o = f"<b>{t1_o}</b>"
-                                    elif row.get('Kazanan') == 'T2' and is_approved: t2_o = f"<b>{t2_o}</b>"
-                                    
-                                    html_rows += f"<tr><td style='border:1px solid rgba(128,128,128,0.3); padding:5px;'>{row['Branş']}</td><td style='border:1px solid rgba(128,128,128,0.3); padding:5px;'>{t1_o} / {t2_o}</td><td style='border:1px solid rgba(128,128,128,0.3); padding:5px;'>{skor_html}</td></tr>"
-                                
-                                st.markdown(f"""
-                                <table style="width:100%; border-collapse: collapse; font-family: sans-serif;">
-                                    <tr><th style="border:1px solid rgba(128,128,128,0.3); padding:5px; background-color: rgba(128, 128, 128, 0.1);">Branş</th><th style="border:1px solid rgba(128,128,128,0.3); padding:5px; background-color: rgba(128, 128, 128, 0.1);">Oyuncular</th><th style="border:1px solid rgba(128,128,128,0.3); padding:5px; background-color: rgba(128, 128, 128, 0.1);">Skor</th></tr>
-                                    {html_rows}
-                                </table>
-                                """, unsafe_allow_html=True)
-            else:
-                st.info("Gruplar oluşturulmadan maç programı aktif edilemez.")
-
-    # --- SAYFA 6: DUYURULAR ---
-    elif menu_secim == "📢 Duyurular":
-        st.subheader("📢 Turnuva Duyuruları ve Belgeler")
-        if st.session_state.admin_mi:
-            st.markdown("### ✍️ Duyuru Düzenleme (Sadece Başhakem)")
-            yeni_duyuru = st.text_area("Duyuru Metni:", value=st.session_state.duyuru_metni, height=150)
-            if st.button("💾 Duyuruyu Kaydet"):
-                st.session_state.duyuru_metni = yeni_duyuru
-                if ortak_veriyi_kaydet():
-                    st.success("Duyuru metni başarıyla güncellendi!")
-                else:
-                    st.error("Sistem meşgul, lütfen tekrar deneyin.")
-            
-            st.markdown("---")
-            st.markdown("### 📄 Turnuva Belgeleri Ekle (Çoklu Yükleme)")
-            st.info("Kural kitapçığı veya yönetmelik gibi PDF dosyalarını sisteme buradan yükleyebilirsiniz. (Not: Ücretsiz bulut sunucular uyku moduna geçtiğinde yüklenen PDF dosyaları silinebilir. Turnuva anında profesyonel sunucuya geçildiğinde bu durum kalıcı olarak çözülecektir.)")
-            uploaded_pdfs = st.file_uploader("PDF Dosyalarını Seçin:", type=["pdf"], accept_multiple_files=True)
-            if uploaded_pdfs:
-                if st.button("📤 Seçilen PDF'leri Sisteme Yükle"):
-                    for pdf_file in uploaded_pdfs:
-                        file_path = os.path.join(BELGELER_KLASORU, pdf_file.name)
-                        with open(file_path, "wb") as f:
-                            f.write(pdf_file.getbuffer())
-                    st.success("Belgeler başarıyla yüklendi!")
-                    st.rerun()
-            
-            pdf_dosyalari = [f for f in os.listdir(BELGELER_KLASORU) if f.endswith('.pdf')]
-            if pdf_dosyalari:
-                st.markdown("### 🗑️ Yüklü Belgeleri Yönet")
-                for pdf in pdf_dosyalari:
-                    col1, col2 = st.columns([4, 1])
-                    col1.write(f"📄 **{pdf}**", unsafe_allow_html=True)
-                    if col2.button("Sil", key=f"del_{pdf}"):
-                        os.remove(os.path.join(BELGELER_KLASORU, pdf))
-                        st.success(f"{pdf} başarıyla silindi!")
-                        st.rerun()
-        else:
-            st.markdown("### 📝 Güncel Duyurular")
-            if st.session_state.duyuru_metni: st.info(st.session_state.duyuru_metni)
-            else: st.write("Şu an için aktif bir turnuva duyurusu bulunmamaktadır.")
-                
-            st.markdown("---")
-            st.markdown("### 📄 Turnuva Belgeleri")
-            pdf_dosyalari = [f for f in os.listdir(BELGELER_KLASORU) if f.endswith('.pdf')]
-            if pdf_dosyalari:
-                st.write("Aşağıdaki belgelere tıklayarak sayfadan ayrılmadan doğrudan okuyabilirsiniz:")
-                for pdf in pdf_dosyalari:
-                    dosya_yolu = os.path.join(BELGELER_KLASORU, pdf)
-                    with st.expander(f"📖 {pdf} - Görüntülemek İçin Tıklayın"):
-                        show_pdf(dosya_yolu)
-                        with open(dosya_yolu, "rb") as f:
-                            st.download_button(label=f"📥 {pdf} Dosyasını İndir", data=f.read(), file_name=pdf, mime="application/pdf", key=f"dl_btn_{pdf}")
-            else:
-                st.write("Sisteme henüz herhangi bir belge yüklenmemiş.")
-
-# --- SAYFA 7: YÖNETİM & DOSYA İŞLEMLERİ ---
-    elif menu_secim == "⚙️ Yönetim & Dosya":
-        st.subheader(f"⚙️ Gelişmiş Yönetim Paneli ({aktif_asama})")
-
-        if st.session_state.admin_mi:
-            
-            with st.expander("🔑 Kaptan Şifreleri (PIN) Yönetimi", expanded=False):
-                st.info("ℹ️ Turnuvaya katılan her takıma otomatik 4 haneli PIN üretilir. Kaptanlar bu şifreyle sisteme girip kendi esamelerini teslim edebilirler.")
-                
-                tum_takim_listesi = dogal_sirala(list(st.session_state.takim_havuzu.keys()))
-                for g_n, g_k in st.session_state.takim_kadrolari.items():
-                    for t in g_k.keys():
-                        if t not in tum_takim_listesi: tum_takim_listesi.append(t)
-                        
-                if st.button("🚀 Tüm Takımlara 4 Haneli PIN Üret (Mevcutları Koru)", type="primary"):
-                    for t in tum_takim_listesi:
-                        if t not in st.session_state.takim_pinleri:
-                            st.session_state.takim_pinleri[t] = random.randint(1000, 9999)
-                    if ortak_veriyi_kaydet():
-                        st.success("Tüm takımlar için şifreler başarıyla üretildi!")
-                        st.rerun()
-                    else:
-                        st.error("Sistem meşgul, lütfen tekrar deneyin.")
-                
-                if st.session_state.takim_pinleri:
-                    pin_df = pd.DataFrame(list(st.session_state.takim_pinleri.items()), columns=["Takım Adı", "Kaptan PIN Kodu"])
-                    st.dataframe(pin_df, use_container_width=True)
-            
-            with st.expander("✍️ Grup Tipi, Format, İsim ve Kadroları Revize Et", expanded=True):
-                if not st.session_state.skor_tablosu.empty:
-                    t_gruplar = dogal_sirala([g for g in st.session_state.skor_tablosu['Grup'].unique() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama])
-                    
-                    if not t_gruplar:
-                        st.info(f"{aktif_asama} için kayıtlı grup bulunmamaktadır.")
-                    else:
-                        sec_g = st.selectbox("Düzenlenecek Grup Seç:", ["Seçiniz"] + t_gruplar, key="admin_edit_grup")
-                        
-                        if sec_g != "Seçiniz":
-                            yeni_grup_adi = st.text_input("Grup Adını Güncelle:", value=sec_g, key="yeni_g_adi")
-                            st.markdown("---")
-                            
-                            m_kadrolar = st.session_state.takim_kadrolari.get(sec_g, {})
-                            mevcut_takim_sayisi = len(m_kadrolar)
-                            tip_liste = ["3'lü Grup", "4'lü Grup", "5'li Grup", "6'lı Grup"] if aktif_asama == "1. Aşama" else ["2'li Grup", "3'lü Grup", "4'lü Grup"]
-                            
-                            tip_idx = 0
-                            for i_opt, opt in enumerate(tip_liste):
-                                if str(mevcut_takim_sayisi) in opt:
-                                    tip_idx = i_opt
-                                    break
-                            
-                            mevcut_format = st.session_state.grup_formatlari.get(sec_g, "3 Maçlık (2 Tek, 1 Çift)")
-                            format_liste = ["3 Maçlık (2 Tek, 1 Çift)", "5 Maçlık (3 Tek, 2 Çift)"]
-                            format_idx = format_liste.index(mevcut_format) if mevcut_format in format_liste else 0
-
-                            mevcut_kategori = st.session_state.grup_kategorileri.get(sec_g, "Erkekler")
-                            kategori_liste = ["Erkekler", "Kadınlar"]
-                            kategori_idx = kategori_liste.index(mevcut_kategori) if mevcut_kategori in kategori_liste else 0
-                            
-                            mevcut_yas = st.session_state.grup_yas_gruplari.get(sec_g, "Yaş Belirtme")
-                            yas_liste = ["Yaş Belirtme"] + [f"{i}+" for i in range(30, 85, 5)]
-                            yas_idx = yas_liste.index(mevcut_yas) if mevcut_yas in yas_liste else 0
-
-                            c_y, c_f1, c_f2, c_f3 = st.columns(4)
-                            with c_y: yeni_yas = st.selectbox("🔄 Yaş Grubu:", yas_liste, index=yas_idx, key="edit_yas")
-                            with c_f1: yeni_kategori = st.radio("🔄 Kategori:", kategori_liste, index=kategori_idx, horizontal=True, key="edit_kategori")
-                            with c_f2: yeni_grup_tipi = st.radio("🔄 Grup Tipi:", tip_liste, index=tip_idx, horizontal=True, key="edit_grup_tipi")
-                            with c_f3: yeni_format = st.radio("🔄 Müsabaka Formatı:", format_liste, index=format_idx, horizontal=True, key="edit_format")
-                            
-                            st.caption("💡 Not: Yaş grubunu veya kategoriyi değiştirirseniz, sistem karışıklığını önlemek için yukarıdaki 'Grup Adı' içindeki metni de elle düzeltmeyi unutmayın.")
-                            
-                            fikstur_sifirlanacak_mi = (yeni_grup_tipi != tip_liste[tip_idx]) or (yeni_format != mevcut_format)
-                            if fikstur_sifirlanacak_mi:
-                                st.warning("⚠️ DİKKAT: Grup tipini veya maç formatını değiştirdiniz! Kaydettiğinizde bu grubun eski fikstürü ve skorları TAMAMEN SİLİNİP, yeni ayarlarla baştan oluşturulacaktır.")
-
-                            st.markdown("---")
-                            mevcut_takim_isimleri = list(m_kadrolar.keys())
-                            beklenen_yeni_sayi = int(yeni_grup_tipi[0])
-                            yeni_k_yapisi = {}; isim_degisiklikleri = {}
-                            
-                            for i in range(beklenen_yeni_sayi):
-                                esk_ad = mevcut_takim_isimleri[i] if i < len(mevcut_takim_isimleri) else f"Yeni Takım {i+1}"
-                                oyuncular = m_kadrolar.get(esk_ad, ["Belirtilmedi"])
-                                
-                                c_a, c_b = st.columns([1, 2])
-                                with c_a:
-                                    y_ad = st.text_input(f"{i+1}. Takım Adı", value=esk_ad, key=f"ad_{sec_g}_{i}")
-                                    if i < len(mevcut_takim_isimleri) and y_ad != esk_ad: 
-                                        isim_degisiklikleri[esk_ad] = y_ad
-                                    with c_b:
-                                        y_o_text = st.text_area(f"Oyuncular", value="\n".join(oyuncular), key=f"oyuncu_{sec_g}_{i}", height=100)
-                                        yeni_k_yapisi[y_ad if y_ad else esk_ad] = [o.strip() for o in y_o_text.split('\n') if o.strip()]
-                            
-                            if st.button("💾 Yapılan Değişiklikleri Veritabanına Yaz"):
-                                kullanilan_baska_takimlar_tab6 = {}
-                                for g_n, g_k in st.session_state.takim_kadrolari.items():
-                                    g_kat = st.session_state.grup_kategorileri.get(g_n, "Erkekler")
-                                    g_asam = st.session_state.grup_asamalari.get(g_n, "1. Aşama")
-                                    if g_n != sec_g and g_kat == yeni_kategori and g_asam == aktif_asama:
-                                        for t_n in g_k.keys(): kullanilan_baska_takimlar_tab6[t_n] = g_n
-                                
-                                cakisanlar_tab6 = [t for t in list(yeni_k_yapisi.keys()) if t in kullanilan_baska_takimlar_tab6]
-                                if cakisanlar_tab6:
-                                    hata_msj = ", ".join([f"'{t}' ({kullanilan_baska_takimlar_tab6[t]})" for t in cakisanlar_tab6])
-                                    st.error(f"⚠️ Hata: Eklemek veya değiştirmek istediğiniz takım(lar) {yeni_kategori} kategorisinde ({aktif_asama}) zaten başka gruplarda kayıtlı!\nÇakışanlar: {hata_msj}")
-                                else:
-                                    g_hedef = yeni_grup_adi if yeni_grup_adi.strip() != "" else sec_g
-                                    
-                                    if fikstur_sifirlanacak_mi:
-                                        # --- YENİ EKLENEN: Eski fikstürü veritabanından kalıcı olarak sil ---
-                                        try:
-                                            if "supabase" in globals() and supabase:
-                                                supabase.table("maclar").delete().eq("Grup", sec_g).execute()
-                                        except Exception:
-                                            pass
-                                            
-                                        st.session_state.skor_tablosu = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] != sec_g]
-                                        st.session_state.mac_programi = st.session_state.mac_programi[st.session_state.mac_programi['Grup'] != sec_g]
-                                        
-                                        st.session_state.takim_kadrolari[g_hedef] = yeni_k_yapisi
-                                        st.session_state.grup_formatlari[g_hedef] = yeni_format
-                                        st.session_state.grup_kategorileri[g_hedef] = yeni_kategori
-                                        st.session_state.grup_asamalari[g_hedef] = aktif_asama
-                                        st.session_state.grup_yas_gruplari[g_hedef] = yeni_yas
-                                        
-                                        if sec_g != g_hedef:
-                                            if sec_g in st.session_state.takim_kadrolari: del st.session_state.takim_kadrolari[sec_g]
-                                            if sec_g in st.session_state.grup_formatlari: del st.session_state.grup_formatlari[sec_g]
-                                            if sec_g in st.session_state.grup_kategorileri: del st.session_state.grup_kategorileri[sec_g]
-                                            if sec_g in st.session_state.grup_asamalari: del st.session_state.grup_asamalari[sec_g]
-                                            if sec_g in st.session_state.grup_siralamalari: st.session_state.grup_siralamalari[g_hedef] = st.session_state.grup_siralamalari.pop(sec_g)
-                                            if sec_g in st.session_state.grup_tamamlandi: st.session_state.grup_tamamlandi[g_hedef] = st.session_state.grup_tamamlandi.pop(sec_g)
-                                            if sec_g in st.session_state.grup_yas_gruplari: st.session_state.grup_yas_gruplari[g_hedef] = st.session_state.grup_yas_gruplari.pop(sec_g)
-                                            
-                                        yeni_takim_listesi = list(yeni_k_yapisi.keys())
-                                        yeni_df = pd.DataFrame(eslesmeleri_olustur(g_hedef, yeni_takim_listesi, yeni_grup_tipi, yeni_format))
-                                        if st.session_state.skor_tablosu.empty: st.session_state.skor_tablosu = yeni_df
-                                        else: st.session_state.skor_tablosu = pd.concat([st.session_state.skor_tablosu, yeni_df], ignore_index=True)
-                                        
-                                        if ortak_veriyi_kaydet():
-                                            st.success("Grup ayarları güncellendi ve yeni fikstür başarıyla oluşturuldu!")
-                                        else:
-                                            st.error("Sistem meşgul, lütfen tekrar deneyin.")
-                                        
-                                    else:
-                                        st.session_state.takim_kadrolari[sec_g] = yeni_k_yapisi
-                                        st.session_state.grup_kategorileri[sec_g] = yeni_kategori
-                                        st.session_state.grup_asamalari[sec_g] = aktif_asama
-                                        st.session_state.grup_yas_gruplari[sec_g] = yeni_yas
-                                        
-                                        if isim_degisiklikleri:
-                                            mask_s = st.session_state.skor_tablosu['Grup'] == sec_g
-                                            mask_m = st.session_state.mac_programi['Grup'] == sec_g
-                                            for e_a, y_a in isim_degisiklikleri.items():
-                                                st.session_state.skor_tablosu.loc[mask_s, 'Takım 1'] = st.session_state.skor_tablosu.loc[mask_s, 'Takım 1'].replace(e_a, y_a)
-                                                st.session_state.skor_tablosu.loc[mask_s, 'Takım 2'] = st.session_state.skor_tablosu.loc[mask_s, 'Takım 2'].replace(e_a, y_a)
-                                                st.session_state.mac_programi.loc[mask_m, 'Takım 1'] = st.session_state.mac_programi.loc[mask_m, 'Takım 1'].replace(e_a, y_a)
-                                                st.session_state.mac_programi.loc[mask_m, 'Takım 2'] = st.session_state.mac_programi.loc[mask_m, 'Takım 2'].replace(e_a, y_a)
-                                        
-                                        if g_hedef != sec_g:
-                                            st.session_state.skor_tablosu.loc[st.session_state.skor_tablosu['Grup'] == sec_g, 'Grup'] = g_hedef
-                                            st.session_state.mac_programi.loc[st.session_state.mac_programi['Grup'] == sec_g, 'Grup'] = g_hedef
-                                            st.session_state.takim_kadrolari[g_hedef] = st.session_state.takim_kadrolari.pop(sec_g)
-                                            if sec_g in st.session_state.grup_formatlari: st.session_state.grup_formatlari[g_hedef] = st.session_state.grup_formatlari.pop(sec_g)
-                                            if sec_g in st.session_state.grup_kategorileri: st.session_state.grup_kategorileri[g_hedef] = st.session_state.grup_kategorileri.pop(sec_g)
-                                            if sec_g in st.session_state.grup_asamalari: st.session_state.grup_asamalari[g_hedef] = st.session_state.grup_asamalari.pop(sec_g)
-                                            if sec_g in st.session_state.grup_siralamalari: st.session_state.grup_siralamalari[g_hedef] = st.session_state.grup_siralamalari.pop(sec_g)
-                                            if sec_g in st.session_state.grup_tamamlandi: st.session_state.grup_tamamlandi[g_hedef] = st.session_state.grup_tamamlandi.pop(sec_g)
-                                            if sec_g in st.session_state.grup_yas_gruplari: st.session_state.grup_yas_gruplari[g_hedef] = st.session_state.grup_yas_gruplari.pop(sec_g)
-                                        
-                                        if ortak_veriyi_kaydet():
-                                            st.success("Takım ve kadro bilgileri başarıyla güncellendi!")
-                                        else:
-                                            st.error("Sistem meşgul, lütfen tekrar deneyin.")
-                                    st.rerun()
-
-            st.markdown("### 🗑️ Grup Silme İşlemleri")
-            if not st.session_state.skor_tablosu.empty:
-                silinecek_gruplar = dogal_sirala([g for g in st.session_state.skor_tablosu['Grup'].unique() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama])
-                secilen_sil_grup = st.selectbox("Silinecek Grubu Seçin:", ["Seçiniz"] + silinecek_gruplar, key="grup_sil_secim")
-                
-                if secilen_sil_grup != "Seçiniz":
-                    st.warning(f"⚠️ DİKKAT: '{secilen_sil_grup}' grubunu ve bu gruba ait tüm fikstür/kadro kayıtlarını kalıcı olarak sileceksiniz!")
-                    
-                    if st.button(f"🚨 '{secilen_sil_grup}' Grubunu Tamamen Sil"):
-                        # --- YENİ EKLENEN: Silinen grubun maçlarını veritabanından kalıcı olarak temizle ---
-                        try:
-                            if "supabase" in globals() and supabase:
-                                supabase.table("maclar").delete().eq("Grup", secilen_sil_grup).execute()
-                        except Exception:
-                            pass
-                            
-                        st.session_state.skor_tablosu = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] != secilen_sil_grup]
-                        st.session_state.mac_programi = st.session_state.mac_programi[st.session_state.mac_programi['Grup'] != secilen_sil_grup]
-                        
-                        if secilen_sil_grup in st.session_state.takim_kadrolari: del st.session_state.takim_kadrolari[secilen_sil_grup]
-                        if secilen_sil_grup in st.session_state.grup_formatlari: del st.session_state.grup_formatlari[secilen_sil_grup]
-                        if secilen_sil_grup in st.session_state.grup_kategorileri: del st.session_state.grup_kategorileri[secilen_sil_grup]
-                        if secilen_sil_grup in st.session_state.grup_asamalari: del st.session_state.grup_asamalari[secilen_sil_grup]
-                        if secilen_sil_grup in st.session_state.grup_siralamalari: del st.session_state.grup_siralamalari[secilen_sil_grup]
-                        if secilen_sil_grup in st.session_state.grup_tamamlandi: del st.session_state.grup_tamamlandi[secilen_sil_grup]
-                        if secilen_sil_grup in st.session_state.grup_yas_gruplari: del st.session_state.grup_yas_gruplari[secilen_sil_grup]
-                        
-                        if ortak_veriyi_kaydet():
-                            st.success(f"'{secilen_sil_grup}' grubu sistemden başarıyla silindi!")
-                            st.rerun()
-                        else:
-                            st.error("Sistem meşgul, lütfen tekrar deneyin.")
-            else:
-                st.info(f"{aktif_asama} için silinecek herhangi bir grup bulunmuyor.")
-
-            st.markdown("---")
-            st.markdown("### 💾 Yedekleme Paneli")
-            c_sv, c_ld = st.columns(2)
-            with c_sv:
-                export_data = {
-                    "skor_tablosu": st.session_state.skor_tablosu.to_dict(orient="records") if not st.session_state.skor_tablosu.empty else [],
-                    "mac_programi": st.session_state.mac_programi.to_dict(orient="records") if not st.session_state.mac_programi.empty else [],
-                    "takim_kadrolari": st.session_state.get("takim_kadrolari", {}),
-                    "grup_formatlari": st.session_state.get("grup_formatlari", {}),
-                    "grup_kategorileri": st.session_state.get("grup_kategorileri", {}),
-                    "grup_asamalari": st.session_state.get("grup_asamalari", {}),
-                    "duyuru_metni": st.session_state.get("duyuru_metni", ""),
-                    "gunluk_notlar": st.session_state.get("gunluk_notlar", {}),
-                    "takim_havuzu": st.session_state.get("takim_havuzu", {}),
-                    "havuz_kategorileri": st.session_state.get("havuz_kategorileri", {}),
-                    "havuz_yas_gruplari": st.session_state.get("havuz_yas_gruplari", {}),
-                    "grup_siralamalari": st.session_state.get("grup_siralamalari", {}),
-                    "grup_tamamlandi": st.session_state.get("grup_tamamlandi", {}),
-                    "grup_yas_gruplari": st.session_state.get("grup_yas_gruplari", {}),
-                    "takim_pinleri": st.session_state.get("takim_pinleri", {}),
-                    "esame_kasasi": st.session_state.get("esame_kasasi", {}),
-                    "esame_onayli": st.session_state.get("esame_onayli", {}),
-                    "hakem_listesi": st.session_state.get("hakem_listesi", []),
-                    "hakem_pinleri": st.session_state.get("hakem_pinleri", {})
-                }
-                zaman_damgasi = datetime.datetime.now().strftime("%d_%m_%Y_%H%M")
-                yedek_adi = f"turnuva_yedek_{zaman_damgasi}.json"
-                st.download_button("📥 Turnuva Veritabanını İndir (.json)", data=json.dumps(export_data, ensure_ascii=False, indent=4), file_name=yedek_adi, mime="application/json")
-            with c_ld:
-                up_file = st.file_uploader("Geri Yüklemek İçin Yedek Dosyası Seçin:", type=["json"])
-                if up_file is not None and st.button("📤 Seçilen Yedeği Sisteme Entegre Et"):
-                    try:
-                        d = json.load(up_file)
-                        st.session_state.skor_tablosu = pd.DataFrame(d.get("skor_tablosu", []))
-                        st.session_state.mac_programi = pd.DataFrame(d.get("mac_programi", []))
-                        st.session_state.takim_kadrolari = d.get("takim_kadrolari", {})
-                        st.session_state.grup_formatlari = d.get("grup_formatlari", {})
-                        st.session_state.grup_kategorileri = d.get("grup_kategorileri", {})
-                        st.session_state.grup_asamalari = d.get("grup_asamalari", {})
-                        st.session_state.duyuru_metni = d.get("duyuru_metni", "")
-                        st.session_state.gunluk_notlar = d.get("gunluk_notlar", {})
-                        st.session_state.takim_havuzu = d.get("takim_havuzu", {})
-                        st.session_state.havuz_kategorileri = d.get("havuz_kategorileri", {})
-                        st.session_state.havuz_yas_gruplari = d.get("havuz_yas_gruplari", {})
-                        st.session_state.grup_siralamalari = d.get("grup_siralamalari", {})
-                        st.session_state.grup_tamamlandi = d.get("grup_tamamlandi", {})
-                        st.session_state.grup_yas_gruplari = d.get("grup_yas_gruplari", {})
-                        st.session_state.takim_pinleri = d.get("takim_pinleri", {})
-                        st.session_state.esame_kasasi = d.get("esame_kasasi", {})
-                        st.session_state.esame_onayli = d.get("esame_onayli", {})
-                        st.session_state.hakem_listesi = d.get("hakem_listesi", [])
-                        st.session_state.hakem_pinleri = d.get("hakem_pinleri", {})
-                        
-                        if ortak_veriyi_kaydet():
-                            st.success("Yedek başarıyla yüklendi!")
-                            st.rerun()
-                        else:
-                            st.error("Sistem meşgul, lütfen tekrar deneyin.")
-                    except Exception as ex: st.error(f"Hata: {ex}")
-            st.markdown("---")
-            st.markdown("### ⚠️ Sistem Sıfırlama (Tehlikeli İşlem)")
-            
-            if "confirm_reset" not in st.session_state:
-                st.session_state.confirm_reset = False
-
-            if not st.session_state.confirm_reset:
-                if st.button("🗑️ Tüm Turnuva Verilerini Kalıcı Olarak Sıfırla"):
-                    st.session_state.confirm_reset = True
-                    st.rerun()
-            else:
-                st.warning("⚠️ DİKKAT: Tüm turnuva verileri (maçlar, kadrolar, skorlar, yüklenen belgeler) kalıcı olarak silinecektir. Bu işlem geri alınamaz!")
-                col_evet, col_hayir = st.columns(2)
-                if col_evet.button("✅ Evet, Tüm Verileri Sil"):
-                    if supabase:
-                        try:
-                            res = supabase.table("maclar").select("id").execute()
-                            if res.data:
-                                ids = [item['id'] for item in res.data]
-                                for i in range(0, len(ids), 100):
-                                    batch_ids = ids[i:i+100]
-                                    supabase.table("maclar").delete().in_("id", batch_ids).execute()
-                            
-                            bos_ayarlar = {
-                                "takim_kadrolari": {}, "grup_formatlari": {}, "grup_kategorileri": {}, "grup_asamalari": {},
-                                "duyuru_metni": "", "gunluk_notlar": {}, "takim_havuzu": {}, "havuz_kategorileri": {},
-                                "havuz_yas_gruplari": {}, "grup_siralamalari": {}, "grup_tamamlandi": {}, "grup_yas_gruplari": {},
-                                "takim_pinleri": {}, "esame_kasasi": {}, "esame_onayli": {}, "mac_programi": [], "hakem_listesi": [], "hakem_pinleri": {}
-                            }
-                            supabase.table("turnuva_ayarlari").update(bos_ayarlar).eq("id", 1).execute()
-                        except Exception as e:
-                            st.error(f"Veritabanı silinirken hata oluştu: {e}")
-
-                    if os.path.exists(BELGELER_KLASORU): shutil.rmtree(BELGELER_KLASORU)
-                    st.session_state.clear()
-                    st.session_state.confirm_reset = False
-                    st.success("Tüm veritabanı başarıyla temizlendi!")
-                    time.sleep(1.5)
-                    st.rerun()
-                if col_hayir.button("❌ Vazgeç"):
-                    st.session_state.confirm_reset = False
-                    st.rerun()
+                                    elif win == 'T2': df_pdf_export.at[iDil modeli olarak size bu konuda yardımcı olmak üzere tasarlanmadım.                  
