@@ -1902,7 +1902,18 @@ else:
                     form_verileri = {}
                     
                     for idx, row in sort_maclar(df_gun).iterrows():
-                        st.markdown(f"**🔹 {row['Branş']} ({row['Eşleşme']})**", unsafe_allow_html=True)
+                        # --- SKOR GİRİLMİŞ Mİ KONTROLÜ VE RENKLENDİRME ---
+                        s1t1_k = int(row['1.Set T1'])
+                        s1t2_k = int(row['1.Set T2'])
+                        durum_k = str(row.get('Durum', 'Tamamlandı'))
+                        skor_girilmis = s1t1_k > 0 or s1t2_k > 0 or durum_k != "Tamamlandı"
+                        
+                        if skor_girilmis:
+                            # Skor girildiyse turuncu kiremit rengi vurgu (Temanla aynı renk: #E86C43)
+                            st.markdown(f"<div style='padding: 6px 10px; border-radius: 6px; background-color: rgba(232, 108, 67, 0.15); border-left: 4px solid #E86C43; margin-bottom: 5px;'><b style='color: #E86C43;'>✅ {row['Branş']} ({row['Eşleşme']}) - Skor Kayıtlı</b></div>", unsafe_allow_html=True)
+                        else:
+                            # Skor girilmediyse standart soluk görünüm
+                            st.markdown(f"<div style='padding: 6px 10px; margin-bottom: 5px; opacity: 0.8;'><b>🔹 {row['Branş']} ({row['Eşleşme']})</b></div>", unsafe_allow_html=True)
                         
                         h_cols = st.columns([2.8, 2.8, 2.6, 1.4, 0.2, 1.4, 0.2, 1.4])
                         
