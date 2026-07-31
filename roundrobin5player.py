@@ -2549,11 +2549,11 @@ else:
             else:
                 for g_isim in gosterilecek_gruplar_klasor:
                     f_turu = st.session_state.grup_formatlari.get(g_isim, "3 Maçlık (2 Tek, 1 Çift)")
-            f_kat = st.session_state.grup_kategorileri.get(g_isim, "Erkekler")
-            f_yas = st.session_state.grup_yas_gruplari.get(g_isim, "Yaş Belirtme")
-            
-            with st.expander(f"📁 {g_isim} ({f_yas} | {f_kat} | {f_turu})"):  # <-- Üstteki satırlarla ip gibi aynı hizada
-                g_kadro = st.session_state.takim_kadrolari[g_isim]
+                    f_kat = st.session_state.grup_kategorileri.get(g_isim, "Erkekler")
+                    f_yas = st.session_state.grup_yas_gruplari.get(g_isim, "Yaş Belirtme")
+                    
+                    with st.expander(f"📁 {g_isim} ({f_yas} | {f_kat} | {f_turu})"):
+                        g_kadro = st.session_state.takim_kadrolari[g_isim]
                         for t_isim in dogal_sirala(list(g_kadro.keys())):
                             st.markdown(f"**🛡️ {t_isim}**")
                             st.write(", ".join(g_kadro[t_isim]) if g_kadro[t_isim] else "Oyuncu yok")
