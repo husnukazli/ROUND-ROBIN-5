@@ -489,18 +489,67 @@ def render_html_matrix(takimlar, df_grup):
     return html
 
 def generate_matrix_pdf(grup_adi, takimlar, df_grup):
+    # Alt maç skorlarını düz yazı formatına (PDF'e uygun) çeviren yardımcı fonksiyon
+    def get_plain_score(row, target_t1):
+        is_t1 = row['Takım 1'] == target_t1
+        durum = str(row.get('Durum', 'Tamamlandı'))
+        if durum == "Takım 1 (W/O)": durum = "Takım 2 Kazandı (W/O)"
+        elif durum == "Takım 2 (W/O)": durum = "Takım 1 Kazandı (W/O)"
+        elif durum == "Takım 1 (Ret.)": durum = "Takım 2 Kazandı (Ret.)"
+        elif durum == "Takım 2 (Ret.)": durum = "Takım 1 Kazandı (Ret.)"
+
+        brans = str(row['Branş']).replace("1. Tekler", "1T").replace("2. Tekler", "2T").replace("3. Tekler", "3T").replace("1. Çiftler", "1Ç").replace("2. Çiftler", "2Ç").replace("Çiftler", "Ç")
+
+        if durum == "Çift Taraflı W/O": 
+            return f"{brans}: Çift W/O"
+        if durum == "Takım 1 Kazandı (W/O)": 
+            return f"{brans}: W/O(G)" if is_t1 else f"{brans}: W/O(M)"
+        if durum == "Takım 2 Kazandı (W/O)": 
+            return f"{brans}: W/O(M)" if is_t1 else f"{brans}: W/O(G)"
+
+        s1_1, s1_2 = int(row['1.Set T1']), int(row['1.Set T2'])
+        s2_1, s2_2 = int(row['2.Set T1']), int(row['2.Set T2'])
+        s3_1, s3_2 = int(row['3.Set T1']), int(row['3.Set T2'])
+
+        if not is_t1:
+            s1_1, s1_2 = s1_2, s1_1
+            s2_1, s2_2 = s2_2, s2_1
+            s3_1, s3_2 = s3_2, s3_1
+
+        if s1_1 == 0 and s1_2 == 0 and s2_1 == 0 and s2_2 == 0 and "Ret." not in durum:
+            return ""
+
+        score_str = f"{s1_1}-{s1_2}"
+        if s2_1 != 0 or s2_2 != 0 or s1_1 != 0 or s1_2 != 0: score_str += f" | {s2_1}-{s2_2}"
+        if s3_1 != 0 or s3_2 != 0: score_str += f" | {s3_1}-{s3_2}"
+
+        if durum == "Takım 1 Kazandı (Ret.)": 
+            score_str += " Ret.(G)" if is_t1 else " Ret.(M)"
+        elif durum == "Takım 2 Kazandı (Ret.)": 
+            score_str += " Ret.(M)" if is_t1 else " Ret.(G)"
+
+        return f"{brans}: {score_str}"
+
     matrix = pd.DataFrame(index=takimlar, columns=takimlar)
     matrix = matrix.fillna("")
     for t in takimlar: matrix.at[t, t] = "X"
     
     for (t1, t2), group in df_grup.groupby(['Takım 1', 'Takım 2']):
         t1_total, t2_total = 0, 0
-        for _, row in group.iterrows():
+        t1_details = []
+        t2_details = []
+        for _, row in sort_maclar(group).iterrows():
             w1, w2 = hesapla_mac_kazanani(row)
             t1_total += w1; t2_total += w2
+            
+            det1 = get_plain_score(row, t1)
+            if det1: t1_details.append(det1)
+            det2 = get_plain_score(row, t2)
+            if det2: t2_details.append(det2)
+
         if t1_total > 0 or t2_total > 0:
-            matrix.at[t1, t2] = f"{t1_total} - {t2_total}"
-            matrix.at[t2, t1] = f"{t2_total} - {t1_total}"
+            matrix.at[t1, t2] = f"{t1_total} - {t2_total}\n" + "\n".join(t1_details)
+            matrix.at[t2, t1] = f"{t2_total} - {t1_total}\n" + "\n".join(t2_details)
             
     pdf = FPDF(orientation='P', unit='mm', format='A4')
     pdf.add_page()
@@ -518,13 +567,54 @@ def generate_matrix_pdf(grup_adi, takimlar, df_grup):
     pdf.ln()
     
     for t1 in takimlar:
-        pdf_cell_fit(pdf, col_width, 8, t1, is_bold=True)
+        # En fazla satırı bul
+        max_lines = 1
         for t2 in takimlar:
-            val = matrix.at[t1, t2]
-            pdf_cell_fit(pdf, col_width, 8, val, is_bold=False)
-        pdf.ln()
+            val = str(matrix.at[t1, t2])
+            if val:
+                lines = len(val.split('\n'))
+                if lines > max_lines: max_lines = lines
+        
+        row_height = max_lines * 4 + 4
+        x_start = pdf.get_x()
+        y_start = pdf.get_y()
+        
+        # Sayfa sonuna geldiyse yeni sayfa ekle
+        if y_start + row_height > 280:
+            pdf.add_page()
+            x_start = pdf.get_x()
+            y_start = pdf.get_y()
+        
+        # İlk hücre (Takım Adı)
+        pdf.rect(x_start, y_start, col_width, row_height)
+        pdf.set_xy(x_start, y_start + (row_height/2) - 2)
+        apply_font(pdf, bold=True, size=9)
+        pdf_cell_fit(pdf, col_width, 4, to_pdf_text(t1), border=0, is_bold=True)
+        
+        for t2 in takimlar:
+            x_start += col_width
+            val = str(matrix.at[t1, t2])
+            
+            pdf.rect(x_start, y_start, col_width, row_height)
+            pdf.set_xy(x_start, y_start + 2)
+            
+            if val == "X":
+                pdf.set_xy(x_start, y_start + (row_height/2) - 2)
+                apply_font(pdf, bold=True, size=10)
+                pdf.cell(col_width, 4, "X", align='C')
+            elif val != "":
+                lines = val.split('\n')
+                # Takım skoru (örn: 2 - 1)
+                apply_font(pdf, bold=True, size=9)
+                pdf.cell(col_width, 4, to_pdf_text(lines[0]), align='C', ln=2)
+                # Bireysel maçlar (örn: 1T: 6-4 6-2)
+                apply_font(pdf, bold=False, size=6.5)
+                for line in lines[1:]:
+                    pdf.cell(col_width, 3.5, to_pdf_text(line), align='C', ln=2)
+        
+        pdf.set_xy(10, y_start + row_height)
+        
     return get_pdf_bytes(pdf)
-
 def hesapla_tum_puan_durumu(df_girdi):
     if df_girdi.empty: return pd.DataFrame()
     df = df_girdi.copy()
