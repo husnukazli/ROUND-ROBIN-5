@@ -1152,111 +1152,109 @@ elif st.session_state.current_page == "📈 İstatistikler":
         st.header("📊 Turnuva Genel İstatistikleri")
         st.markdown("---")
 
-        # Örnek Veri Çekme (Kendi değişken isimlerine göre uyarlayabilirsin)
-        df_fikstur = st.session_state.get('fikstur_df', pd.DataFrame())
+        # Senin sistemindeki gerçek veri havuzlarını bağlıyoruz
+        df_fikstur = st.session_state.get('skor_tablosu', pd.DataFrame())
+        df_program = st.session_state.get('mac_programi', pd.DataFrame())
         
         if df_fikstur.empty:
             st.warning("Henüz fikstür oluşturulmamış veya maç verisi yok.")
         else:
             # ---------------------------------------------------------
-            # 1. BÖLÜM: GENEL KATILIM (3 Sütun)
+            # 1. BÖLÜM: GENEL KATILIM
             # ---------------------------------------------------------
             st.subheader("👥 Katılım Özeti")
             k1, k2, k3 = st.columns(3)
             
-            # Kendi sistemindeki grupları ve takımları sayan değişkenleri buraya bağlayabilirsin
             toplam_grup = len(df_fikstur['Grup'].unique()) if 'Grup' in df_fikstur.columns else 0
-            toplam_takim = len(pd.concat([df_fikstur['Takım 1'], df_fikstur['Takım 2']]).unique()) if 'Takım 1' in df_fikstur.columns else 0
-            # Oyuncu sayısını kadro veri tabanından çekmen gerekebilir, şimdilik placeholder:
-            toplam_oyuncu = toplam_takim * 2 # Örnek hesaplama
             
-            k1.metric("🏆 Toplam Grup/Kategori", toplam_grup)
+            tum_takimlar = set()
+            if 'Takım 1' in df_fikstur.columns:
+                tum_takimlar.update(df_fikstur['Takım 1'].unique())
+            if 'Takım 2' in df_fikstur.columns:
+                tum_takimlar.update(df_fikstur['Takım 2'].unique())
+            toplam_takim = len(tum_takimlar)
+            
+            toplam_oyuncu = 0
+            if 'takim_havuzu' in st.session_state:
+                for takim, oyuncular in st.session_state.takim_havuzu.items():
+                    if takim in tum_takimlar:
+                        gercek_oyuncular = [o for o in oyuncular if o != "Belirtilmedi" and str(o).strip() != ""]
+                        toplam_oyuncu += len(gercek_oyuncular)
+            
+            k1.metric("🏆 Toplam Kategori/Grup", toplam_grup)
             k2.metric("🛡️ Toplam Takım", toplam_takim)
-            k3.metric("👥 Tahmini Oyuncu", toplam_oyuncu)
+            k3.metric("👥 Toplam Oyuncu (Kayıtlı)", toplam_oyuncu)
             
             st.markdown("<br>", unsafe_allow_html=True)
 
             # ---------------------------------------------------------
-            # 2. BÖLÜM: FİKSTÜR VE İLERLEME (Senin İstediğin 4 Sütunlu Yapı)
+            # 2. BÖLÜM: FİKSTÜR VE İLERLEME
             # ---------------------------------------------------------
             st.subheader("📅 Maç ve Fikstür İlerlemesi")
             
-            # Toplam Maç (Havuzdaki tüm maçlar)
             toplam_mac = len(df_fikstur)
-            
-            # Planlanan Maç (Tarihi/Kortu girilmiş olanlar - 'Tarih' sütunu olduğunu varsayıyoruz)
-            if 'Tarih' in df_fikstur.columns:
-                planlanan_mac = df_fikstur['Tarih'].notna().sum()
-            else:
-                planlanan_mac = 0 # Tarih sütunu yoksa kendi yapına göre uyarla
+            planlanan_mac = len(df_program) # Mac programina alinanlar
                 
-            # Oynanan Maç (Skor girilmiş veya W/O, Ret. olanlar)
-            # Sütun isimlerini kendi veri tabanına göre (örneğin '1.Set T1') ayarlamalısın
             oynanan_mac = 0
             for idx, row in df_fikstur.iterrows():
-                # Sayısal değerleri güvenli alma
                 try:
                     s1t1 = float(row.get('1.Set T1', 0))
                     s1t2 = float(row.get('1.Set T2', 0))
                 except:
                     s1t1, s1t2 = 0, 0
                     
-                durum = str(row.get('Durum', ''))
-                
-                # Sizin kuralınız: Skor 0'dan büyükse VEYA durum W/O, Ret. ise
-                if (s1t1 > 0 or s1t2 > 0) or (durum in ["W/O", "Ret."]):
+                durum = str(row.get('Durum', 'Tamamlandı'))
+                if (s1t1 > 0 or s1t2 > 0) or ("W/O" in durum) or ("Ret." in durum) or (durum == "Çift Taraflı W/O"):
                     oynanan_mac += 1
 
-            # Oran Hesaplamaları (Sıfıra bölünme hatasını önlemek için kontrol)
             planlama_orani = (planlanan_mac / toplam_mac * 100) if toplam_mac > 0 else 0
             oynanma_orani = (oynanan_mac / toplam_mac * 100) if toplam_mac > 0 else 0
 
-            # 4 Sütunu Ekrana Basma
             f1, f2, f3, f4 = st.columns(4)
-            
-            f1.metric("📋 Toplam Maç (Fikstür)", toplam_mac)
+            f1.metric("📋 Toplam Bireysel Maç", toplam_mac)
             f2.metric("🗓️ Planlanan Maç", planlanan_mac)
             f3.metric("✅ Oynanan Maç", oynanan_mac)
             
             with f4:
                 st.markdown(f"**Planlanma:** %{planlama_orani:.1f}")
-                st.progress(int(planlama_orani) / 100.0)
+                st.progress(min(int(planlama_orani) / 100.0, 1.0))
                 st.markdown(f"**Tamamlanma:** %{oynanma_orani:.1f}")
-                st.progress(int(oynanma_orani) / 100.0)
+                st.progress(min(int(oynanma_orani) / 100.0, 1.0))
 
             st.markdown("<br>", unsafe_allow_html=True)
 
             # ---------------------------------------------------------
-            # 3. BÖLÜM: KORT İÇİ EFOR (4 Sütun)
+            # 3. BÖLÜM: KORT İÇİ EFOR
             # ---------------------------------------------------------
             st.subheader("🎾 Kort İçi Skor İstatistikleri")
             
-            # Bu değerleri döngü içinde hesaplayabilirsin
             toplam_set = 0
             toplam_oyun = 0
             
             for idx, row in df_fikstur.iterrows():
-                # Tüm setlerin değerlerini toplayıp oyun (game) sayısını bulma
                 try:
                     setler = [
                         float(row.get('1.Set T1', 0)), float(row.get('1.Set T2', 0)),
                         float(row.get('2.Set T1', 0)), float(row.get('2.Set T2', 0)),
                         float(row.get('3.Set T1', 0)), float(row.get('3.Set T2', 0))
                     ]
-                    # Set sayısını bulma (Skoru 0'dan büyük olan her karşılıklı skor bir settir)
                     if setler[0] > 0 or setler[1] > 0: toplam_set += 1
                     if setler[2] > 0 or setler[3] > 0: toplam_set += 1
                     if setler[4] > 0 or setler[5] > 0: toplam_set += 1
-                    
-                    # Toplam game sayısı
                     toplam_oyun += sum(setler)
                 except:
                     pass
 
+            # Oynanan "Takım Eşleşmesi" sayısını buluyoruz
+            oynanan_takim_maci = 0
+            if 'Eşleşme' in df_fikstur.columns:
+                df_oynanan = df_fikstur[(df_fikstur['1.Set T1'] > 0) | (df_fikstur['1.Set T2'] > 0) | (df_fikstur['Durum'].str.contains('W/O|Ret.'))]
+                oynanan_takim_maci = len(df_oynanan[['Grup', 'Eşleşme', 'Gün']].drop_duplicates())
+
             s1, s2, s3, s4 = st.columns(4)
-            s1.metric("🎾 Oynanan Takım Maçı", oynanan_mac) # Takım turnuvasıysa
-            s2.metric("🏸 Oynanan Bireysel Maç", oynanan_mac * 3) # Örn: Her takım maçı 3 bireysel maç içeriyorsa
-            s3.metric("🔢 Toplam Oynanan Set", toplam_set)
+            s1.metric("🎾 Oynanan Takım Eşleşmesi", oynanan_takim_maci)
+            s2.metric("🏸 Oynanan Bireysel Maç", oynanan_mac)
+            s3.metric("🔢 Toplam Oynanan Set", int(toplam_set))
             s4.metric("🎯 Toplam Oynanan Oyun", int(toplam_oyun))
 else:
     aktif_asama = st.session_state.aktif_asama
