@@ -1149,15 +1149,30 @@ if st.session_state.current_page == "Home":
 # ALT SAYFALARIN İÇERİKLERİ (YATAY MENÜ SADECE BURADA ÇIKAR)
 # ==============================================================================
 elif st.session_state.current_page == "📈 İstatistikler":
-        st.header("📊 Turnuva Genel İstatistikleri")
+        aktif_asama = st.session_state.get("aktif_asama", "1. Aşama")
+        
+        st.header("📊 Turnuva İstatistikleri")
+        
+        # Senin harika fikrin: Aşama veya Tüm Turnuva seçici butonu
+        kapsam = st.radio("Hesaplanacak Veriler:", [f"Sadece {aktif_asama}", "Tüm Turnuva (Genel Toplam)"], horizontal=True)
         st.markdown("---")
 
-        # Senin sistemindeki gerçek veri havuzlarını bağlıyoruz
-        df_fikstur = st.session_state.get('skor_tablosu', pd.DataFrame())
-        df_program = st.session_state.get('mac_programi', pd.DataFrame())
+        # Bütün veriyi alıyoruz
+        tum_fikstur = st.session_state.get('skor_tablosu', pd.DataFrame())
+        tum_program = st.session_state.get('mac_programi', pd.DataFrame())
         
+        # Kullanıcının seçimine göre veriyi süzüyoruz
+        if kapsam == "Tüm Turnuva (Genel Toplam)":
+            df_fikstur = tum_fikstur
+            df_program = tum_program
+        else:
+            # Sadece o anki aşamaya ait grupları bulup filtreliyoruz
+            gecerli_gruplar = [g for g, asama in st.session_state.get('grup_asamalari', {}).items() if asama == aktif_asama]
+            df_fikstur = tum_fikstur[tum_fikstur['Grup'].isin(gecerli_gruplar)] if not tum_fikstur.empty else pd.DataFrame()
+            df_program = tum_program[tum_program['Grup'].isin(gecerli_gruplar)] if not tum_program.empty else pd.DataFrame()
+
         if df_fikstur.empty:
-            st.warning("Henüz fikstür oluşturulmamış veya maç verisi yok.")
+            st.warning(f"Seçilen kapsama ait henüz oluşturulmuş bir fikstür veya veri yok.")
         else:
             # ---------------------------------------------------------
             # 1. BÖLÜM: GENEL KATILIM
@@ -1193,7 +1208,7 @@ elif st.session_state.current_page == "📈 İstatistikler":
             st.subheader("📅 Maç ve Fikstür İlerlemesi")
             
             toplam_mac = len(df_fikstur)
-            planlanan_mac = len(df_program) # Mac programina alinanlar
+            planlanan_mac = len(df_program) 
                 
             oynanan_mac = 0
             for idx, row in df_fikstur.iterrows():
@@ -1245,7 +1260,6 @@ elif st.session_state.current_page == "📈 İstatistikler":
                 except:
                     pass
 
-            # Oynanan "Takım Eşleşmesi" sayısını buluyoruz
             oynanan_takim_maci = 0
             if 'Eşleşme' in df_fikstur.columns:
                 df_oynanan = df_fikstur[(df_fikstur['1.Set T1'] > 0) | (df_fikstur['1.Set T2'] > 0) | (df_fikstur['Durum'].str.contains('W/O|Ret.'))]
