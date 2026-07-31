@@ -2066,7 +2066,7 @@ else:
                     f_kat = st.session_state.grup_kategorileri.get(g_isim, "Erkekler")
                     f_yas = st.session_state.grup_yas_gruplari.get(g_isim, "Yaş Belirtme")
                     
-                    with st.expander(f"📁 {g_isim} ({f_yas} | {f_kat} | {f_turu})"):
+                        with st.expander(f"📁 {g_isim} ({f_yas} | {f_kat} | {f_turu})"):
                         g_kadro = st.session_state.takim_kadrolari[g_isim]
                         for t_isim in dogal_sirala(list(g_kadro.keys())):
                             st.markdown(f"**🛡️ {t_isim}**")
