@@ -548,15 +548,32 @@ def generate_matrix_pdf(grup_adi, takimlar, df_grup):
             if det2: t2_details.append(det2)
 
         if t1_total > 0 or t2_total > 0:
-            matrix.at[t1, t2] = f"{t1_total} - {t2_total}\n" + "\n".join(t1_details)
-            matrix.at[t2, t1] = f"{t2_total} - {t1_total}\n" + "\n".join(t2_details)
+            # --- GERÇEK KAZANANI BULMA (Tie-break / Averaj Kontrolü) ---
+            temp_stats = hesapla_tum_puan_durumu(group)
+            t1_galibiyet = 0
+            t2_galibiyet = 0
+            if not temp_stats.empty:
+                r1 = temp_stats[temp_stats['Takım'] == t1]
+                r2 = temp_stats[temp_stats['Takım'] == t2]
+                if not r1.empty: t1_galibiyet = r1.iloc[0]['Galibiyet']
+                if not r2.empty: t2_galibiyet = r2.iloc[0]['Galibiyet']
+
+            yildiz_t1 = "*" if t1_galibiyet > t2_galibiyet else ""
+            yildiz_t2 = "*" if t2_galibiyet > t1_galibiyet else ""
+            
+            matrix.at[t1, t2] = f"{t1_total}{yildiz_t1} - {t2_total}{yildiz_t2}\n" + "\n".join(t1_details)
+            matrix.at[t2, t1] = f"{t2_total}{yildiz_t2} - {t1_total}{yildiz_t1}\n" + "\n".join(t2_details)
             
     pdf = FPDF(orientation='P', unit='mm', format='A4')
     pdf.add_page()
     setup_pdf_fonts(pdf)
     
     apply_font(pdf, bold=True, size=14)
-    pdf.cell(0, 10, to_pdf_text(f"{grup_adi} - Takım Maçları Matrisi"), ln=True, align='C')
+    pdf.cell(0, 8, to_pdf_text(f"{grup_adi} - Takım Maçları Matrisi"), ln=True, align='C')
+    
+    # --- BİLGİ NOTU EKLENDİ ---
+    apply_font(pdf, bold=False, size=8)
+    pdf.cell(0, 4, to_pdf_text("Not: Skorun yanındaki (*) yıldız işareti, averaj veya tie-break ile eşleşmeyi kazanan takımı gösterir."), ln=True, align='C')
     pdf.ln(5)
     
     cols = ["Takımlar"] + takimlar
@@ -567,7 +584,6 @@ def generate_matrix_pdf(grup_adi, takimlar, df_grup):
     pdf.ln()
     
     for t1 in takimlar:
-        # En fazla satırı bul
         max_lines = 1
         for t2 in takimlar:
             val = str(matrix.at[t1, t2])
@@ -575,18 +591,15 @@ def generate_matrix_pdf(grup_adi, takimlar, df_grup):
                 lines = len(val.split('\n'))
                 if lines > max_lines: max_lines = lines
         
-        # Fontlar büyüdüğü için kutu yüksekliğini (row_height) ve çarpanı artırdık
         row_height = max_lines * 4.5 + 5
         x_start = pdf.get_x()
         y_start = pdf.get_y()
         
-        # Sayfa sonuna geldiyse yeni sayfa ekle
         if y_start + row_height > 280:
             pdf.add_page()
             x_start = pdf.get_x()
             y_start = pdf.get_y()
         
-        # İlk hücre (Takım Adı) - Font 10 yapıldı
         pdf.rect(x_start, y_start, col_width, row_height)
         pdf.set_xy(x_start, y_start + (row_height/2) - 2)
         apply_font(pdf, bold=True, size=10)
@@ -605,10 +618,8 @@ def generate_matrix_pdf(grup_adi, takimlar, df_grup):
                 pdf.cell(col_width, 4, "X", align='C')
             elif val != "":
                 lines = val.split('\n')
-                # Takım skoru (örn: 2 - 1) - Font 10.5 yapıldı
                 apply_font(pdf, bold=True, size=10.5)
                 pdf.cell(col_width, 4.5, to_pdf_text(lines[0]), align='C', ln=2)
-                # Bireysel maçlar (örn: 1T: 6-4 6-2) - Font 7.5 yapıldı ve satır aralığı açıldı
                 apply_font(pdf, bold=False, size=7.5)
                 for line in lines[1:]:
                     pdf.cell(col_width, 4, to_pdf_text(line), align='C', ln=2)
