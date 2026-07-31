@@ -2946,7 +2946,7 @@ else:
                     if st.button("🔄 Tüm Bireysel Maçları Ekranda Göster / Gizle"):
                         st.session_state.expand_all = not st.session_state.expand_all; st.rerun()
                     
-                    with st.expander("📄 PDF Çıktı Ayarları"):
+                   with st.expander("📄 PDF Çıktı Ayarları"):
                         gosterim_sekli = st.radio("PDF Gösterim Şekli:", ["Bireysel Maçlar (Detaylı Hiyerarşik Çıktı)", "Takım Maçları (Sadece Genel Skor)"], horizontal=True)
                         is_bireysel_pdf = "Bireysel" in gosterim_sekli
                         tum_kolonlar = ["Kort", "Maç Saati", "Tarih", "Gün Adı", "Grup", "Gün", "Branş", "Eşleşme", "Takım 1", "Takım 2", "T1 Oyuncu", "T2 Oyuncu", "Skor", "Kazanan", "Hakem"]
@@ -2978,11 +2978,12 @@ else:
                                     "Kort": kort, "Maç Saati": saat, "Tarih": tarih_str, "Gün Adı": gun_isim, 
                                     "Grup": grup_adi, "Gün": gun_val, "Eşleşme": eslesme_adi,
                                     "Branş": "**TAKIM EŞLEŞMESİ**",
-                                    # BURASI DEĞİŞTİ: Sistem her sütun seçiminde satırı tanıyıp gri yapsın diye iki takımı da kalın (**) yapıyoruz.
-                                    "Takım 1": f"**{t1}**", 
-                                    "Takım 2": f"**{t2}**",
+                                    # DOĞRU MANTIĞA DÖNDÜK: Sadece kazanan kalın (bold) olacak
+                                    "Takım 1": f"**{t1}**" if team_winner == "T1" else t1, 
+                                    "Takım 2": f"**{t2}**" if team_winner == "T2" else t2,
                                     "T1 Oyuncu": "", "T2 Oyuncu": "",
-                                    "Skor": f"**{team_score}**", "Kazanan": "", "Hakem": ""
+                                    "Skor": f"**{team_score}**", "Kazanan": "", "Hakem": "",
+                                    "_IS_HEADER_": True # Sistemi haberdar eden gizli işaretçi
                                 }
                                 pdf_rows.append(header_row)
                                 
@@ -2997,6 +2998,8 @@ else:
                                     elif win == 'T2':
                                         match_row['Takım 2'] = f"**{match_row['Takım 2']}**"
                                         if match_row['T2 Oyuncu']: match_row['T2 Oyuncu'] = f"**{match_row['T2 Oyuncu']}**"
+                                        
+                                    match_row['_IS_HEADER_'] = False # Alt satırları işaretliyoruz
                                     
                                     pdf_rows.append(match_row.to_dict())
                                     
@@ -3004,6 +3007,7 @@ else:
                         else:
                             df_pdf_export = df_team_summary.copy()
                             if not df_pdf_export.empty:
+                                df_pdf_export['_IS_HEADER_'] = False
                                 for i in df_pdf_export.index:
                                     win = df_pdf_export.at[i, 'Kazanan']
                                     if win == 'T1': df_pdf_export.at[i, 'Takım 1'] = f"**{df_pdf_export.at[i, 'Takım 1']}**"
@@ -3011,7 +3015,10 @@ else:
                                     df_pdf_export.at[i, 'Skor'] = f"**{df_pdf_export.at[i, 'Skor']}**"
                                     
                         if not df_pdf_export.empty and secilen_pdf_cols:
-                            final_pdf_df = df_pdf_export[secilen_pdf_cols]
+                            final_pdf_df = df_pdf_export[secilen_pdf_cols].copy()
+                            # Seçilmeyen gizli işareti PDF'e giderken tekrar ekliyoruz
+                            final_pdf_df["_IS_HEADER_"] = df_pdf_export["_IS_HEADER_"]
+                            
                             pdf_notu = st.session_state.gunluk_notlar.get(formatted_tarih, "")
                             
                             st.markdown("<br>", unsafe_allow_html=True)
