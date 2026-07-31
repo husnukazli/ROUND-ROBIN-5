@@ -1,7 +1,7 @@
 [theme]
 base="light"
-primaryColor="#D4502C"             # Kiremit/Turuncu (Butonlar ve vurgular için koyulaştırılmış, beyazda net duran spor bir renk)
-backgroundColor="#FFFFFF"          # Saf Beyaz (Ana ekranın aydınlık ve ferah arka planı)
-secondaryBackgroundColor="#F1F5F9" # Çok uçuk gri-mavi (Yan menü, açıklama barları ve form kutuları için hafif bir ayrım)
-textColor="#0F172A"                # Çok koyu lacivert-siyah (Gözü yormayan, kağıt üzerindeki mürekkep gibi duran net yazı rengi)
+primaryColor="#0369A1"             # Derin Mavi: Gri ve beyazın üzerinde çok şık durur, butonların ve önemli verilerin anında göze çarpmasını sağlar.
+backgroundColor="#FFFFFF"          # Saf Beyaz: Arkaplandaki çizgilerin tabloları ve metinleri boğmasını engeller, tertemiz bir okuma alanı sunar.
+secondaryBackgroundColor="#F8FAFC" # Buzlu Beyaz/Gri: Yan menü ve veri giriş kutularını ana beyaz alandan hafifçe ayırır.
+textColor="#1E293B"                # Koyu Füme: Saf siyahın göz yoruculuğunu alır, ekranda kaliteli bir mürekkep gibi okunaklı durur.
 font="sans serif"
