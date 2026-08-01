@@ -874,6 +874,7 @@ def ortak_veriyi_kaydet():
         "grup_siralamalari": st.session_state.get("grup_siralamalari", {}),
         "grup_tamamlandi": st.session_state.get("grup_tamamlandi", {}),
         "grup_yas_gruplari": st.session_state.get("grup_yas_gruplari", {}),
+        "grup_statuleri": st.session_state.get("grup_statuleri", {}), # YENİ EKLENEN: GRUP STATÜSÜ
         "takim_pinleri": st.session_state.get("takim_pinleri", {}),
         "esame_kasasi": st.session_state.get("esame_kasasi", {}),
         "esame_onayli": st.session_state.get("esame_onayli", {}),
@@ -956,6 +957,7 @@ def ortak_veriyi_yukle():
         st.session_state.grup_siralamalari = data.get("grup_siralamalari", {})
         st.session_state.grup_tamamlandi = data.get("grup_tamamlandi", {})
         st.session_state.grup_yas_gruplari = data.get("grup_yas_gruplari", {})
+        st.session_state.grup_statuleri = data.get("grup_statuleri", {}) # YENİ EKLENEN: GRUP STATÜSÜ
         st.session_state.takim_pinleri = data.get("takim_pinleri", {})
         st.session_state.esame_kasasi = data.get("esame_kasasi", {})
         st.session_state.esame_onayli = data.get("esame_onayli", {})
@@ -1007,6 +1009,7 @@ if "havuz_yas_gruplari" not in st.session_state: st.session_state.havuz_yas_grup
 if "grup_siralamalari" not in st.session_state: st.session_state.grup_siralamalari = {}
 if "grup_tamamlandi" not in st.session_state: st.session_state.grup_tamamlandi = {}
 if "grup_yas_gruplari" not in st.session_state: st.session_state.grup_yas_gruplari = {}
+if "grup_statuleri" not in st.session_state: st.session_state.grup_statuleri = {} # YENİ EKLENEN: GRUP STATÜSÜ
 if "takim_pinleri" not in st.session_state: st.session_state.takim_pinleri = {}
 if "esame_kasasi" not in st.session_state: st.session_state.esame_kasasi = {}
 if "esame_onayli" not in st.session_state: st.session_state.esame_onayli = {}
@@ -1037,7 +1040,6 @@ if 'mac_programi' in st.session_state:
         if "T2 Oyuncu" not in st.session_state.mac_programi.columns: st.session_state.mac_programi["T2 Oyuncu"] = ""
         if "Kazanan" not in st.session_state.mac_programi.columns: st.session_state.mac_programi["Kazanan"] = ""
         if "Hakem" not in st.session_state.mac_programi.columns: st.session_state.mac_programi["Hakem"] = ""
-        st.session_state.mac_programi["Hakem"] = st.session_state.mac_programi["Hakem"].fillna("")
 
 def render_big_button(icon, title, target_page):
     if st.button(f"{icon}\n{title}", use_container_width=True, key=f"btn_main_{target_page}"):
