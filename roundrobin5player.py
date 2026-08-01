@@ -785,17 +785,20 @@ def hesapla_tum_puan_durumu(df_girdi):
                 return pd.Series([t1_oyun, t2_oyun, t1_set, t2_set])
                 
             if t1_set == 1 and t2_set == 1:
-                if is_stb:
-                    if t1_s3_win: t1_set += 1
-                    elif t2_s3_win: t2_set += 1
+                    if is_stb:
+                        if t1_s3_win: t1_set += 1
+                        elif t2_s3_win: t2_set += 1
+                        else:
+                            t2_set += 1
+                            # Eğer zaten öndeyse puanı aldı, tekrar verme!
+                            if not (s3_t2 > s3_t1): t2_oyun += 1
+                            # Rakip haksız yere puan aldıysa geri al!
+                            if s3_t1 > s3_t2: t1_oyun = max(0, t1_oyun - 1)
                     else:
-                        t2_set += 1; t2_oyun += 1
-                        if s3_t1 > s3_t2: t1_oyun = max(0, t1_oyun - 1)
-                else:
-                    if t1_s3_win: t1_set += 1
-                    elif t2_s3_win: t2_set += 1
-                    else:
-                        t2_set += 1; t2_oyun += max(0, (6 if s3_t1 <= 4 else 7) - s3_t2)
+                        if t1_s3_win: t1_set += 1
+                        elif t2_s3_win: t2_set += 1
+                        else:
+                            t2_set += 1; t2_oyun += max(0, (6 if s3_t1 <= 4 else 7) - s3_t2)
             return pd.Series([t1_oyun, t2_oyun, t1_set, t2_set])
 
         else: 
