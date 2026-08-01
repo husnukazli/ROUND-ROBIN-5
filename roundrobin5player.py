@@ -2001,7 +2001,10 @@ else:
                 format_secimi = st.radio("Müsabaka Maç Formatı:", ["3 Maçlık (2 Tek, 1 Çift)", "5 Maçlık (3 Tek, 2 Çift)"], horizontal=True)
             
             grup_adi_raw = st.text_input("Grup Özel Adı (Örn: A Grubu, 1. Grup, Şampiyonluk Grubu):", placeholder="Sadece grubun harfini veya numarasını yazın")
-            
+            # --- YENİ EKLENEN: SADECE 2. AŞAMADA ÇIKAN STATÜ SEÇİMİ ---
+            grup_statusu = "Play-out Grubu (Düşme Hattı)"
+            if aktif_asama == "2. Aşama":
+                grup_statusu = st.radio("🏅 Grup Statüsü:", ["Birinciler Grubu (Kürsü)", "İkinciler Grubu (Orta Klasman)", "Play-out Grubu (Düşme Hattı)"], horizontal=True, index=2, key="yeni_grup_statu")
             if yas_secimi != "Yaş Belirtme":
                 tam_grup_adi = f"{yas_secimi} {kategori_secimi} {grup_adi_raw.strip()}".strip()
             else:
