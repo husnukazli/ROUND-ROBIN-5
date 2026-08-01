@@ -3259,31 +3259,25 @@ else:
                             for i in range(beklenen_yeni_sayi):
                                 esk_ad = mevcut_takim_isimleri[i] if i < len(mevcut_takim_isimleri) else f"Yeni Takım {i+1}"
                                 
-                                # 1. Sistemdeki tüm takımları alıyoruz (Güvenli Açılır Pencere için)
+                                # --- GÜVENLİ AÇILIR PENCERE VE BYE MANTIĞI ---
                                 tum_takimlar = dogal_sirala(list(st.session_state.takim_havuzu.keys()))
-                                
-                                # 2. KULLANICI DAHİYANE ÇÖZÜMÜ: Tampon (Boş/BYE) Seçeneğini Ekliyoruz
                                 bye_opt = "--- BOŞ (BYE) ---"
                                 if bye_opt not in tum_takimlar: tum_takimlar.insert(0, bye_opt)
-                                
-                                if esk_ad not in tum_takimlar:
-                                    tum_takimlar.insert(1, esk_ad)
+                                if esk_ad not in tum_takimlar: tum_takimlar.insert(1, esk_ad)
                                 
                                 c_a, c_b = st.columns([1, 2])
                                 with c_a:
-                                    # Güvenli ve Tam Eşleşmeli Açılır Pencere
                                     y_ad = st.selectbox(f"{i+1}. Takım Seçimi", options=tum_takimlar, index=tum_takimlar.index(esk_ad), key=f"ad_{sec_g}_{i}")
                                     
                                     if i < len(mevcut_takim_isimleri) and y_ad != esk_ad: 
                                         isim_degisiklikleri[esk_ad] = y_ad
                                         
-                                        # Seçim BOŞ ise içi boş gelsin, gerçek takımsa havuzdan çeksin
+                                        # --- OTOMATİK OYUNCU DOLDURMA SİHİRBAZI ---
                                         if y_ad == bye_opt:
                                             aktif_oyuncular = ["(Boş)"]
                                         else:
                                             aktif_oyuncular = st.session_state.takim_havuzu.get(y_ad, ["Oyuncu Bulunamadı"])
                                     else:
-                                        # Değişmediyse mevcut grubun kadrosunu koru
                                         aktif_oyuncular = m_kadrolar.get(esk_ad, ["Belirtilmedi"])
                                         
                                     with c_b:
@@ -3293,7 +3287,7 @@ else:
                             if st.button("💾 Yapılan Değişiklikleri Veritabanına Yaz"):
                                 g_hedef = yeni_grup_adi if yeni_grup_adi.strip() != "" else sec_g
                                 
-                                # YENİ GÜVENLİK DUVARI: Başka bir grubun adını almayı engelle (Üst üste binmeyi önler)
+                                # --- GRUPLARIN ÜST ÜSTE BİNMESİNİ ÖNLEYEN GÜVENLİK DUVARI ---
                                 if g_hedef != sec_g and g_hedef in st.session_state.takim_kadrolari:
                                     st.error(f"⚠️ KRİTİK HATA: '{g_hedef}' adında bir grup zaten sistemde mevcut! İki grubu birleştiremezsiniz, lütfen farklı bir ad girin.")
                                 else:
@@ -3304,12 +3298,12 @@ else:
                                         if g_n != sec_g and g_kat == yeni_kategori and g_asam == aktif_asama:
                                             for t_n in g_k.keys(): kullanilan_baska_takimlar_tab6[t_n] = g_n
                                     
+                                    # --- BYE (BOŞ) TAKIMININ ÇAKIŞMA HESABINDAN MUAF TUTULMASI ---
                                     cakisanlar_tab6 = [t for t in list(yeni_k_yapisi.keys()) if t in kullanilan_baska_takimlar_tab6 and t != bye_opt]
                                     if cakisanlar_tab6:
                                         hata_msj = ", ".join([f"'{t}' ({kullanilan_baska_takimlar_tab6[t]})" for t in cakisanlar_tab6])
                                         st.error(f"⚠️ Hata: Eklemek veya değiştirmek istediğiniz takım(lar) {yeni_kategori} kategorisinde ({aktif_asama}) zaten başka gruplarda kayıtlı!\nÇakışanlar: {hata_msj}")
                                     else:
-                                        
                                         if fikstur_sifirlanacak_mi:
                                             # GARANTİLİ SİLME YÖNTEMİ: İsimle değil, ID'lerle vuruyoruz
                                             silinecek_idler = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] == sec_g]['id'].dropna().tolist()
@@ -3379,3 +3373,150 @@ else:
                                             else:
                                                 st.error("Sistem meşgul, lütfen tekrar deneyin.")
                                         st.rerun()
+
+            st.markdown("### 🗑️ Grup Silme İşlemleri")
+            if not st.session_state.skor_tablosu.empty:
+                silinecek_gruplar = dogal_sirala([g for g in st.session_state.skor_tablosu['Grup'].unique() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama])
+                secilen_sil_grup = st.selectbox("Silinecek Grubu Seçin:", ["Seçiniz"] + silinecek_gruplar, key="grup_sil_secim")
+                
+                if secilen_sil_grup != "Seçiniz":
+                    st.warning(f"⚠️ DİKKAT: '{secilen_sil_grup}' grubunu ve bu gruba ait tüm fikstür/kadro kayıtlarını kalıcı olarak sileceksiniz!")
+                    
+                    if st.button(f"🚨 '{secilen_sil_grup}' Grubunu Tamamen Sil"):
+                        # GARANTİLİ SİLME YÖNTEMİ: İsimle değil, ID'lerle vuruyoruz
+                        silinecek_idler = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] == secilen_sil_grup]['id'].dropna().tolist()
+                        try:
+                            if "supabase" in globals() and supabase and silinecek_idler:
+                                for idx_chunk in range(0, len(silinecek_idler), 100):
+                                    supabase.table("maclar").delete().in_("id", silinecek_idler[idx_chunk:idx_chunk+100]).execute()
+                        except Exception:
+                            pass
+                            
+                        st.session_state.skor_tablosu = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] != secilen_sil_grup]
+                        st.session_state.mac_programi = st.session_state.mac_programi[st.session_state.mac_programi['Grup'] != secilen_sil_grup]
+                        
+                        if secilen_sil_grup in st.session_state.takim_kadrolari: del st.session_state.takim_kadrolari[secilen_sil_grup]
+                        if secilen_sil_grup in st.session_state.grup_formatlari: del st.session_state.grup_formatlari[secilen_sil_grup]
+                        if secilen_sil_grup in st.session_state.grup_kategorileri: del st.session_state.grup_kategorileri[secilen_sil_grup]
+                        if secilen_sil_grup in st.session_state.grup_asamalari: del st.session_state.grup_asamalari[secilen_sil_grup]
+                        if secilen_sil_grup in st.session_state.grup_siralamalari: del st.session_state.grup_siralamalari[secilen_sil_grup]
+                        if secilen_sil_grup in st.session_state.grup_tamamlandi: del st.session_state.grup_tamamlandi[secilen_sil_grup]
+                        if secilen_sil_grup in st.session_state.grup_yas_gruplari: del st.session_state.grup_yas_gruplari[secilen_sil_grup]
+                        
+                        # --- HAYALET ESAMELERİN TEMİZLİĞİ ---
+                        keys_to_delete = [k for k in st.session_state.esame_kasasi.keys() if k.startswith(secilen_sil_grup + "_")]
+                        for k in keys_to_delete:
+                            del st.session_state.esame_kasasi[k]
+                        keys_to_delete_onay = [k for k in st.session_state.esame_onayli.keys() if k.startswith(secilen_sil_grup + "_")]
+                        for k in keys_to_delete_onay:
+                            del st.session_state.esame_onayli[k]
+                        
+                        if ortak_veriyi_kaydet():
+                            st.success(f"'{secilen_sil_grup}' grubu ve esame kalıntıları sistemden başarıyla silindi!")
+                            st.rerun()
+                        else:
+                            st.error("Sistem meşgul, lütfen tekrar deneyin.")
+            else:
+                st.info(f"{aktif_asama} için silinecek herhangi bir grup bulunmuyor.")
+
+            st.markdown("---")
+            st.markdown("### 💾 Yedekleme Paneli")
+            c_sv, c_ld = st.columns(2)
+            with c_sv:
+                export_data = {
+                    "skor_tablosu": st.session_state.skor_tablosu.to_dict(orient="records") if not st.session_state.skor_tablosu.empty else [],
+                    "mac_programi": st.session_state.mac_programi.to_dict(orient="records") if not st.session_state.mac_programi.empty else [],
+                    "takim_kadrolari": st.session_state.get("takim_kadrolari", {}),
+                    "grup_formatlari": st.session_state.get("grup_formatlari", {}),
+                    "grup_kategorileri": st.session_state.get("grup_kategorileri", {}),
+                    "grup_asamalari": st.session_state.get("grup_asamalari", {}),
+                    "duyuru_metni": st.session_state.get("duyuru_metni", ""),
+                    "gunluk_notlar": st.session_state.get("gunluk_notlar", {}),
+                    "takim_havuzu": st.session_state.get("takim_havuzu", {}),
+                    "havuz_kategorileri": st.session_state.get("havuz_kategorileri", {}),
+                    "havuz_yas_gruplari": st.session_state.get("havuz_yas_gruplari", {}),
+                    "grup_siralamalari": st.session_state.get("grup_siralamalari", {}),
+                    "grup_tamamlandi": st.session_state.get("grup_tamamlandi", {}),
+                    "grup_yas_gruplari": st.session_state.get("grup_yas_gruplari", {}),
+                    "takim_pinleri": st.session_state.get("takim_pinleri", {}),
+                    "esame_kasasi": st.session_state.get("esame_kasasi", {}),
+                    "esame_onayli": st.session_state.get("esame_onayli", {}),
+                    "hakem_listesi": st.session_state.get("hakem_listesi", []),
+                    "hakem_pinleri": st.session_state.get("hakem_pinleri", {})
+                }
+                zaman_damgasi = datetime.datetime.now().strftime("%d_%m_%Y_%H%M")
+                yedek_adi = f"turnuva_yedek_{zaman_damgasi}.json"
+                st.download_button("📥 Turnuva Veritabanını İndir (.json)", data=json.dumps(export_data, ensure_ascii=False, indent=4), file_name=yedek_adi, mime="application/json")
+            with c_ld:
+                up_file = st.file_uploader("Geri Yüklemek İçin Yedek Dosyası Seçin:", type=["json"])
+                if up_file is not None and st.button("📤 Seçilen Yedeği Sisteme Entegre Et"):
+                    try:
+                        d = json.load(up_file)
+                        st.session_state.skor_tablosu = pd.DataFrame(d.get("skor_tablosu", []))
+                        st.session_state.mac_programi = pd.DataFrame(d.get("mac_programi", []))
+                        st.session_state.takim_kadrolari = d.get("takim_kadrolari", {})
+                        st.session_state.grup_formatlari = d.get("grup_formatlari", {})
+                        st.session_state.grup_kategorileri = d.get("grup_kategorileri", {})
+                        st.session_state.grup_asamalari = d.get("grup_asamalari", {})
+                        st.session_state.duyuru_metni = d.get("duyuru_metni", "")
+                        st.session_state.gunluk_notlar = d.get("gunluk_notlar", {})
+                        st.session_state.takim_havuzu = d.get("takim_havuzu", {})
+                        st.session_state.havuz_kategorileri = d.get("havuz_kategorileri", {})
+                        st.session_state.havuz_yas_gruplari = d.get("havuz_yas_gruplari", {})
+                        st.session_state.grup_siralamalari = d.get("grup_siralamalari", {})
+                        st.session_state.grup_tamamlandi = d.get("grup_tamamlandi", {})
+                        st.session_state.grup_yas_gruplari = d.get("grup_yas_gruplari", {})
+                        st.session_state.takim_pinleri = d.get("takim_pinleri", {})
+                        st.session_state.esame_kasasi = d.get("esame_kasasi", {})
+                        st.session_state.esame_onayli = d.get("esame_onayli", {})
+                        st.session_state.hakem_listesi = d.get("hakem_listesi", [])
+                        st.session_state.hakem_pinleri = d.get("hakem_pinleri", {})
+                        
+                        if ortak_veriyi_kaydet():
+                            st.success("Yedek başarıyla yüklendi!")
+                            st.rerun()
+                        else:
+                            st.error("Sistem meşgul, lütfen tekrar deneyin.")
+                    except Exception as ex: st.error(f"Hata: {ex}")
+            st.markdown("---")
+            st.markdown("### ⚠️ Sistem Sıfırlama (Tehlikeli İşlem)")
+            
+            if "confirm_reset" not in st.session_state:
+                st.session_state.confirm_reset = False
+
+            if not st.session_state.confirm_reset:
+                if st.button("🗑️ Tüm Turnuva Verilerini Kalıcı Olarak Sıfırla"):
+                    st.session_state.confirm_reset = True
+                    st.rerun()
+            else:
+                st.warning("⚠️ DİKKAT: Tüm turnuva verileri (maçlar, kadrolar, skorlar, yüklenen belgeler) kalıcı olarak silinecektir. Bu işlem geri alınamaz!")
+                col_evet, col_hayir = st.columns(2)
+                if col_evet.button("✅ Evet, Tüm Verileri Sil"):
+                    if supabase:
+                        try:
+                            res = supabase.table("maclar").select("id").execute()
+                            if res.data:
+                                ids = [item['id'] for item in res.data]
+                                for i in range(0, len(ids), 100):
+                                    batch_ids = ids[i:i+100]
+                                    supabase.table("maclar").delete().in_("id", batch_ids).execute()
+                            
+                            bos_ayarlar = {
+                                "takim_kadrolari": {}, "grup_formatlari": {}, "grup_kategorileri": {}, "grup_asamalari": {},
+                                "duyuru_metni": "", "gunluk_notlar": {}, "takim_havuzu": {}, "havuz_kategorileri": {},
+                                "havuz_yas_gruplari": {}, "grup_siralamalari": {}, "grup_tamamlandi": {}, "grup_yas_gruplari": {},
+                                "takim_pinleri": {}, "esame_kasasi": {}, "esame_onayli": {}, "mac_programi": [], "hakem_listesi": [], "hakem_pinleri": {}
+                            }
+                            supabase.table("turnuva_ayarlari").update(bos_ayarlar).eq("id", 1).execute()
+                        except Exception as e:
+                            st.error(f"Veritabanı silinirken hata oluştu: {e}")
+
+                    if os.path.exists(BELGELER_KLASORU): shutil.rmtree(BELGELER_KLASORU)
+                    st.session_state.clear()
+                    st.session_state.confirm_reset = False
+                    st.success("Tüm veritabanı başarıyla temizlendi!")
+                    time.sleep(1.5)
+                    st.rerun()
+                if col_hayir.button("❌ Vazgeç"):
+                    st.session_state.confirm_reset = False
+                    st.rerun()
