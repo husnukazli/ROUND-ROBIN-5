@@ -1996,7 +1996,7 @@ else:
                     grup_tipi_liste = ["3'lü Grup", "4'lü Grup", "5'li Grup", "6'lı Grup"]
                 else:
                     grup_tipi_liste = ["2'li Grup", "3'lü Grup", "4'lü Grup"]
-                grup_tipi = st.radio("Grup Tipi:", grup_tipi_liste, horizontal=True)
+                ggrup_tipi = st.radio("Grup Tipi:", grup_tipi_liste, horizontal=True)
             with col_t3:
                 format_secimi = st.radio("Müsabaka Maç Formatı:", ["3 Maçlık (2 Tek, 1 Çift)", "5 Maçlık (3 Tek, 2 Çift)"], horizontal=True)
             
@@ -2004,7 +2004,7 @@ else:
             # --- YENİ EKLENEN: SADECE 2. AŞAMADA ÇIKAN STATÜ SEÇİMİ ---
             grup_statusu = "Play-out Grubu (Düşme Hattı)"
             if aktif_asama == "2. Aşama":
-                grup_statusu = st.radio("🏅 Grup Statüsü:", ["Birinciler Grubu (Kürsü)", "İkinciler Grubu (Orta Klasman)", "Play-out Grubu (Düşme Hattı)"], horizontal=True, index=2, key="yeni_grup_statu")
+                gggrup_statusu = st.radio("🏅 Grup Statüsü:", ["Birinciler Grubu (Kürsü)", "İkinciler Grubu (Orta Klasman)", "Play-out Grubu (Düşme Hattı)"], horizontal=True, index=2, key="yeni_grup_statu")
             if yas_secimi != "Yaş Belirtme":
                 tam_grup_adi = f"{yas_secimi} {kategori_secimi} {grup_adi_raw.strip()}".strip()
             else:
@@ -2016,7 +2016,7 @@ else:
             grup_adi_temiz = tam_grup_adi
             
             havuz_isimleri = ["✏️ Yeni / Listede Olmayan Takım (Elle Gir)"]
-            baska_gruplardaki_takimlar = {}
+            baska_ggruplardaki_takimlar = {}
 
             if aktif_asama == "1. Aşama":
                 for g_n, g_k in st.session_state.takim_kadrolari.items():
