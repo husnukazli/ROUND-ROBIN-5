@@ -2497,7 +2497,7 @@ else:
 # --- SAYFA 3: PUAN DURUMU ---
     elif menu_secim == "🏆 Puan Durumu":
         if not st.session_state.skor_tablosu.empty:
-            tab_puan, tab_klasman = st.tabs(["📊 Grup Puan Durumları", "🏆 Şampiyona Şeref Kürsüsü ve Nihai Klasman"])
+            tab_puan, tab_klasman = st.tabs(["📊 Grup Puan Durumları", "Nihai Klasman"])
             
             # === BİRİNCİ SEKME: STANDART PUAN DURUMU ===
             with tab_puan:
