@@ -2478,12 +2478,17 @@ else:
                                 mevcut_takimlar_harf_sirali = sorted(mevcut_takimlar)
                                 
                                 st.markdown("**1. Aşama 2. Aşama için Grubu Kilitle:**")
-                                st.info("Bu kutuyu işaretlemezseniz, bu gruptaki takımlar 2. Aşama kura havuzuna düşmez.")
-                                is_tamam = st.checkbox(f"✅ {gp} Maçları Tamamlandı (2. Aşamaya Gönder)", value=st.session_state.grup_tamamlandi.get(gp, False), key=f"tamam_{gp}")
+                                st.info("Bu kutuyu işaretlediğiniz an grup kilitlenir ve takımlar 2. Aşama havuzuna düşer. Başka bir butona basmanıza gerek yoktur!")
+                                
+                                def toggle_tamam(hedef_grup):
+                                    st.session_state.grup_tamamlandi[hedef_grup] = st.session_state[f"tamam_{hedef_grup}"]
+                                    ortak_veriyi_kaydet()
+                                    
+                                is_tamam = st.checkbox(f"✅ {gp} Maçları Tamamlandı (2. Aşamaya Gönder)", value=st.session_state.grup_tamamlandi.get(gp, False), key=f"tamam_{gp}", on_change=toggle_tamam, args=(gp,))
                                 
                                 st.markdown("---")
                                 st.markdown("**2. Manuel Sıralama (Üçlü Averaj vs. için):**")
-                                st.write("Averaj kilitlenmesi yaşanırsa takım sıralamasını aşağıdan elle belirleyebilirsiniz. Otomatik hesaplamaya dönmek için Sıfırla butonunu kullanın.")
+                                st.write("SADECE sistemin otomatik sıralamasına müdahale etmeniz gerekiyorsa aşağıdaki listeyi değiştirip kaydedin.")
                                 
                                 default_sel = st.session_state.grup_siralamalari.get(gp, mevcut_takimlar)
                                 secilenler = []
@@ -2497,27 +2502,37 @@ else:
                                 
                                 st.write("")
                                 c1, c2 = st.columns(2)
-                                if c1.button(f"💾 {gp} Onay ve Sıralamayı Kaydet", key=f"btn_save_{gp}", type="primary"):
+                                if c1.button(f"💾 {gp} Manuel Sıralamayı Uygula", key=f"btn_save_{gp}", type="primary"):
                                     if len(set(secilenler)) != len(mevcut_takimlar):
                                         st.error("Hata: Aynı takımı birden fazla sıraya yerleştiremezsiniz! Lütfen farklı takımlar seçin.")
                                     else:
-                                        st.session_state.grup_tamamlandi[gp] = is_tamam
-                                        st.session_state.grup_siralamalari[gp] = secilenler
+                                        if secilenler == mevcut_takimlar:
+                                            if gp in st.session_state.grup_siralamalari:
+                                                del st.session_state.grup_siralamalari[gp]
+                                            st.success("Sıralama otomatik hesaplamayla aynı olduğu için 'Manuel Müdahale' uyarısı kaldırıldı.")
+                                            ortak_veriyi_kaydet()
+                                            time.sleep(1.5)
+                                            st.rerun()
+                                        else:
+                                            st.session_state.grup_siralamalari[gp] = secilenler
+                                            if ortak_veriyi_kaydet():
+                                                st.success(f"{gp} için Başhakem Özel Sıralaması uygulandı!")
+                                                time.sleep(1.5)
+                                                st.rerun()
+                                            else:
+                                                st.error("Sistem meşgul, lütfen tekrar deneyin.")
+                                        
+                                if c2.button(f"🔄 Otomatik Sıralamaya Dön", key=f"btn_reset_{gp}"):
+                                    if gp in st.session_state.grup_siralamalari:
+                                        del st.session_state.grup_siralamalari[gp]
                                         if ortak_veriyi_kaydet():
-                                            st.success(f"{gp} Ayarları ve Sıralaması Başarıyla Kilitlendi!")
+                                            st.success("Manuel sıralama iptal edildi, sistem otomatik hesaplamaya döndü.")
+                                            time.sleep(1.5)
                                             st.rerun()
                                         else:
                                             st.error("Sistem meşgul, lütfen tekrar deneyin.")
-                                        
-                                if c2.button(f"🔄 {gp} Manuel Sıralamayı Sıfırla (Otomatiğe Dön)", key=f"btn_reset_{gp}"):
-                                    if gp in st.session_state.grup_siralamalari:
-                                        del st.session_state.grup_siralamalari[gp]
-                                    st.session_state.grup_tamamlandi[gp] = is_tamam 
-                                    if ortak_veriyi_kaydet():
-                                        st.success("Sıralama sıfırlandı, otomatik hesaplamaya dönüldü.")
-                                        st.rerun()
                                     else:
-                                        st.error("Sistem meşgul, lütfen tekrar deneyin.")
+                                        st.info("Grup zaten otomatik sıralamada.")
 
                         st.markdown("<br><hr>", unsafe_allow_html=True)
 
