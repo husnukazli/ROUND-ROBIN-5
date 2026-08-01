@@ -3176,7 +3176,7 @@ else:
             else:
                 st.write("Sisteme henüz herhangi bir belge yüklenmemiş.")
 
-   # --- SAYFA 7: YÖNETİM & DOSYA İŞLEMLERİ ---
+  # --- SAYFA 7: YÖNETİM & DOSYA İŞLEMLERİ ---
     elif menu_secim == "⚙️ Yönetim & Dosya":
         st.subheader(f"⚙️ Gelişmiş Yönetim Paneli ({aktif_asama})")
 
@@ -3258,15 +3258,36 @@ else:
                             
                             for i in range(beklenen_yeni_sayi):
                                 esk_ad = mevcut_takim_isimleri[i] if i < len(mevcut_takim_isimleri) else f"Yeni Takım {i+1}"
-                                oyuncular = m_kadrolar.get(esk_ad, ["Belirtilmedi"])
+                                
+                                # 1. Sistemdeki tüm takımları alıyoruz (Güvenli Açılır Pencere için)
+                                tum_takimlar = dogal_sirala(list(st.session_state.takim_havuzu.keys()))
+                                
+                                # 2. KULLANICI DAHİYANE ÇÖZÜMÜ: Tampon (Boş/BYE) Seçeneğini Ekliyoruz
+                                bye_opt = "--- BOŞ (BYE) ---"
+                                if bye_opt not in tum_takimlar: tum_takimlar.insert(0, bye_opt)
+                                
+                                if esk_ad not in tum_takimlar:
+                                    tum_takimlar.insert(1, esk_ad)
                                 
                                 c_a, c_b = st.columns([1, 2])
                                 with c_a:
-                                    y_ad = st.text_input(f"{i+1}. Takım Adı", value=esk_ad, key=f"ad_{sec_g}_{i}")
+                                    # Güvenli ve Tam Eşleşmeli Açılır Pencere
+                                    y_ad = st.selectbox(f"{i+1}. Takım Seçimi", options=tum_takimlar, index=tum_takimlar.index(esk_ad), key=f"ad_{sec_g}_{i}")
+                                    
                                     if i < len(mevcut_takim_isimleri) and y_ad != esk_ad: 
                                         isim_degisiklikleri[esk_ad] = y_ad
+                                        
+                                        # Seçim BOŞ ise içi boş gelsin, gerçek takımsa havuzdan çeksin
+                                        if y_ad == bye_opt:
+                                            aktif_oyuncular = ["(Boş)"]
+                                        else:
+                                            aktif_oyuncular = st.session_state.takim_havuzu.get(y_ad, ["Oyuncu Bulunamadı"])
+                                    else:
+                                        # Değişmediyse mevcut grubun kadrosunu koru
+                                        aktif_oyuncular = m_kadrolar.get(esk_ad, ["Belirtilmedi"])
+                                        
                                     with c_b:
-                                        y_o_text = st.text_area(f"Oyuncular", value="\n".join(oyuncular), key=f"oyuncu_{sec_g}_{i}", height=100)
+                                        y_o_text = st.text_area(f"Oyuncular ({y_ad})", value="\n".join(aktif_oyuncular), key=f"oyuncu_{sec_g}_{i}", height=100)
                                         yeni_k_yapisi[y_ad if y_ad else esk_ad] = [o.strip() for o in y_o_text.split('\n') if o.strip()]
                             
                             if st.button("💾 Yapılan Değişiklikleri Veritabanına Yaz"):
@@ -3277,7 +3298,7 @@ else:
                                     if g_n != sec_g and g_kat == yeni_kategori and g_asam == aktif_asama:
                                         for t_n in g_k.keys(): kullanilan_baska_takimlar_tab6[t_n] = g_n
                                 
-                                cakisanlar_tab6 = [t for t in list(yeni_k_yapisi.keys()) if t in kullanilan_baska_takimlar_tab6]
+                                cakisanlar_tab6 = [t for t in list(yeni_k_yapisi.keys()) if t in kullanilan_baska_takimlar_tab6 and t != bye_opt]
                                 if cakisanlar_tab6:
                                     hata_msj = ", ".join([f"'{t}' ({kullanilan_baska_takimlar_tab6[t]})" for t in cakisanlar_tab6])
                                     st.error(f"⚠️ Hata: Eklemek veya değiştirmek istediğiniz takım(lar) {yeni_kategori} kategorisinde ({aktif_asama}) zaten başka gruplarda kayıtlı!\nÇakışanlar: {hata_msj}")
