@@ -871,9 +871,9 @@ def sirala_grup_df(grup_df, gp):
     if gp in st.session_state.grup_siralamalari and st.session_state.grup_siralamalari[gp]:
         manuel_sira = st.session_state.grup_siralamalari[gp]
         grup_df['Sıra_Degeri'] = grup_df['Takım'].apply(lambda x: manuel_sira.index(x) if x in manuel_sira else 999)
-        grup_df = grup_df.sort_values(by=['Sıra_Degeri', 'Galibiyet', 'Maç Av.', 'Oyun Av.'], ascending=[True, False, False, False]).drop(columns=['Sıra_Degeri'])
+        grup_df = grup_df.sort_values(by=['Sıra_Degeri', 'Galibiyet', 'Maç Av.', 'Set Av.', 'Oyun Av.'], ascending=[True, False, False, False, False]).drop(columns=['Sıra_Degeri'])
     else:
-        grup_df = grup_df.sort_values(by=['Galibiyet', 'Maç Av.', 'Oyun Av.'], ascending=False)
+        grup_df = grup_df.sort_values(by=['Galibiyet', 'Maç Av.', 'Set Av.', 'Oyun Av.'], ascending=False)
     
     grup_df.index = range(1, len(grup_df) + 1)
     return grup_df
@@ -1996,7 +1996,7 @@ else:
                     grup_tipi_liste = ["3'lü Grup", "4'lü Grup", "5'li Grup", "6'lı Grup"]
                 else:
                     grup_tipi_liste = ["2'li Grup", "3'lü Grup", "4'lü Grup"]
-                ggrup_tipi = st.radio("Grup Tipi:", grup_tipi_liste, horizontal=True)
+                grup_tipi = st.radio("Grup Tipi:", grup_tipi_liste, horizontal=True)
             with col_t3:
                 format_secimi = st.radio("Müsabaka Maç Formatı:", ["3 Maçlık (2 Tek, 1 Çift)", "5 Maçlık (3 Tek, 2 Çift)"], horizontal=True)
             
@@ -2004,7 +2004,7 @@ else:
             # --- YENİ EKLENEN: SADECE 2. AŞAMADA ÇIKAN STATÜ SEÇİMİ ---
             grup_statusu = "Play-out Grubu (Düşme Hattı)"
             if aktif_asama == "2. Aşama":
-                gggrup_statusu = st.radio("🏅 Grup Statüsü:", ["Birinciler Grubu (Kürsü)", "İkinciler Grubu (Orta Klasman)", "Play-out Grubu (Düşme Hattı)"], horizontal=True, index=2, key="yeni_grup_statu")
+                grup_statusu = st.radio("🏅 Grup Statüsü:", ["Birinciler Grubu (Kürsü)", "İkinciler Grubu (Orta Klasman)", "Play-out Grubu (Düşme Hattı)"], horizontal=True, index=2, key="yeni_grup_statu")
             if yas_secimi != "Yaş Belirtme":
                 tam_grup_adi = f"{yas_secimi} {kategori_secimi} {grup_adi_raw.strip()}".strip()
             else:
@@ -2016,7 +2016,7 @@ else:
             grup_adi_temiz = tam_grup_adi
             
             havuz_isimleri = ["✏️ Yeni / Listede Olmayan Takım (Elle Gir)"]
-            baska_ggruplardaki_takimlar = {}
+            baska_gruplardaki_takimlar = {}
 
             if aktif_asama == "1. Aşama":
                 for g_n, g_k in st.session_state.takim_kadrolari.items():
