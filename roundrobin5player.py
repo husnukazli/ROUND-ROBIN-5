@@ -2205,12 +2205,13 @@ else:
 
                         is_wo = "W/O" in secilen_durum
                         
-                        s2t1_k = int(row['2.Set T1'])
-                        s2t2_k = int(row['2.Set T2'])
-                        s3t1_k = int(row['3.Set T1'])
-                        s3t2_k = int(row['3.Set T2'])
+                        # Çarpı butonunu gizleyen CSS (Kutunun içini temiz ve görünür tutar)
+                        st.markdown('<style>button[aria-label="Clear input"] { display: none !important; }</style>', unsafe_allow_html=True)
+                        
+                        s1t1_k, s1t2_k = int(row['1.Set T1']), int(row['1.Set T2'])
+                        s2t1_k, s2t2_k = int(row['2.Set T1']), int(row['2.Set T2'])
+                        s3t1_k, s3t2_k = int(row['3.Set T1']), int(row['3.Set T2'])
 
-                        # 2. SIFIR KRİZİNİ ÇÖZEN YAPI: Eğer değer "0" ise kutuya "None" (Boşluk) bas, ama görselinde gri "0" göster.
                         val_s1t1 = None if (is_wo or s1t1_k == 0) else s1t1_k
                         val_s1t2 = None if (is_wo or s1t2_k == 0) else s1t2_k
                         val_s2t1 = None if (is_wo or s2t1_k == 0) else s2t1_k
@@ -2231,7 +2232,6 @@ else:
                         inp_s3t1 = r_cols[10].number_input("S3T1", min_value=0, value=val_s3t1, placeholder="0", step=1, key=f"s3t1_{idx}", label_visibility="collapsed", disabled=is_wo)
                         inp_s3t2 = r_cols[11].number_input("S3T2", min_value=0, value=val_s3t2, placeholder="0", step=1, key=f"s3t2_{idx}", label_visibility="collapsed", disabled=is_wo)
                         
-                        # Veritabanına yazarken "None" dönen kutuları tekrar gerçek "0" yapıyoruz
                         form_verileri[idx] = {
                             "T1_Oyuncu": t1_oyuncu_str, "T2_Oyuncu": t2_oyuncu_str,
                             "1.Set T1": inp_s1t1 if inp_s1t1 is not None else 0, 
