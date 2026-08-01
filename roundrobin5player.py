@@ -2131,6 +2131,7 @@ else:
                     st.session_state.grup_kategorileri[grup_adi_temiz] = kategori_secimi
                     st.session_state.grup_asamalari[grup_adi_temiz] = aktif_asama
                     st.session_state.grup_yas_gruplari[grup_adi_temiz] = yas_secimi
+                    st.session_state.grup_statuleri[grup_adi_temiz] = grup_statusu
                     
                     if not st.session_state.skor_tablosu.empty and grup_adi_temiz in st.session_state.skor_tablosu['Grup'].unique():
                         if ortak_veriyi_kaydet():
