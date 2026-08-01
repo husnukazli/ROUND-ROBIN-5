@@ -256,7 +256,7 @@ def generate_combined_standings_pdf(gruplar_dict):
         pdf.ln(5)
     return get_pdf_bytes(pdf)
 
-ddef generate_klasman_pdf(kategori_adi, birinciler_liste, ikinciler_liste, ligde_kalanlar, dusenler):
+def generate_klasman_pdf(kategori_adi, birinciler_liste, ikinciler_liste, ligde_kalanlar, dusenler):
     pdf = FPDF(orientation='P', unit='mm', format='A4')
     pdf.add_page()
     setup_pdf_fonts(pdf)
