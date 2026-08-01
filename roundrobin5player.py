@@ -3445,7 +3445,7 @@ else:
                                 mevcut_statu = st.session_state.grup_statuleri.get(sec_g, "Play-out Grubu (Düşme Hattı)")
                                 statu_opts = ["Birinciler Grubu (Kürsü)", "İkinciler Grubu (Orta Klasman)", "Play-out Grubu (Düşme Hattı)"]
                                 s_idx = statu_opts.index(mevcut_statu) if mevcut_statu in statu_opts else 2
-                                grup_statusu = st.radio("🏅 Grup Statüsü (Bu grubun amacı nedir?):", statu_opts, horizontal=True, index=s_idx)
+                                rup_statusu = st.radio("🏅 Grup Statüsü (Bu grubun amacı nedir?):", statu_opts, horizontal=True, index=s_idx, key=f"edit_statu_{sec_g}")
 
                             fikstur_sifirlanacak_mi = (yeni_grup_tipi != tip_liste[tip_idx]) or (yeni_format != mevcut_format)
                             if fikstur_sifirlanacak_mi:
