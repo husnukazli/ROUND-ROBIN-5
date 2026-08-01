@@ -2421,7 +2421,7 @@ else:
                         if ortak_veriyi_kaydet():
                             st.success(f"{sil_hakem} sistemden kaldırıldı.")
                             st.rerun()
-       # --- SAYFA 3: PUAN DURUMU ---
+# --- SAYFA 3: PUAN DURUMU ---
     elif menu_secim == "🏆 Puan Durumu":
         if not st.session_state.skor_tablosu.empty:
             gecerli_gruplar_t3 = [g for g in st.session_state.skor_tablosu['Grup'].unique() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama]
@@ -2477,14 +2477,20 @@ else:
                                 mevcut_takimlar = grup_df['Takım'].tolist()
                                 mevcut_takimlar_harf_sirali = sorted(mevcut_takimlar)
                                 
-                                st.markdown("**1. Aşama 2. Aşama için Grubu Kilitle:**")
-                                st.info("Bu kutuyu işaretlediğiniz an grup kilitlenir ve takımlar 2. Aşama havuzuna düşer. Başka bir butona basmanıza gerek yoktur!")
-                                
                                 def toggle_tamam(hedef_grup):
                                     st.session_state.grup_tamamlandi[hedef_grup] = st.session_state[f"tamam_{hedef_grup}"]
                                     ortak_veriyi_kaydet()
+
+                                if aktif_asama == "1. Aşama":
+                                    st.markdown("**1. Aşama Sonucu (2. Aşama İçin Grubu Kilitle):**")
+                                    st.info("Bu kutuyu işaretlediğiniz an grup kilitlenir ve takımlar 2. Aşama havuzuna düşer. Başka bir butona basmanıza gerek yoktur!")
+                                    cb_metin = f"✅ {gp} Maçları Tamamlandı (2. Aşamaya Aktar)"
+                                else:
+                                    st.markdown("**Fikstür Sonu (Sıralamayı Kesinleştir):**")
+                                    st.info("Bu kutuyu işaretlediğiniz an gruptaki fikstür biter ve sıralama turnuva sonucu olarak kilitlenir.")
+                                    cb_metin = f"✅ {gp} Fikstürünü Bitir ve Sıralamaya Aktar"
                                     
-                                is_tamam = st.checkbox(f"✅ {gp} Maçları Tamamlandı (2. Aşamaya Gönder)", value=st.session_state.grup_tamamlandi.get(gp, False), key=f"tamam_{gp}", on_change=toggle_tamam, args=(gp,))
+                                is_tamam = st.checkbox(cb_metin, value=st.session_state.grup_tamamlandi.get(gp, False), key=f"tamam_{gp}", on_change=toggle_tamam, args=(gp,))
                                 
                                 st.markdown("---")
                                 st.markdown("**2. Manuel Sıralama (Üçlü Averaj vs. için):**")
@@ -2540,6 +2546,96 @@ else:
                     combined_pdf_bytes = generate_combined_standings_pdf(pdf_gruplar_data)
                     st.download_button(label=f"📥 Seçili Grupların Puan Durumunu Tek PDF Olarak İndir", data=combined_pdf_bytes, file_name=f"puan_durumu_toplu.pdf", mime="application/pdf", key="pdf_puan_toplu")
                 
+                # --- YENİ EKLENEN: GENEL KLASMAN RAPORU VE KIRMIZI ÇİZGİ ---
+                if aktif_asama == "2. Aşama":
+                    st.markdown("---")
+                    with st.expander("🏅 Turnuva Sonu Genel Klasman Raporu (Etiket Bazlı Birleştirme)", expanded=True):
+                        st.info("ℹ️ Bu araç, aynı kategori ve yaş grubundaki tüm '2. Aşama' gruplarını (Şampiyonluk ve Play-Out) otomatik tarar. Belirlediğiniz Kırmızı Çizgi'ye (düşme hattına) göre tek bir turnuva sonu raporu oluşturur.")
+                        
+                        kat_yas_kombinasyonlari = set()
+                        for gp in mevcut_gruplar:
+                            g_kat = st.session_state.grup_kategorileri.get(gp, "Erkekler")
+                            g_yas = st.session_state.grup_yas_gruplari.get(gp, "Yaş Belirtme")
+                            kat_yas_kombinasyonlari.add(f"{g_yas} {g_kat}" if g_yas != "Yaş Belirtme" else f"{g_kat}")
+                            
+                        if not kat_yas_kombinasyonlari:
+                            st.warning("Değerlendirilecek bir kategori bulunamadı.")
+                        else:
+                            secilen_kategori = st.selectbox("Raporlanacak Kategori:", sorted(list(kat_yas_kombinasyonlari)))
+                            # Senin bahsettiğin 'Kırmızı Çizgi' ayar kutusu:
+                            dusme_hatti = st.number_input("🔴 Play-Out Gruplarında İlk Kaç Takım Ligde Kalacak? (Kırmızı Çizgi)", min_value=1, value=2, step=1)
+                            
+                            if st.button("📊 Genel Klasman Raporunu Üret"):
+                                sampiyonluk_gruplari = []
+                                playout_gruplari = []
+                                
+                                for gp in mevcut_gruplar:
+                                    g_kat = st.session_state.grup_kategorileri.get(gp, "Erkekler")
+                                    g_yas = st.session_state.grup_yas_gruplari.get(gp, "Yaş Belirtme")
+                                    etiket = f"{g_yas} {g_kat}" if g_yas != "Yaş Belirtme" else f"{g_kat}"
+                                    
+                                    if etiket == secilen_kategori:
+                                        # Etiketleme mantığı: İsminde 'şampiyon', 'birinci' veya 'final' varsa kürsü grubudur.
+                                        gp_lower = gp.lower()
+                                        if "şampiyon" in gp_lower or "birinci" in gp_lower or "1." in gp_lower or "final" in gp_lower:
+                                            sampiyonluk_gruplari.append(gp)
+                                        else:
+                                            # Geri kalanlar (Play-Out vb.) paralel alt klasmandır.
+                                            playout_gruplari.append(gp)
+                                            
+                                st.markdown(f"### 🏆 {secilen_kategori} - Turnuva Sonu Genel Klasmanı")
+                                
+                                if not sampiyonluk_gruplari and not playout_gruplari:
+                                    st.warning("Bu kategoriye ait 2. aşama grubu bulunamadı.")
+                                else:
+                                    # 1. Şampiyonluk Grubu (Sıralı Kürsü)
+                                    if sampiyonluk_gruplari:
+                                        st.markdown("#### 🏆 KUPA VE MADALYA KÜRSÜSÜ (Şampiyonluk Grubu)")
+                                        for s_grup in sampiyonluk_gruplari:
+                                            grup_df = tum_stats[tum_stats['Grup'] == s_grup].drop(columns=['Grup'])
+                                            grup_df = sirala_grup_df(grup_df, s_grup)
+                                            
+                                            for idx, row in grup_df.iterrows():
+                                                takim = row['Takım']
+                                                madalya = ""
+                                                if idx == 1: madalya = "🥇 (Şampiyon)"
+                                                elif idx == 2: madalya = "🥈 (İkinci)"
+                                                elif idx == 3: madalya = "🥉 (Üçüncü)"
+                                                elif idx == 4: madalya = "🏅 (Dördüncü)"
+                                                
+                                                st.markdown(f"**{idx}. Sıra:** {takim} {madalya}")
+                                    
+                                    # 2. Paralel Play-Out'lar (Kırmızı Çizgiye Göre Ayrışanlar)
+                                    if playout_gruplari:
+                                        ligde_kalanlar = []
+                                        dusenler = []
+                                        
+                                        for p_grup in playout_gruplari:
+                                            grup_df = tum_stats[tum_stats['Grup'] == p_grup].drop(columns=['Grup'])
+                                            grup_df = sirala_grup_df(grup_df, p_grup)
+                                            
+                                            for idx, row in grup_df.iterrows():
+                                                if idx <= dusme_hatti: # Kırmızı çizginin üstü (Ligde Kalır)
+                                                    ligde_kalanlar.append(f"{row['Takım']} *(Grubu: {p_grup})*")
+                                                else: # Kırmızı çizginin altı (Düşer)
+                                                    dusenler.append(f"{row['Takım']} *(Grubu: {p_grup})*")
+                                                    
+                                        st.markdown("---")
+                                        st.markdown("#### 🟢 LİGDE KALANLAR (Orta Klasman)")
+                                        if ligde_kalanlar:
+                                            for takim in dogal_sirala(ligde_kalanlar):
+                                                st.markdown(f"- {takim}")
+                                        else:
+                                            st.caption("Ligde kalan takım bulunamadı.")
+                                            
+                                        st.markdown("---")
+                                        st.markdown("#### 🔴 LİGDEN DÜŞENLER (Alt Klasman)")
+                                        if dusenler:
+                                            for takim in dogal_sirala(dusenler):
+                                                st.markdown(f"- {takim}")
+                                        else:
+                                            st.caption("Düşme hattında takım bulunamadı.")
+
                 st.markdown("---")
                 with st.expander("⚖️ Gelişmiş Averaj ve Mini Lig Hesaplayıcı"):
                     st.info("ℹ️ Üçlü veya dörtlü averaj kilitlenmelerinde bir grup ve sadece averaja dahil edilecek takımları seçin. Sistem, dışarıdaki takımlarla oynanan maçları yoksayarak yepyeni bir Mini Lig oluşturur. Bu bilgiye bakarak üstteki 'Başhakem Sıralama Paneli'nden tabloyu dizebilirsiniz.")
@@ -2573,7 +2669,6 @@ else:
                             st.warning("Averaj hesaplamak için en az 2 takım seçmelisiniz.")
             else:
                 st.info(f"Bu aşamada henüz maç bulunmuyor.")
-
     # --- SAYFA 4: TAKIM KADROLARI (DİKEY LİSTE) ---
     elif menu_secim == "🛡️ Takım Kadroları":
         st.markdown(f"### 🛡️ Takımlar ve Oyuncu Kadroları ({aktif_asama})")
