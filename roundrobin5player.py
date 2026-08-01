@@ -256,40 +256,46 @@ def generate_combined_standings_pdf(gruplar_dict):
         pdf.ln(5)
     return get_pdf_bytes(pdf)
 
-def generate_klasman_pdf(kategori_adi, birinciler_liste, ikinciler_liste, ligde_kalanlar, dusenler):
+ddef generate_klasman_pdf(kategori_adi, birinciler_liste, ikinciler_liste, ligde_kalanlar, dusenler):
     pdf = FPDF(orientation='P', unit='mm', format='A4')
     pdf.add_page()
     setup_pdf_fonts(pdf)
 
+    # Resmi Antet
+    apply_font(pdf, bold=True, size=16)
+    pdf.cell(0, 8, to_pdf_text("TURKIYE TENIS FEDERASYONU"), ln=True, align='C')
+    apply_font(pdf, bold=False, size=12)
+    pdf.cell(0, 6, to_pdf_text("Takim Sampiyonasi Resmi Sonuc Bildirgesi"), ln=True, align='C')
+    pdf.line(10, pdf.get_y()+2, 200, pdf.get_y()+2)
+    pdf.ln(10)
+
     # Ana Başlık
-    apply_font(pdf, bold=True, size=15)
-    pdf.cell(0, 10, to_pdf_text(f"{kategori_adi} - Turnuva Sonu Genel Klasmani"), ln=True, align='C')
+    apply_font(pdf, bold=True, size=14)
+    pdf.cell(0, 10, to_pdf_text(f"KATEGORI: {kategori_adi.upper()} - NIHAI KLASMAN"), ln=True, align='C')
     pdf.ln(5)
 
     current_rank = 1
 
-    # Şampiyonluk Grubu (Numaralı)
     if birinciler_liste:
-        pdf.set_fill_color(230, 230, 230)
-        apply_font(pdf, bold=True, size=12)
-        pdf.cell(0, 8, to_pdf_text("KUPA VE MADALYA KURSUSU"), border=1, ln=True, fill=True, align='C')
+        pdf.set_fill_color(220, 220, 220)
+        apply_font(pdf, bold=True, size=11)
+        pdf.cell(0, 8, to_pdf_text("SAMPİYONLUK KURSUSU"), border=1, ln=True, fill=True, align='L')
         apply_font(pdf, bold=False, size=11)
         pdf.ln(2)
         for takim in birinciler_liste:
-            madalya = ""
-            if current_rank == 1: madalya = " (Sampiyon)"
-            elif current_rank == 2: madalya = " (Ikinci)"
-            elif current_rank == 3: madalya = " (Ucuncu)"
-            elif current_rank == 4: madalya = " (Dorduncu)"
-            pdf.cell(0, 7, to_pdf_text(f"  {current_rank}. Sira: {takim}{madalya}"), ln=True)
+            unvan = ""
+            if current_rank == 1: unvan = " (Sampiyon)"
+            elif current_rank == 2: unvan = " (Ikinci)"
+            elif current_rank == 3: unvan = " (Ucuncu)"
+            elif current_rank == 4: unvan = " (Dorduncu)"
+            pdf.cell(0, 7, to_pdf_text(f"  {current_rank}. Sira: {takim}{unvan}"), ln=True)
             current_rank += 1
         pdf.ln(5)
 
-    # İkinciler Grubu (Numaralı)
     if ikinciler_liste:
-        pdf.set_fill_color(240, 240, 240)
-        apply_font(pdf, bold=True, size=12)
-        pdf.cell(0, 8, to_pdf_text("IKINCILER GRUBU (Klasman)"), border=1, ln=True, fill=True, align='C')
+        pdf.set_fill_color(235, 235, 235)
+        apply_font(pdf, bold=True, size=11)
+        pdf.cell(0, 8, to_pdf_text("IKINCILER GRUBU (Klasman)"), border=1, ln=True, fill=True, align='L')
         apply_font(pdf, bold=False, size=11)
         pdf.ln(2)
         for takim in ikinciler_liste:
@@ -297,26 +303,97 @@ def generate_klasman_pdf(kategori_adi, birinciler_liste, ikinciler_liste, ligde_
             current_rank += 1
         pdf.ln(5)
 
-    # Ligde Kalanlar (Numarasız, Madde İmli)
     if ligde_kalanlar:
-        pdf.set_fill_color(230, 245, 230)
-        apply_font(pdf, bold=True, size=12)
-        pdf.cell(0, 8, to_pdf_text("LIGDE KALANLAR (Play-Out Ust Siralar)"), border=1, ln=True, fill=True, align='C')
+        pdf.set_fill_color(245, 245, 245)
+        apply_font(pdf, bold=True, size=11)
+        pdf.cell(0, 8, to_pdf_text("LIGDE KALANLAR (Play-Out Ust Siralar)"), border=1, ln=True, fill=True, align='L')
         apply_font(pdf, bold=False, size=11)
         pdf.ln(2)
         for takim in dogal_sirala(ligde_kalanlar):
             pdf.cell(0, 7, to_pdf_text(f"  - {takim}"), ln=True)
         pdf.ln(5)
 
-    # Ligden Düşenler (Numarasız, Madde İmli)
     if dusenler:
-        pdf.set_fill_color(255, 235, 235)
-        apply_font(pdf, bold=True, size=12)
-        pdf.cell(0, 8, to_pdf_text("LIGDEN DUSENLER (Play-Out Alt Siralar)"), border=1, ln=True, fill=True, align='C')
+        pdf.set_fill_color(245, 245, 245)
+        apply_font(pdf, bold=True, size=11)
+        pdf.cell(0, 8, to_pdf_text("LIGDEN DUSENLER (Play-Out Alt Siralar)"), border=1, ln=True, fill=True, align='L')
         apply_font(pdf, bold=False, size=11)
         pdf.ln(2)
         for takim in dogal_sirala(dusenler):
             pdf.cell(0, 7, to_pdf_text(f"  - {takim}"), ln=True)
+
+    return get_pdf_bytes(pdf)
+
+def generate_toplu_klasman_pdf(kategoriler_verisi):
+    pdf = FPDF(orientation='P', unit='mm', format='A4')
+    setup_pdf_fonts(pdf)
+
+    for kat_adi, veriler in kategoriler_verisi.items():
+        pdf.add_page()
+        
+        # Resmi Antet
+        apply_font(pdf, bold=True, size=16)
+        pdf.cell(0, 8, to_pdf_text("TURKIYE TENIS FEDERASYONU"), ln=True, align='C')
+        apply_font(pdf, bold=False, size=12)
+        pdf.cell(0, 6, to_pdf_text("Takim Sampiyonasi Resmi Sonuc Bildirgesi"), ln=True, align='C')
+        pdf.line(10, pdf.get_y()+2, 200, pdf.get_y()+2)
+        pdf.ln(10)
+        
+        apply_font(pdf, bold=True, size=14)
+        pdf.cell(0, 10, to_pdf_text(f"KATEGORI: {kat_adi.upper()} - NIHAI KLASMAN"), ln=True, align='C')
+        pdf.ln(5)
+
+        current_rank = 1
+        birinciler = veriler.get("birinciler", [])
+        ikinciler = veriler.get("ikinciler", [])
+        ligde_kalanlar = veriler.get("ligde_kalanlar", [])
+        dusenler = veriler.get("dusenler", [])
+
+        if birinciler:
+            pdf.set_fill_color(220, 220, 220)
+            apply_font(pdf, bold=True, size=11)
+            pdf.cell(0, 8, to_pdf_text("SAMPIYONLUK KURSUSU"), border=1, ln=True, fill=True, align='L')
+            apply_font(pdf, bold=False, size=11)
+            pdf.ln(2)
+            for takim in birinciler:
+                unvan = ""
+                if current_rank == 1: unvan = " (Sampiyon)"
+                elif current_rank == 2: unvan = " (Ikinci)"
+                elif current_rank == 3: unvan = " (Ucuncu)"
+                elif current_rank == 4: unvan = " (Dorduncu)"
+                pdf.cell(0, 7, to_pdf_text(f"  {current_rank}. Sira: {takim}{unvan}"), ln=True)
+                current_rank += 1
+            pdf.ln(5)
+
+        if ikinciler:
+            pdf.set_fill_color(235, 235, 235)
+            apply_font(pdf, bold=True, size=11)
+            pdf.cell(0, 8, to_pdf_text("IKINCILER GRUBU (Klasman)"), border=1, ln=True, fill=True, align='L')
+            apply_font(pdf, bold=False, size=11)
+            pdf.ln(2)
+            for takim in ikinciler:
+                pdf.cell(0, 7, to_pdf_text(f"  {current_rank}. Sira: {takim}"), ln=True)
+                current_rank += 1
+            pdf.ln(5)
+
+        if ligde_kalanlar:
+            pdf.set_fill_color(245, 245, 245)
+            apply_font(pdf, bold=True, size=11)
+            pdf.cell(0, 8, to_pdf_text("LIGDE KALANLAR (Play-Out Ust Siralar)"), border=1, ln=True, fill=True, align='L')
+            apply_font(pdf, bold=False, size=11)
+            pdf.ln(2)
+            for takim in dogal_sirala(ligde_kalanlar):
+                pdf.cell(0, 7, to_pdf_text(f"  - {takim}"), ln=True)
+            pdf.ln(5)
+
+        if dusenler:
+            pdf.set_fill_color(245, 245, 245)
+            apply_font(pdf, bold=True, size=11)
+            pdf.cell(0, 8, to_pdf_text("LIGDEN DUSENLER (Play-Out Alt Siralar)"), border=1, ln=True, fill=True, align='L')
+            apply_font(pdf, bold=False, size=11)
+            pdf.ln(2)
+            for takim in dogal_sirala(dusenler):
+                pdf.cell(0, 7, to_pdf_text(f"  - {takim}"), ln=True)
 
     return get_pdf_bytes(pdf)
 
