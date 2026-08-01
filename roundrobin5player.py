@@ -3161,7 +3161,7 @@ else:
             else:
                 st.write("Sisteme henüz herhangi bir belge yüklenmemiş.")
 
-    # --- SAYFA 7: YÖNETİM & DOSYA İŞLEMLERİ ---
+   # --- SAYFA 7: YÖNETİM & DOSYA İŞLEMLERİ ---
     elif menu_secim == "⚙️ Yönetim & Dosya":
         st.subheader(f"⚙️ Gelişmiş Yönetim Paneli ({aktif_asama})")
 
@@ -3270,10 +3270,12 @@ else:
                                     g_hedef = yeni_grup_adi if yeni_grup_adi.strip() != "" else sec_g
                                     
                                     if fikstur_sifirlanacak_mi:
+                                        # GARANTİLİ SİLME YÖNTEMİ: İsimle değil, ID'lerle vuruyoruz
+                                        silinecek_idler = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] == sec_g]['id'].dropna().tolist()
                                         try:
-                                            if "supabase" in globals() and supabase:
-                                                # HATA DÜZELTİLDİ: Sütun adı 'Grup' değil, veritabanındaki 'grup_adi' olmalı.
-                                                supabase.table("maclar").delete().eq("grup_adi", sec_g).execute()
+                                            if "supabase" in globals() and supabase and silinecek_idler:
+                                                for idx_chunk in range(0, len(silinecek_idler), 100):
+                                                    supabase.table("maclar").delete().in_("id", silinecek_idler[idx_chunk:idx_chunk+100]).execute()
                                         except Exception:
                                             pass
                                             
@@ -3346,10 +3348,12 @@ else:
                     st.warning(f"⚠️ DİKKAT: '{secilen_sil_grup}' grubunu ve bu gruba ait tüm fikstür/kadro kayıtlarını kalıcı olarak sileceksiniz!")
                     
                     if st.button(f"🚨 '{secilen_sil_grup}' Grubunu Tamamen Sil"):
+                        # GARANTİLİ SİLME YÖNTEMİ: İsimle değil, ID'lerle vuruyoruz
+                        silinecek_idler = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] == secilen_sil_grup]['id'].dropna().tolist()
                         try:
-                            if "supabase" in globals() and supabase:
-                                # HATA DÜZELTİLDİ: Sütun adı 'Grup' değil, veritabanındaki 'grup_adi' olmalı.
-                                supabase.table("maclar").delete().eq("grup_adi", secilen_sil_grup).execute()
+                            if "supabase" in globals() and supabase and silinecek_idler:
+                                for idx_chunk in range(0, len(silinecek_idler), 100):
+                                    supabase.table("maclar").delete().in_("id", silinecek_idler[idx_chunk:idx_chunk+100]).execute()
                         except Exception:
                             pass
                             
