@@ -2096,10 +2096,31 @@ else:
         else:
             st.warning("🔒 Bu panel dışarıya kapalıdır. Lütfen giriş yapınız.")
 
-    # --- SAYFA 2: SKOR GİRİŞİ ---
+   # --- SAYFA 2: SKOR GİRİŞİ ---
     elif menu_secim == "✍️ Skor Girişi":
+        
+        # --- OTOMATİK SKOR DOLDURMA ALGORİTMASI ---
+        def oto_skor_doldur(changed_key, other_key, stb_key):
+            if changed_key not in st.session_state: return
+            val = st.session_state[changed_key]
+            if val is None: return
+            
+            is_stb = st.session_state.get(stb_key, False)
+            
+            # Sadece kaybeden bir skor girildiğinde karşı tarafı otomatik "Kazanan Skor" ile doldurur
+            if not is_stb:
+                if val < 5:
+                    st.session_state[other_key] = 6
+                elif val in [5, 6]:
+                    st.session_state[other_key] = 7
+            else:
+                if val <= 8:
+                    st.session_state[other_key] = 10
+                elif val >= 9:
+                    st.session_state[other_key] = val + 2
+                    
         if st.session_state.admin_mi:
-            st.info("💡 **Not:** Kaptanların girdiği (veya sizin girdiğiniz) isimler onaylandıktan sonra buraya otomatik düşer. Düşen isimleri burada manuel değiştirdiğiniz anda, sistem o maçın esamesini başhakem yetkisiyle 'Onaylı' hale getirir ve Maç Programı'nda herkese yayınlar.")
+            st.info("💡 **Not:** Kaptanların girdiği isimler onaylandıktan sonra buraya otomatik düşer. Kaydedilen skorlar anında puan durumuna yansır.")
             if not st.session_state.skor_tablosu.empty:
                 gecerli_gruplar_t2 = [g for g in st.session_state.skor_tablosu['Grup'].unique() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama]
                 
@@ -2107,7 +2128,6 @@ else:
                     st.info(f"{aktif_asama} için kayıtlı grup bulunmamaktadır.")
                 else:
                     gruplar = dogal_sirala(gecerli_gruplar_t2)
-                    
                     secilen_grup = st.selectbox("Grup Seç:", gruplar, key="skor_grup_sec")
                     
                     df_grup = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] == secilen_grup].copy()
@@ -2115,28 +2135,36 @@ else:
                     
                     secilen_gun = st.selectbox("Müsabaka Günü:", aktif_gunler)
                     df_gun = df_grup[df_grup['Gün'] == secilen_gun]
-                    
                     format_secimi = st.session_state.grup_formatlari.get(secilen_grup, "3 Maçlık (2 Tek, 1 Çift)")
                     
                     form_verileri = {}
+                    current_eslesme = None  # GÖRSEL AYRAÇ İÇİN TAKİPÇİ
                     
                     for idx, row in sort_maclar(df_gun).iterrows():
+                        # 1. GÖRSEL AYRAÇ: YENİ BİR TAKIM MAÇI BAŞLADIĞINDA ŞERİT AT
+                        if row['Eşleşme'] != current_eslesme:
+                            current_eslesme = row['Eşleşme']
+                            st.markdown(f"""
+                            <div style='background: linear-gradient(90deg, #0B3B24 0%, #1a6b44 100%); color: white; padding: 8px 15px; border-radius: 6px; margin-top: 25px; margin-bottom: 15px; font-size: 15px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.15);'>
+                                🎾 TAKIM EŞLEŞMESİ: {row['Takım 1']} vs {row['Takım 2']} <span style='font-size:12px; font-weight:normal; opacity:0.8; margin-left:10px;'>(Kayıt: {current_eslesme})</span>
+                            </div>
+                            """, unsafe_allow_html=True)
+
                         s1t1_k = int(row['1.Set T1'])
                         s1t2_k = int(row['1.Set T2'])
                         durum_k = str(row.get('Durum', 'Tamamlandı'))
                         skor_girilmis = s1t1_k > 0 or s1t2_k > 0 or durum_k != "Tamamlandı"
                         
                         if skor_girilmis:
-                            st.markdown(f"<div style='padding: 6px 10px; border-radius: 6px; background-color: rgba(232, 108, 67, 0.15); border-left: 4px solid #E86C43; margin-bottom: 5px;'><b style='color: #E86C43;'>✅ {row['Branş']} ({row['Eşleşme']}) - Skor Kayıtlı</b></div>", unsafe_allow_html=True)
+                            st.markdown(f"<div style='padding: 6px 10px; border-radius: 6px; background-color: rgba(232, 108, 67, 0.15); border-left: 4px solid #E86C43; margin-bottom: 5px;'><b style='color: #E86C43;'>✅ {row['Branş']} - Skor Kayıtlı</b></div>", unsafe_allow_html=True)
                         else:
-                            st.markdown(f"<div style='padding: 6px 10px; margin-bottom: 5px; opacity: 0.8;'><b>🔹 {row['Branş']} ({row['Eşleşme']})</b></div>", unsafe_allow_html=True)
+                            st.markdown(f"<div style='padding: 6px 10px; margin-bottom: 5px; opacity: 0.8;'><b>🔹 {row['Branş']}</b></div>", unsafe_allow_html=True)
                         
                         h_cols = st.columns([2.8, 2.8, 2.6, 1.4, 0.2, 1.4, 0.2, 1.4])
                         
                         t1_isim, t2_isim = row['Takım 1'], row['Takım 2']
                         h_cols[0].markdown(f"<div style='font-size:14px; font-weight:bold; padding-bottom:5px;'>🛡️ {t1_isim}</div>", unsafe_allow_html=True)
                         h_cols[1].markdown(f"<div style='font-size:14px; font-weight:bold; padding-bottom:5px;'>🛡️ {t2_isim}</div>", unsafe_allow_html=True)
-                        
                         h_cols[3].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; border-bottom: 2px solid rgba(128,128,128,0.5); padding-bottom: 2px;'>1. SET</div>", unsafe_allow_html=True)
                         h_cols[5].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; border-bottom: 2px solid rgba(128,128,128,0.5); padding-bottom: 2px;'>2. SET</div>", unsafe_allow_html=True)
                         h_cols[7].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; border-bottom: 2px solid rgba(128,128,128,0.5); padding-bottom: 2px;'>3. SET</div>", unsafe_allow_html=True)
@@ -2186,7 +2214,6 @@ else:
                             elif mevcut_durum == "Takım 2 (W/O)": mevcut_durum = "Takım 1 Kazandı (W/O)"
                             elif mevcut_durum == "Takım 1 (Ret.)": mevcut_durum = "Takım 2 Kazandı (Ret.)"
                             elif mevcut_durum == "Takım 2 (Ret.)": mevcut_durum = "Takım 1 Kazandı (Ret.)"
-                            
                             d_idx = durum_opts.index(mevcut_durum) if mevcut_durum in durum_opts else 0
                             secilen_durum = st.selectbox("Durum", options=durum_opts, index=d_idx, key=f"durum_{idx}", label_visibility="collapsed")
 
@@ -2196,22 +2223,42 @@ else:
 
                         is_wo = "W/O" in secilen_durum
                         
-                        s1t1 = r_cols[4].number_input("S1T1", min_value=0, value=0 if is_wo else int(row['1.Set T1']), step=1, key=f"s1t1_{idx}", label_visibility="collapsed", disabled=is_wo)
-                        s1t2 = r_cols[5].number_input("S1T2", min_value=0, value=0 if is_wo else int(row['1.Set T2']), step=1, key=f"s1t2_{idx}", label_visibility="collapsed", disabled=is_wo)
+                        s2t1_k = int(row['2.Set T1'])
+                        s2t2_k = int(row['2.Set T2'])
+                        s3t1_k = int(row['3.Set T1'])
+                        s3t2_k = int(row['3.Set T2'])
+
+                        # 2. SIFIR KRİZİNİ ÇÖZEN YAPI: Eğer değer "0" ise kutuya "None" (Boşluk) bas, ama görselinde gri "0" göster.
+                        val_s1t1 = None if (is_wo or s1t1_k == 0) else s1t1_k
+                        val_s1t2 = None if (is_wo or s1t2_k == 0) else s1t2_k
+                        val_s2t1 = None if (is_wo or s2t1_k == 0) else s2t1_k
+                        val_s2t2 = None if (is_wo or s2t2_k == 0) else s2t2_k
+                        val_s3t1 = None if (is_wo or s3t1_k == 0) else s3t1_k
+                        val_s3t2 = None if (is_wo or s3t2_k == 0) else s3t2_k
+
+                        # 3. OTOMATİK SKOR DOLDURMA (on_change ile tetiklenir)
+                        inp_s1t1 = r_cols[4].number_input("S1T1", min_value=0, value=val_s1t1, placeholder="0", step=1, key=f"s1t1_{idx}", label_visibility="collapsed", disabled=is_wo, on_change=oto_skor_doldur, args=(f"s1t1_{idx}", f"s1t2_{idx}", f"stb_{idx}"))
+                        inp_s1t2 = r_cols[5].number_input("S1T2", min_value=0, value=val_s1t2, placeholder="0", step=1, key=f"s1t2_{idx}", label_visibility="collapsed", disabled=is_wo, on_change=oto_skor_doldur, args=(f"s1t2_{idx}", f"s1t1_{idx}", f"stb_{idx}"))
                         
                         r_cols[6].markdown("<div style='text-align:center; opacity:0.5; margin-top:5px; font-weight:bold;'>|</div>", unsafe_allow_html=True)
                         
-                        s2t1 = r_cols[7].number_input("S2T1", min_value=0, value=0 if is_wo else int(row['2.Set T1']), step=1, key=f"s2t1_{idx}", label_visibility="collapsed", disabled=is_wo)
-                        s2t2 = r_cols[8].number_input("S2T2", min_value=0, value=0 if is_wo else int(row['2.Set T2']), step=1, key=f"s2t2_{idx}", label_visibility="collapsed", disabled=is_wo)
+                        inp_s2t1 = r_cols[7].number_input("S2T1", min_value=0, value=val_s2t1, placeholder="0", step=1, key=f"s2t1_{idx}", label_visibility="collapsed", disabled=is_wo, on_change=oto_skor_doldur, args=(f"s2t1_{idx}", f"s2t2_{idx}", f"stb_{idx}"))
+                        inp_s2t2 = r_cols[8].number_input("S2T2", min_value=0, value=val_s2t2, placeholder="0", step=1, key=f"s2t2_{idx}", label_visibility="collapsed", disabled=is_wo, on_change=oto_skor_doldur, args=(f"s2t2_{idx}", f"s2t1_{idx}", f"stb_{idx}"))
                         
                         r_cols[9].markdown("<div style='text-align:center; opacity:0.5; margin-top:5px; font-weight:bold;'>|</div>", unsafe_allow_html=True)
                         
-                        s3t1 = r_cols[10].number_input("S3T1", min_value=0, value=0 if is_wo else int(row['3.Set T1']), step=1, key=f"s3t1_{idx}", label_visibility="collapsed", disabled=is_wo)
-                        s3t2 = r_cols[11].number_input("S3T2", min_value=0, value=0 if is_wo else int(row['3.Set T2']), step=1, key=f"s3t2_{idx}", label_visibility="collapsed", disabled=is_wo)
+                        inp_s3t1 = r_cols[10].number_input("S3T1", min_value=0, value=val_s3t1, placeholder="0", step=1, key=f"s3t1_{idx}", label_visibility="collapsed", disabled=is_wo, on_change=oto_skor_doldur, args=(f"s3t1_{idx}", f"s3t2_{idx}", f"stb_{idx}"))
+                        inp_s3t2 = r_cols[11].number_input("S3T2", min_value=0, value=val_s3t2, placeholder="0", step=1, key=f"s3t2_{idx}", label_visibility="collapsed", disabled=is_wo, on_change=oto_skor_doldur, args=(f"s3t2_{idx}", f"s3t1_{idx}", f"stb_{idx}"))
                         
+                        # Veritabanına yazarken "None" dönen kutuları tekrar gerçek "0" yapıyoruz ki hesaplamalar çökmesin
                         form_verileri[idx] = {
                             "T1_Oyuncu": t1_oyuncu_str, "T2_Oyuncu": t2_oyuncu_str,
-                            "1.Set T1": s1t1, "1.Set T2": s1t2, "2.Set T1": s2t1, "2.Set T2": s2t2, "3.Set T1": s3t1, "3.Set T2": s3t2,
+                            "1.Set T1": inp_s1t1 if inp_s1t1 is not None else 0, 
+                            "1.Set T2": inp_s1t2 if inp_s1t2 is not None else 0, 
+                            "2.Set T1": inp_s2t1 if inp_s2t1 is not None else 0, 
+                            "2.Set T2": inp_s2t2 if inp_s2t2 is not None else 0, 
+                            "3.Set T1": inp_s3t1 if inp_s3t1 is not None else 0, 
+                            "3.Set T2": inp_s3t2 if inp_s3t2 is not None else 0,
                             "Durum": secilen_durum, "STB": secilen_stb, "Eşleşme": str(row['Eşleşme'])
                         }
                         st.divider()
