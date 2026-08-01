@@ -2735,76 +2735,97 @@ else:
                                 
             # === İKİNCİ SEKME: ŞEREF KÜRSÜSÜ VE NİHAİ KLASMAN ===
             with tab_klasman:
-                st.markdown("### 🏆 Turnuva Sonu Nihai Klasman Vitrini")
+                st.markdown("### Nihai Klasman Vitrini")
                 if aktif_asama != "2. Aşama":
-                    st.info("ℹ️ Nihai klasman sıralamaları sadece '2. Aşama' tamamlandıktan sonra oluşturulur.")
+                    st.info("Nihai klasman sıralamaları sadece '2. Aşama' tamamlandıktan sonra oluşturulur.")
                 else:
-                    st.info("Bu vitrin, maçları ve onayları tamamen bitmiş olan kategorilerin şampiyonlarını ve play-out (düşme/kalma) durumlarını listeler. PDF çıktısı alırken listeden istediklerinizi veya tümünü seçebilirsiniz.")
+                    st.info("Bu vitrin, maçları ve Başhakem onayları tamamen bitmiş olan kategorilerin şampiyonlarını ve play-out durumlarını listeler.")
                     
-                    # 1. Hangi kategorilerin tüm grupları tamamlanmış bul
-                    kat_gruplari_map = {}
-                    for gp in mevcut_gruplar:
+                    # 1. Turnuvadaki TÜM grupları bul (sadece 2. Aşamayı değil)
+                    tum_gruplar_listesi = st.session_state.skor_tablosu['Grup'].unique()
+                    tum_stats_genel = hesapla_tum_puan_durumu(st.session_state.skor_tablosu)
+                    
+                    # 2. Her kategori için Hangi Aşamaların olduğunu haritala
+                    kategori_asama_map = {}
+                    for gp in tum_gruplar_listesi:
                         g_kat = st.session_state.grup_kategorileri.get(gp, "Erkekler")
                         g_yas = st.session_state.grup_yas_gruplari.get(gp, "Yaş Belirtme")
                         etiket = f"{g_yas} {g_kat}" if g_yas != "Yaş Belirtme" else f"{g_kat}"
-                        if etiket not in kat_gruplari_map:
-                            kat_gruplari_map[etiket] = []
-                        kat_gruplari_map[etiket].append(gp)
+                        asama_bilgisi = st.session_state.grup_asamalari.get(gp, "1. Aşama")
                         
+                        if etiket not in kategori_asama_map:
+                            kategori_asama_map[etiket] = {"1. Aşama": [], "2. Aşama": []}
+                        kategori_asama_map[etiket][asama_bilgisi].append(gp)
+                        
+                    # 3. Kategorinin Nihai Gruplarını Belirle (2. Aşaması varsa 2'yi, yoksa 1'i baz al)
+                    kat_gruplari_map = {}
+                    for kat_ad, asamalar in kategori_asama_map.items():
+                        if len(asamalar["2. Aşama"]) > 0:
+                            kat_gruplari_map[kat_ad] = asamalar["2. Aşama"] # Çok aşamalılar (örn: 55+)
+                        else:
+                            kat_gruplari_map[kat_ad] = asamalar["1. Aşama"] # Tek aşamalılar (örn: 60+, 65+)
+                            
                     tamamlanan_kategoriler = []
                     for kat_ad, gruplar_listesi in kat_gruplari_map.items():
-                        # O kategorideki TÜM grupların grup_tamamlandi değeri True mu?
                         herkes_tamam_mi = all(st.session_state.grup_tamamlandi.get(g, False) for g in gruplar_listesi)
-                        if herkes_tamam_mi:
+                        if herkes_tamam_mi and len(gruplar_listesi) > 0:
                             tamamlanan_kategoriler.append(kat_ad)
                             
                     if not tamamlanan_kategoriler:
-                        st.warning("⏳ Henüz tüm grupları 'Tamamlandı' olarak işaretlenmiş (kilitlenmiş) bir kategori bulunmuyor. Lütfen önce Puan Durumu tablosundan ilgili grupları kilitleyin.")
+                        st.warning("Henüz tüm grupları 'Tamamlandı' olarak kilitlenmiş bir kategori bulunmuyor.")
                     else:
-                        sec_klasmanlar = st.multiselect("🔍 Sonuçlarını Görmek ve Yazdırmak İstediğiniz Kategorileri Seçin:", options=sorted(tamamlanan_kategoriler), default=sorted(tamamlanan_kategoriler))
-                        dusme_hatti = st.number_input("🔴 Play-out Gruplarında İlk Kaç Takım Ligde Kalacak? (Kırmızı Çizgi)", min_value=1, value=2, step=1, key="klasman_dusme_hatti")
+                        sec_klasmanlar = st.multiselect("Sonuçlarını Görmek ve Yazdırmak İstediğiniz Kategorileri Seçin:", options=sorted(tamamlanan_kategoriler), default=sorted(tamamlanan_kategoriler))
+                        dusme_hatti = st.number_input("Play-out Gruplarında İlk Kaç Takım Ligde Kalacak? (Kırmızı Çizgi)", min_value=1, value=2, step=1, key="klasman_dusme_hatti")
                         
                         pdf_icin_hazir_veriler = {}
                         
                         for secilen_kategori in sec_klasmanlar:
-                            with st.expander(f"🏅 {secilen_kategori} Nihai Sıralaması", expanded=True):
+                            with st.expander(f"{secilen_kategori} Nihai Sıralaması", expanded=True):
                                 birinciler = []
                                 ikinciler = []
                                 playoutlar = []
                                 
-                                for gp in kat_gruplari_map[secilen_kategori]:
-                                    statu = st.session_state.grup_statuleri.get(gp, "Play-out Grubu (Düşme Hattı)")
-                                    if "Birinciler" in statu: birinciler.append(gp)
-                                    elif "İkinciler" in statu: ikinciler.append(gp)
-                                    else: playoutlar.append(gp)
+                                gruplar = kat_gruplari_map[secilen_kategori]
+                                for gp in gruplar:
+                                    statu = st.session_state.grup_statuleri.get(gp, "")
+                                    
+                                    # AKILLI KİMLİK TESPİTİ
+                                    if len(gruplar) == 1:
+                                        birinciler.append(gp) # 60+ ve 65+ gibi tek gruplu kategoriler doğrudan Şampiyonluk grubudur
+                                    elif "Birinciler" in statu or "Birinciler" in gp:
+                                        birinciler.append(gp)
+                                    elif "İkinciler" in statu or "İkinciler" in gp:
+                                        ikinciler.append(gp)
+                                    else:
+                                        playoutlar.append(gp) # Geriye kalan A ve B paralel grupları Play-out'tur
                                         
                                 current_rank = 1
                                 kat_verisi = {"birinciler": [], "ikinciler": [], "ligde_kalanlar": [], "dusenler": []}
                                 
                                 if birinciler:
-                                    st.markdown("##### 🏆 BİRİNCİLER GRUBU (Şampiyonluk ve Madalya)")
+                                    st.markdown("##### ŞAMPİYONLUK KÜRSÜSÜ")
                                     for bg in dogal_sirala(birinciler):
-                                        grup_df = tum_stats[tum_stats['Grup'] == bg].drop(columns=['Grup'])
+                                        grup_df = tum_stats_genel[tum_stats_genel['Grup'] == bg].drop(columns=['Grup'])
                                         grup_df = sirala_grup_df(grup_df, bg)
                                         
                                         for idx, row in grup_df.iterrows():
                                             takim = row['Takım']
                                             kat_verisi["birinciler"].append(takim)
                                             
-                                            madalya = ""
-                                            if current_rank == 1: madalya = "🥇 (Şampiyon)"
-                                            elif current_rank == 2: madalya = "🥈 (İkinci)"
-                                            elif current_rank == 3: madalya = "🥉 (Üçüncü)"
-                                            elif current_rank == 4: madalya = "🏅 (Dördüncü)"
+                                            unvan = ""
+                                            if current_rank == 1: unvan = "🥇 (Şampiyon)"
+                                            elif current_rank == 2: unvan = "🥈 (İkinci)"
+                                            elif current_rank == 3: unvan = "🥉 (Üçüncü)"
+                                            elif current_rank == 4: unvan = "🏅 (Dördüncü)"
                                             
-                                            st.markdown(f"**{current_rank}. Sıra:** {takim} {madalya}")
+                                            st.markdown(f"**{current_rank}. Sıra:** {takim} {unvan}")
                                             current_rank += 1
                                             
                                 if ikinciler:
                                     st.markdown("---")
-                                    st.markdown("##### 🥈 İKİNCİLER GRUBU (Klasman)")
+                                    st.markdown("##### İKİNCİLER GRUBU (Klasman)")
                                     for ig in dogal_sirala(ikinciler):
-                                        grup_df = tum_stats[tum_stats['Grup'] == ig].drop(columns=['Grup'])
+                                        grup_df = tum_stats_genel[tum_stats_genel['Grup'] == ig].drop(columns=['Grup'])
                                         grup_df = sirala_grup_df(grup_df, ig)
                                         
                                         for idx, row in grup_df.iterrows():
@@ -2815,17 +2836,19 @@ else:
                                 
                                 if playoutlar:
                                     for p_grup in playoutlar:
-                                        grup_df = tum_stats[tum_stats['Grup'] == p_grup].drop(columns=['Grup'])
+                                        grup_df = tum_stats_genel[tum_stats_genel['Grup'] == p_grup].drop(columns=['Grup'])
                                         grup_df = sirala_grup_df(grup_df, p_grup)
                                         
-                                        for idx, row in grup_df.iterrows():
-                                            if idx <= dusme_hatti:
+                                        sira = 1
+                                        for _, row in grup_df.iterrows():
+                                            if sira <= dusme_hatti:
                                                 kat_verisi["ligde_kalanlar"].append(f"{row['Takım']} *(Grubu: {p_grup})*")
                                             else:
                                                 kat_verisi["dusenler"].append(f"{row['Takım']} *(Grubu: {p_grup})*")
+                                            sira += 1
                                                 
                                     st.markdown("---")
-                                    st.markdown("##### 🟢 LİGDE KALANLAR (Play-Out Üst Sıralar)")
+                                    st.markdown("##### LİGDE KALANLAR (Play-Out Üst Sıralar)")
                                     if kat_verisi["ligde_kalanlar"]:
                                         for takim in dogal_sirala(kat_verisi["ligde_kalanlar"]):
                                             st.markdown(f"- {takim}")
@@ -2833,7 +2856,7 @@ else:
                                         st.caption("Ligde kalan takım bulunamadı.")
                                         
                                     st.markdown("---")
-                                    st.markdown("##### 🔴 LİGDEN DÜŞENLER (Play-Out Alt Sıralar)")
+                                    st.markdown("##### LİGDEN DÜŞENLER (Play-Out Alt Sıralar)")
                                     if kat_verisi["dusenler"]:
                                         for takim in dogal_sirala(kat_verisi["dusenler"]):
                                             st.markdown(f"- {takim}")
@@ -2846,9 +2869,9 @@ else:
                             st.markdown("<br>", unsafe_allow_html=True)
                             toplu_pdf_bytes = generate_toplu_klasman_pdf(pdf_icin_hazir_veriler)
                             st.download_button(
-                                label="📥 Seçili Kategorilerin Nihai Klasman Raporunu İndir (PDF)", 
+                                label="📥 Seçili Kategorilerin Resmi Sonuç Bildirgesini İndir (PDF)", 
                                 data=toplu_pdf_bytes, 
-                                file_name=f"turnuva_nihai_klasman.pdf", 
+                                file_name=f"TTF_Takim_Sampiyonasi_Resmi_Sonuc.pdf", 
                                 mime="application/pdf", 
                                 key="pdf_toplu_klasman_btn",
                                 type="primary",
