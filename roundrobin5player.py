@@ -230,6 +230,32 @@ def generate_pdf(df, baslik, not_metni=""):
             pdf.ln()
     return get_pdf_bytes(pdf)
 
+def generate_combined_standings_pdf(gruplar_dict):
+    pdf = FPDF(orientation='P', unit='mm', format='A4')
+    pdf.add_page()
+    setup_pdf_fonts(pdf)
+    
+    for grup_adi, df in gruplar_dict.items():
+        satir_sayisi = len(df)
+        gerekli_yukseklik = 10 + 8 + (satir_sayisi * 8) + 10 
+        if pdf.get_y() + gerekli_yukseklik > 280: 
+            pdf.add_page()
+
+        apply_font(pdf, bold=True, size=12)
+        pdf.cell(0, 10, to_pdf_text(grup_adi + " Puan Durumu"), ln=True, align='L')
+        
+        if len(df.columns) > 0:
+            col_widths = get_proportional_widths(pdf, df)
+            for i, col in enumerate(df.columns): 
+                pdf_cell_fit(pdf, col_widths[i], 8, col, is_bold=True)
+            pdf.ln()
+            for _, row in df.iterrows():
+                for i, item in enumerate(row): 
+                    pdf_cell_fit(pdf, col_widths[i], 8, str(item), is_bold=False)
+                pdf.ln()
+        pdf.ln(5)
+    return get_pdf_bytes(pdf)
+
 def generate_klasman_pdf(kategori_adi, birinciler_liste, ikinciler_liste, ligde_kalanlar, dusenler):
     pdf = FPDF(orientation='P', unit='mm', format='A4')
     pdf.add_page()
@@ -237,7 +263,7 @@ def generate_klasman_pdf(kategori_adi, birinciler_liste, ikinciler_liste, ligde_
 
     # Ana Başlık
     apply_font(pdf, bold=True, size=15)
-    pdf.cell(0, 10, to_pdf_text(f"{kategori_adi} - Turnuva Sonu Genel Klasmanı"), ln=True, align='C')
+    pdf.cell(0, 10, to_pdf_text(f"{kategori_adi} - Turnuva Sonu Genel Klasmani"), ln=True, align='C')
     pdf.ln(5)
 
     current_rank = 1
@@ -246,7 +272,7 @@ def generate_klasman_pdf(kategori_adi, birinciler_liste, ikinciler_liste, ligde_
     if birinciler_liste:
         pdf.set_fill_color(230, 230, 230)
         apply_font(pdf, bold=True, size=12)
-        pdf.cell(0, 8, to_pdf_text("KUPA VE MADALYA KÜRSÜSÜ"), border=1, ln=True, fill=True, align='C')
+        pdf.cell(0, 8, to_pdf_text("KUPA VE MADALYA KURSUSU"), border=1, ln=True, fill=True, align='C')
         apply_font(pdf, bold=False, size=11)
         pdf.ln(2)
         for takim in birinciler_liste:
@@ -273,7 +299,7 @@ def generate_klasman_pdf(kategori_adi, birinciler_liste, ikinciler_liste, ligde_
 
     # Ligde Kalanlar (Numarasız, Madde İmli)
     if ligde_kalanlar:
-        pdf.set_fill_color(230, 245, 230) # Şık, açık yeşil ton
+        pdf.set_fill_color(230, 245, 230)
         apply_font(pdf, bold=True, size=12)
         pdf.cell(0, 8, to_pdf_text("LIGDE KALANLAR (Play-Out Ust Siralar)"), border=1, ln=True, fill=True, align='C')
         apply_font(pdf, bold=False, size=11)
@@ -284,7 +310,7 @@ def generate_klasman_pdf(kategori_adi, birinciler_liste, ikinciler_liste, ligde_
 
     # Ligden Düşenler (Numarasız, Madde İmli)
     if dusenler:
-        pdf.set_fill_color(255, 235, 235) # Şık, açık kırmızı ton
+        pdf.set_fill_color(255, 235, 235)
         apply_font(pdf, bold=True, size=12)
         pdf.cell(0, 8, to_pdf_text("LIGDEN DUSENLER (Play-Out Alt Siralar)"), border=1, ln=True, fill=True, align='C')
         apply_font(pdf, bold=False, size=11)
