@@ -3284,7 +3284,7 @@ else:
             else:
                 st.write("Sisteme henüz herhangi bir belge yüklenmemiş.")
 
-  # --- SAYFA 7: YÖNETİM & DOSYA İŞLEMLERİ ---
+# --- SAYFA 7: YÖNETİM & DOSYA İŞLEMLERİ ---
     elif menu_secim == "⚙️ Yönetim & Dosya":
         st.subheader(f"⚙️ Gelişmiş Yönetim Paneli ({aktif_asama})")
 
@@ -3355,6 +3355,14 @@ else:
                             
                             st.caption("💡 Not: Yaş grubunu veya kategoriyi değiştirirseniz, sistem karışıklığını önlemek için yukarıdaki 'Grup Adı' içindeki metni de elle düzeltmeyi unutmayın.")
                             
+                            # --- YENİ EKLENEN: SADECE 2. AŞAMADA ÇIKAN STATÜ SEÇİMİ ---
+                            grup_statusu = "Play-out Grubu (Düşme Hattı)"
+                            if aktif_asama == "2. Aşama":
+                                mevcut_statu = st.session_state.grup_statuleri.get(sec_g, "Play-out Grubu (Düşme Hattı)")
+                                statu_opts = ["Birinciler Grubu (Kürsü)", "İkinciler Grubu (Orta Klasman)", "Play-out Grubu (Düşme Hattı)"]
+                                s_idx = statu_opts.index(mevcut_statu) if mevcut_statu in statu_opts else 2
+                                grup_statusu = st.radio("🏅 Grup Statüsü (Bu grubun amacı nedir?):", statu_opts, horizontal=True, index=s_idx)
+
                             fikstur_sifirlanacak_mi = (yeni_grup_tipi != tip_liste[tip_idx]) or (yeni_format != mevcut_format)
                             if fikstur_sifirlanacak_mi:
                                 st.warning("⚠️ DİKKAT: Grup tipini veya maç formatını değiştirdiniz! Kaydettiğinizde bu grubun eski fikstürü ve skorları TAMAMEN SİLİNİP, yeni ayarlarla baştan oluşturulacaktır.")
@@ -3430,6 +3438,7 @@ else:
                                             st.session_state.grup_kategorileri[g_hedef] = yeni_kategori
                                             st.session_state.grup_asamalari[g_hedef] = aktif_asama
                                             st.session_state.grup_yas_gruplari[g_hedef] = yeni_yas
+                                            st.session_state.grup_statuleri[g_hedef] = grup_statusu # YENİ GRUP STATÜSÜNÜ KAYDET
                                             
                                             if sec_g != g_hedef:
                                                 if sec_g in st.session_state.takim_kadrolari: del st.session_state.takim_kadrolari[sec_g]
@@ -3439,6 +3448,7 @@ else:
                                                 if sec_g in st.session_state.grup_siralamalari: st.session_state.grup_siralamalari[g_hedef] = st.session_state.grup_siralamalari.pop(sec_g)
                                                 if sec_g in st.session_state.grup_tamamlandi: st.session_state.grup_tamamlandi[g_hedef] = st.session_state.grup_tamamlandi.pop(sec_g)
                                                 if sec_g in st.session_state.grup_yas_gruplari: st.session_state.grup_yas_gruplari[g_hedef] = st.session_state.grup_yas_gruplari.pop(sec_g)
+                                                if sec_g in st.session_state.grup_statuleri: st.session_state.grup_statuleri[g_hedef] = st.session_state.grup_statuleri.pop(sec_g)
                                                 
                                             yeni_takim_listesi = list(yeni_k_yapisi.keys())
                                             yeni_df = pd.DataFrame(eslesmeleri_olustur(g_hedef, yeni_takim_listesi, yeni_grup_tipi, yeni_format))
@@ -3455,6 +3465,7 @@ else:
                                             st.session_state.grup_kategorileri[sec_g] = yeni_kategori
                                             st.session_state.grup_asamalari[sec_g] = aktif_asama
                                             st.session_state.grup_yas_gruplari[sec_g] = yeni_yas
+                                            st.session_state.grup_statuleri[sec_g] = grup_statusu # MEVCUT GRUBUN STATÜSÜNÜ GÜNCELLE
                                             
                                             if isim_degisiklikleri:
                                                 mask_s = st.session_state.skor_tablosu['Grup'] == sec_g
@@ -3475,6 +3486,7 @@ else:
                                                 if sec_g in st.session_state.grup_siralamalari: st.session_state.grup_siralamalari[g_hedef] = st.session_state.grup_siralamalari.pop(sec_g)
                                                 if sec_g in st.session_state.grup_tamamlandi: st.session_state.grup_tamamlandi[g_hedef] = st.session_state.grup_tamamlandi.pop(sec_g)
                                                 if sec_g in st.session_state.grup_yas_gruplari: st.session_state.grup_yas_gruplari[g_hedef] = st.session_state.grup_yas_gruplari.pop(sec_g)
+                                                if sec_g in st.session_state.grup_statuleri: st.session_state.grup_statuleri[g_hedef] = st.session_state.grup_statuleri.pop(sec_g)
                                             
                                             if ortak_veriyi_kaydet():
                                                 st.success("Takım ve kadro bilgileri başarıyla güncellendi!")
@@ -3510,6 +3522,7 @@ else:
                         if secilen_sil_grup in st.session_state.grup_siralamalari: del st.session_state.grup_siralamalari[secilen_sil_grup]
                         if secilen_sil_grup in st.session_state.grup_tamamlandi: del st.session_state.grup_tamamlandi[secilen_sil_grup]
                         if secilen_sil_grup in st.session_state.grup_yas_gruplari: del st.session_state.grup_yas_gruplari[secilen_sil_grup]
+                        if secilen_sil_grup in st.session_state.grup_statuleri: del st.session_state.grup_statuleri[secilen_sil_grup] # EKLENDİ
                         
                         # --- HAYALET ESAMELERİN TEMİZLİĞİ ---
                         keys_to_delete = [k for k in st.session_state.esame_kasasi.keys() if k.startswith(secilen_sil_grup + "_")]
