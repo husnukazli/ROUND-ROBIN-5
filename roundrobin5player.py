@@ -3272,7 +3272,8 @@ else:
                                     if fikstur_sifirlanacak_mi:
                                         try:
                                             if "supabase" in globals() and supabase:
-                                                supabase.table("maclar").delete().eq("Grup", sec_g).execute()
+                                                # HATA DÜZELTİLDİ: Sütun adı 'Grup' değil, veritabanındaki 'grup_adi' olmalı.
+                                                supabase.table("maclar").delete().eq("grup_adi", sec_g).execute()
                                         except Exception:
                                             pass
                                             
@@ -3345,10 +3346,10 @@ else:
                     st.warning(f"⚠️ DİKKAT: '{secilen_sil_grup}' grubunu ve bu gruba ait tüm fikstür/kadro kayıtlarını kalıcı olarak sileceksiniz!")
                     
                     if st.button(f"🚨 '{secilen_sil_grup}' Grubunu Tamamen Sil"):
-                        # --- YENİ EKLENEN: Silinen grubun maçlarını ve hayalet zarflarını veritabanından kalıcı olarak temizle ---
                         try:
                             if "supabase" in globals() and supabase:
-                                supabase.table("maclar").delete().eq("Grup", secilen_sil_grup).execute()
+                                # HATA DÜZELTİLDİ: Sütun adı 'Grup' değil, veritabanındaki 'grup_adi' olmalı.
+                                supabase.table("maclar").delete().eq("grup_adi", secilen_sil_grup).execute()
                         except Exception:
                             pass
                             
