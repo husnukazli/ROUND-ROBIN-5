@@ -230,30 +230,68 @@ def generate_pdf(df, baslik, not_metni=""):
             pdf.ln()
     return get_pdf_bytes(pdf)
 
-def generate_combined_standings_pdf(gruplar_dict):
+def generate_klasman_pdf(kategori_adi, birinciler_liste, ikinciler_liste, ligde_kalanlar, dusenler):
     pdf = FPDF(orientation='P', unit='mm', format='A4')
     pdf.add_page()
     setup_pdf_fonts(pdf)
-    
-    for grup_adi, df in gruplar_dict.items():
-        satir_sayisi = len(df)
-        gerekli_yukseklik = 10 + 8 + (satir_sayisi * 8) + 10 
-        if pdf.get_y() + gerekli_yukseklik > 280: 
-            pdf.add_page()
 
+    # Ana Başlık
+    apply_font(pdf, bold=True, size=15)
+    pdf.cell(0, 10, to_pdf_text(f"{kategori_adi} - Turnuva Sonu Genel Klasmanı"), ln=True, align='C')
+    pdf.ln(5)
+
+    current_rank = 1
+
+    # Şampiyonluk Grubu (Numaralı)
+    if birinciler_liste:
+        pdf.set_fill_color(230, 230, 230)
         apply_font(pdf, bold=True, size=12)
-        pdf.cell(0, 10, to_pdf_text(grup_adi + " Puan Durumu"), ln=True, align='L')
-        
-        if len(df.columns) > 0:
-            col_widths = get_proportional_widths(pdf, df)
-            for i, col in enumerate(df.columns): 
-                pdf_cell_fit(pdf, col_widths[i], 8, col, is_bold=True)
-            pdf.ln()
-            for _, row in df.iterrows():
-                for i, item in enumerate(row): 
-                    pdf_cell_fit(pdf, col_widths[i], 8, str(item), is_bold=False)
-                pdf.ln()
+        pdf.cell(0, 8, to_pdf_text("KUPA VE MADALYA KÜRSÜSÜ"), border=1, ln=True, fill=True, align='C')
+        apply_font(pdf, bold=False, size=11)
+        pdf.ln(2)
+        for takim in birinciler_liste:
+            madalya = ""
+            if current_rank == 1: madalya = " (Sampiyon)"
+            elif current_rank == 2: madalya = " (Ikinci)"
+            elif current_rank == 3: madalya = " (Ucuncu)"
+            elif current_rank == 4: madalya = " (Dorduncu)"
+            pdf.cell(0, 7, to_pdf_text(f"  {current_rank}. Sira: {takim}{madalya}"), ln=True)
+            current_rank += 1
         pdf.ln(5)
+
+    # İkinciler Grubu (Numaralı)
+    if ikinciler_liste:
+        pdf.set_fill_color(240, 240, 240)
+        apply_font(pdf, bold=True, size=12)
+        pdf.cell(0, 8, to_pdf_text("IKINCILER GRUBU (Klasman)"), border=1, ln=True, fill=True, align='C')
+        apply_font(pdf, bold=False, size=11)
+        pdf.ln(2)
+        for takim in ikinciler_liste:
+            pdf.cell(0, 7, to_pdf_text(f"  {current_rank}. Sira: {takim}"), ln=True)
+            current_rank += 1
+        pdf.ln(5)
+
+    # Ligde Kalanlar (Numarasız, Madde İmli)
+    if ligde_kalanlar:
+        pdf.set_fill_color(230, 245, 230) # Şık, açık yeşil ton
+        apply_font(pdf, bold=True, size=12)
+        pdf.cell(0, 8, to_pdf_text("LIGDE KALANLAR (Play-Out Ust Siralar)"), border=1, ln=True, fill=True, align='C')
+        apply_font(pdf, bold=False, size=11)
+        pdf.ln(2)
+        for takim in dogal_sirala(ligde_kalanlar):
+            pdf.cell(0, 7, to_pdf_text(f"  - {takim}"), ln=True)
+        pdf.ln(5)
+
+    # Ligden Düşenler (Numarasız, Madde İmli)
+    if dusenler:
+        pdf.set_fill_color(255, 235, 235) # Şık, açık kırmızı ton
+        apply_font(pdf, bold=True, size=12)
+        pdf.cell(0, 8, to_pdf_text("LIGDEN DUSENLER (Play-Out Alt Siralar)"), border=1, ln=True, fill=True, align='C')
+        apply_font(pdf, bold=False, size=11)
+        pdf.ln(2)
+        for takim in dogal_sirala(dusenler):
+            pdf.cell(0, 7, to_pdf_text(f"  - {takim}"), ln=True)
+
     return get_pdf_bytes(pdf)
 
 def set_gecerli_mi(t1, t2, is_set3=False, durum="Tamamlandı"):
@@ -2592,6 +2630,12 @@ else:
                                 else:
                                     current_rank = 1
                                     
+                                    # PDF İÇİN VERİ DEPOLAMA LİSTELERİ
+                                    pdf_birinciler = []
+                                    pdf_ikinciler = []
+                                    ligde_kalanlar = []
+                                    dusenler = []
+                                    
                                     if birinciler:
                                         st.markdown("#### 🏆 BİRİNCİLER GRUBU (Şampiyonluk ve Madalya)")
                                         for bg in dogal_sirala(birinciler):
@@ -2600,6 +2644,8 @@ else:
                                             
                                             for idx, row in grup_df.iterrows():
                                                 takim = row['Takım']
+                                                pdf_birinciler.append(takim)
+                                                
                                                 madalya = ""
                                                 if current_rank == 1: madalya = "🥇 (Şampiyon)"
                                                 elif current_rank == 2: madalya = "🥈 (İkinci)"
@@ -2618,13 +2664,11 @@ else:
                                             
                                             for idx, row in grup_df.iterrows():
                                                 takim = row['Takım']
+                                                pdf_ikinciler.append(takim)
                                                 st.markdown(f"**{current_rank}. Sıra:** {takim}")
                                                 current_rank += 1
                                     
                                     if playoutlar:
-                                        ligde_kalanlar = []
-                                        dusenler = []
-                                        
                                         for p_grup in playoutlar:
                                             grup_df = tum_stats[tum_stats['Grup'] == p_grup].drop(columns=['Grup'])
                                             grup_df = sirala_grup_df(grup_df, p_grup)
@@ -2650,6 +2694,18 @@ else:
                                                 st.markdown(f"- {takim}")
                                         else:
                                             st.caption("Düşme hattında takım bulunamadı.")
+                                            
+                                    # PDF İNDİRME BUTONU
+                                    st.markdown("<br>", unsafe_allow_html=True)
+                                    klasman_pdf_bytes = generate_klasman_pdf(secilen_kategori, pdf_birinciler, pdf_ikinciler, ligde_kalanlar, dusenler)
+                                    st.download_button(
+                                        label=f"📥 {secilen_kategori} Klasman Raporunu İndir (PDF)", 
+                                        data=klasman_pdf_bytes, 
+                                        file_name=f"turnuva_klasmani_{secilen_kategori.replace(' ', '_')}.pdf", 
+                                        mime="application/pdf", 
+                                        key="pdf_genel_klasman_btn",
+                                        type="primary"
+                                    )
 
                 st.markdown("---")
                 with st.expander("⚖️ Gelişmiş Averaj ve Mini Lig Hesaplayıcı"):
