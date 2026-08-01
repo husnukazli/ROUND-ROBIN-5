@@ -364,7 +364,9 @@ def hesapla_mac_kazanani(row):
     s3_t1, s3_t2 = int(row['3.Set T1']), int(row['3.Set T2'])
     if s1_t1 == 0 and s1_t2 == 0 and s2_t1 == 0 and s2_t2 == 0: return 0, 0
     
-    is_stb = bool(row.get('STB', False))
+    # YENİ: Otomatik STB Algılama (Kutu seçili VEYA 3. set skoru 10'dan büyükse)
+    is_stb = bool(row.get('STB', False)) or (s3_t1 >= 10 or s3_t2 >= 10)
+    
     t1_s1_win = s1_t1 >= 6 and (s1_t1 - s1_t2) >= 2 or s1_t1 == 7
     t2_s1_win = s1_t2 >= 6 and (s1_t2 - s1_t1) >= 2 or s1_t2 == 7
     t1_s2_win = s2_t1 >= 6 and (s2_t1 - s2_t2) >= 2 or s2_t1 == 7
@@ -636,15 +638,16 @@ def hesapla_tum_puan_durumu(df_girdi):
         elif durum == "Takım 1 (Ret.)": durum = "Takım 2 Kazandı (Ret.)"
         elif durum == "Takım 2 (Ret.)": durum = "Takım 1 Kazandı (Ret.)"
 
-        is_stb = bool(row.get('STB', False))
+        s1_t1, s1_t2 = int(row['1.Set T1']), int(row['1.Set T2'])
+        s2_t1, s2_t2 = int(row['2.Set T1']), int(row['2.Set T2'])
+        s3_t1, s3_t2 = int(row['3.Set T1']), int(row['3.Set T2'])
+        
+        # YENİ: Otomatik STB Algılama (Averaj hesabı için)
+        is_stb = bool(row.get('STB', False)) or (s3_t1 >= 10 or s3_t2 >= 10)
 
         if durum == "Çift Taraflı W/O": return pd.Series([0, 0, 0, 0])
         if durum == "Takım 1 Kazandı (W/O)": return pd.Series([12, 0, 2, 0])
         if durum == "Takım 2 Kazandı (W/O)": return pd.Series([0, 12, 0, 2])
-
-        s1_t1, s1_t2 = int(row['1.Set T1']), int(row['1.Set T2'])
-        s2_t1, s2_t2 = int(row['2.Set T1']), int(row['2.Set T2'])
-        s3_t1, s3_t2 = int(row['3.Set T1']), int(row['3.Set T2'])
 
         if s1_t1 == 0 and s1_t2 == 0 and s2_t1 == 0 and s2_t2 == 0 and s3_t1 == 0 and s3_t2 == 0 and durum == "Tamamlandı":
             return pd.Series([0, 0, 0, 0])
