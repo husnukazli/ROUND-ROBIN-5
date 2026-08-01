@@ -2205,43 +2205,25 @@ else:
 
                         is_wo = "W/O" in secilen_durum
                         
-                        # Çarpı butonunu gizleyen CSS (Kutunun içini temiz ve görünür tutar)
-                        st.markdown('<style>button[aria-label="Clear input"] { display: none !important; }</style>', unsafe_allow_html=True)
-                        
-                        s1t1_k, s1t2_k = int(row['1.Set T1']), int(row['1.Set T2'])
-                        s2t1_k, s2t2_k = int(row['2.Set T1']), int(row['2.Set T2'])
-                        s3t1_k, s3t2_k = int(row['3.Set T1']), int(row['3.Set T2'])
-
-                        val_s1t1 = None if (is_wo or s1t1_k == 0) else s1t1_k
-                        val_s1t2 = None if (is_wo or s1t2_k == 0) else s1t2_k
-                        val_s2t1 = None if (is_wo or s2t1_k == 0) else s2t1_k
-                        val_s2t2 = None if (is_wo or s2t2_k == 0) else s2t2_k
-                        val_s3t1 = None if (is_wo or s3t1_k == 0) else s3t1_k
-                        val_s3t2 = None if (is_wo or s3t2_k == 0) else s3t2_k
-
-                        inp_s1t1 = r_cols[4].number_input("S1T1", min_value=0, value=val_s1t1, placeholder="0", step=1, key=f"s1t1_{idx}", label_visibility="collapsed", disabled=is_wo)
-                        inp_s1t2 = r_cols[5].number_input("S1T2", min_value=0, value=val_s1t2, placeholder="0", step=1, key=f"s1t2_{idx}", label_visibility="collapsed", disabled=is_wo)
+                        s1t1 = r_cols[4].number_input("S1T1", min_value=0, value=0 if is_wo else int(row['1.Set T1']), step=1, key=f"s1t1_{idx}", label_visibility="collapsed", disabled=is_wo)
+                        s1t2 = r_cols[5].number_input("S1T2", min_value=0, value=0 if is_wo else int(row['1.Set T2']), step=1, key=f"s1t2_{idx}", label_visibility="collapsed", disabled=is_wo)
                         
                         r_cols[6].markdown("<div style='text-align:center; opacity:0.5; margin-top:5px; font-weight:bold;'>|</div>", unsafe_allow_html=True)
                         
-                        inp_s2t1 = r_cols[7].number_input("S2T1", min_value=0, value=val_s2t1, placeholder="0", step=1, key=f"s2t1_{idx}", label_visibility="collapsed", disabled=is_wo)
-                        inp_s2t2 = r_cols[8].number_input("S2T2", min_value=0, value=val_s2t2, placeholder="0", step=1, key=f"s2t2_{idx}", label_visibility="collapsed", disabled=is_wo)
+                        s2t1 = r_cols[7].number_input("S2T1", min_value=0, value=0 if is_wo else int(row['2.Set T1']), step=1, key=f"s2t1_{idx}", label_visibility="collapsed", disabled=is_wo)
+                        s2t2 = r_cols[8].number_input("S2T2", min_value=0, value=0 if is_wo else int(row['2.Set T2']), step=1, key=f"s2t2_{idx}", label_visibility="collapsed", disabled=is_wo)
                         
                         r_cols[9].markdown("<div style='text-align:center; opacity:0.5; margin-top:5px; font-weight:bold;'>|</div>", unsafe_allow_html=True)
                         
-                        inp_s3t1 = r_cols[10].number_input("S3T1", min_value=0, value=val_s3t1, placeholder="0", step=1, key=f"s3t1_{idx}", label_visibility="collapsed", disabled=is_wo)
-                        inp_s3t2 = r_cols[11].number_input("S3T2", min_value=0, value=val_s3t2, placeholder="0", step=1, key=f"s3t2_{idx}", label_visibility="collapsed", disabled=is_wo)
+                        s3t1 = r_cols[10].number_input("S3T1", min_value=0, value=0 if is_wo else int(row['3.Set T1']), step=1, key=f"s3t1_{idx}", label_visibility="collapsed", disabled=is_wo)
+                        s3t2 = r_cols[11].number_input("S3T2", min_value=0, value=0 if is_wo else int(row['3.Set T2']), step=1, key=f"s3t2_{idx}", label_visibility="collapsed", disabled=is_wo)
                         
                         form_verileri[idx] = {
                             "T1_Oyuncu": t1_oyuncu_str, "T2_Oyuncu": t2_oyuncu_str,
-                            "1.Set T1": inp_s1t1 if inp_s1t1 is not None else 0, 
-                            "1.Set T2": inp_s1t2 if inp_s1t2 is not None else 0, 
-                            "2.Set T1": inp_s2t1 if inp_s2t1 is not None else 0, 
-                            "2.Set T2": inp_s2t2 if inp_s2t2 is not None else 0, 
-                            "3.Set T1": inp_s3t1 if inp_s3t1 is not None else 0, 
-                            "3.Set T2": inp_s3t2 if inp_s3t2 is not None else 0,
+                            "1.Set T1": s1t1, "1.Set T2": s1t2, "2.Set T1": s2t1, "2.Set T2": s2t2, "3.Set T1": s3t1, "3.Set T2": s3t2,
                             "Durum": secilen_durum, "STB": secilen_stb, "Eşleşme": str(row['Eşleşme'])
                         }
+                        st.divider()
                         st.divider()
 
                     eslesme_dict = {}
