@@ -3291,233 +3291,91 @@ else:
                                         yeni_k_yapisi[y_ad if y_ad else esk_ad] = [o.strip() for o in y_o_text.split('\n') if o.strip()]
                             
                             if st.button("💾 Yapılan Değişiklikleri Veritabanına Yaz"):
-                                kullanilan_baska_takimlar_tab6 = {}
-                                for g_n, g_k in st.session_state.takim_kadrolari.items():
-                                    g_kat = st.session_state.grup_kategorileri.get(g_n, "Erkekler")
-                                    g_asam = st.session_state.grup_asamalari.get(g_n, "1. Aşama")
-                                    if g_n != sec_g and g_kat == yeni_kategori and g_asam == aktif_asama:
-                                        for t_n in g_k.keys(): kullanilan_baska_takimlar_tab6[t_n] = g_n
+                                g_hedef = yeni_grup_adi if yeni_grup_adi.strip() != "" else sec_g
                                 
-                                cakisanlar_tab6 = [t for t in list(yeni_k_yapisi.keys()) if t in kullanilan_baska_takimlar_tab6 and t != bye_opt]
-                                if cakisanlar_tab6:
-                                    hata_msj = ", ".join([f"'{t}' ({kullanilan_baska_takimlar_tab6[t]})" for t in cakisanlar_tab6])
-                                    st.error(f"⚠️ Hata: Eklemek veya değiştirmek istediğiniz takım(lar) {yeni_kategori} kategorisinde ({aktif_asama}) zaten başka gruplarda kayıtlı!\nÇakışanlar: {hata_msj}")
+                                # YENİ GÜVENLİK DUVARI: Başka bir grubun adını almayı engelle (Üst üste binmeyi önler)
+                                if g_hedef != sec_g and g_hedef in st.session_state.takim_kadrolari:
+                                    st.error(f"⚠️ KRİTİK HATA: '{g_hedef}' adında bir grup zaten sistemde mevcut! İki grubu birleştiremezsiniz, lütfen farklı bir ad girin.")
                                 else:
-                                    g_hedef = yeni_grup_adi if yeni_grup_adi.strip() != "" else sec_g
+                                    kullanilan_baska_takimlar_tab6 = {}
+                                    for g_n, g_k in st.session_state.takim_kadrolari.items():
+                                        g_kat = st.session_state.grup_kategorileri.get(g_n, "Erkekler")
+                                        g_asam = st.session_state.grup_asamalari.get(g_n, "1. Aşama")
+                                        if g_n != sec_g and g_kat == yeni_kategori and g_asam == aktif_asama:
+                                            for t_n in g_k.keys(): kullanilan_baska_takimlar_tab6[t_n] = g_n
                                     
-                                    if fikstur_sifirlanacak_mi:
-                                        # GARANTİLİ SİLME YÖNTEMİ: İsimle değil, ID'lerle vuruyoruz
-                                        silinecek_idler = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] == sec_g]['id'].dropna().tolist()
-                                        try:
-                                            if "supabase" in globals() and supabase and silinecek_idler:
-                                                for idx_chunk in range(0, len(silinecek_idler), 100):
-                                                    supabase.table("maclar").delete().in_("id", silinecek_idler[idx_chunk:idx_chunk+100]).execute()
-                                        except Exception:
-                                            pass
-                                            
-                                        st.session_state.skor_tablosu = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] != sec_g]
-                                        st.session_state.mac_programi = st.session_state.mac_programi[st.session_state.mac_programi['Grup'] != sec_g]
-                                        
-                                        st.session_state.takim_kadrolari[g_hedef] = yeni_k_yapisi
-                                        st.session_state.grup_formatlari[g_hedef] = yeni_format
-                                        st.session_state.grup_kategorileri[g_hedef] = yeni_kategori
-                                        st.session_state.grup_asamalari[g_hedef] = aktif_asama
-                                        st.session_state.grup_yas_gruplari[g_hedef] = yeni_yas
-                                        
-                                        if sec_g != g_hedef:
-                                            if sec_g in st.session_state.takim_kadrolari: del st.session_state.takim_kadrolari[sec_g]
-                                            if sec_g in st.session_state.grup_formatlari: del st.session_state.grup_formatlari[sec_g]
-                                            if sec_g in st.session_state.grup_kategorileri: del st.session_state.grup_kategorileri[sec_g]
-                                            if sec_g in st.session_state.grup_asamalari: del st.session_state.grup_asamalari[sec_g]
-                                            if sec_g in st.session_state.grup_siralamalari: st.session_state.grup_siralamalari[g_hedef] = st.session_state.grup_siralamalari.pop(sec_g)
-                                            if sec_g in st.session_state.grup_tamamlandi: st.session_state.grup_tamamlandi[g_hedef] = st.session_state.grup_tamamlandi.pop(sec_g)
-                                            if sec_g in st.session_state.grup_yas_gruplari: st.session_state.grup_yas_gruplari[g_hedef] = st.session_state.grup_yas_gruplari.pop(sec_g)
-                                            
-                                        yeni_takim_listesi = list(yeni_k_yapisi.keys())
-                                        yeni_df = pd.DataFrame(eslesmeleri_olustur(g_hedef, yeni_takim_listesi, yeni_grup_tipi, yeni_format))
-                                        if st.session_state.skor_tablosu.empty: st.session_state.skor_tablosu = yeni_df
-                                        else: st.session_state.skor_tablosu = pd.concat([st.session_state.skor_tablosu, yeni_df], ignore_index=True)
-                                        
-                                        if ortak_veriyi_kaydet():
-                                            st.success("Grup ayarları güncellendi ve yeni fikstür başarıyla oluşturuldu!")
-                                        else:
-                                            st.error("Sistem meşgul, lütfen tekrar deneyin.")
-                                        
+                                    cakisanlar_tab6 = [t for t in list(yeni_k_yapisi.keys()) if t in kullanilan_baska_takimlar_tab6 and t != bye_opt]
+                                    if cakisanlar_tab6:
+                                        hata_msj = ", ".join([f"'{t}' ({kullanilan_baska_takimlar_tab6[t]})" for t in cakisanlar_tab6])
+                                        st.error(f"⚠️ Hata: Eklemek veya değiştirmek istediğiniz takım(lar) {yeni_kategori} kategorisinde ({aktif_asama}) zaten başka gruplarda kayıtlı!\nÇakışanlar: {hata_msj}")
                                     else:
-                                        st.session_state.takim_kadrolari[sec_g] = yeni_k_yapisi
-                                        st.session_state.grup_kategorileri[sec_g] = yeni_kategori
-                                        st.session_state.grup_asamalari[sec_g] = aktif_asama
-                                        st.session_state.grup_yas_gruplari[sec_g] = yeni_yas
                                         
-                                        if isim_degisiklikleri:
-                                            mask_s = st.session_state.skor_tablosu['Grup'] == sec_g
-                                            mask_m = st.session_state.mac_programi['Grup'] == sec_g
-                                            for e_a, y_a in isim_degisiklikleri.items():
-                                                st.session_state.skor_tablosu.loc[mask_s, 'Takım 1'] = st.session_state.skor_tablosu.loc[mask_s, 'Takım 1'].replace(e_a, y_a)
-                                                st.session_state.skor_tablosu.loc[mask_s, 'Takım 2'] = st.session_state.skor_tablosu.loc[mask_s, 'Takım 2'].replace(e_a, y_a)
-                                                st.session_state.mac_programi.loc[mask_m, 'Takım 1'] = st.session_state.mac_programi.loc[mask_m, 'Takım 1'].replace(e_a, y_a)
-                                                st.session_state.mac_programi.loc[mask_m, 'Takım 2'] = st.session_state.mac_programi.loc[mask_m, 'Takım 2'].replace(e_a, y_a)
-                                        
-                                        if g_hedef != sec_g:
-                                            st.session_state.skor_tablosu.loc[st.session_state.skor_tablosu['Grup'] == sec_g, 'Grup'] = g_hedef
-                                            st.session_state.mac_programi.loc[st.session_state.mac_programi['Grup'] == sec_g, 'Grup'] = g_hedef
-                                            st.session_state.takim_kadrolari[g_hedef] = st.session_state.takim_kadrolari.pop(sec_g)
-                                            if sec_g in st.session_state.grup_formatlari: st.session_state.grup_formatlari[g_hedef] = st.session_state.grup_formatlari.pop(sec_g)
-                                            if sec_g in st.session_state.grup_kategorileri: st.session_state.grup_kategorileri[g_hedef] = st.session_state.grup_kategorileri.pop(sec_g)
-                                            if sec_g in st.session_state.grup_asamalari: st.session_state.grup_asamalari[g_hedef] = st.session_state.grup_asamalari.pop(sec_g)
-                                            if sec_g in st.session_state.grup_siralamalari: st.session_state.grup_siralamalari[g_hedef] = st.session_state.grup_siralamalari.pop(sec_g)
-                                            if sec_g in st.session_state.grup_tamamlandi: st.session_state.grup_tamamlandi[g_hedef] = st.session_state.grup_tamamlandi.pop(sec_g)
-                                            if sec_g in st.session_state.grup_yas_gruplari: st.session_state.grup_yas_gruplari[g_hedef] = st.session_state.grup_yas_gruplari.pop(sec_g)
-                                        
-                                        if ortak_veriyi_kaydet():
-                                            st.success("Takım ve kadro bilgileri başarıyla güncellendi!")
+                                        if fikstur_sifirlanacak_mi:
+                                            # GARANTİLİ SİLME YÖNTEMİ: İsimle değil, ID'lerle vuruyoruz
+                                            silinecek_idler = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] == sec_g]['id'].dropna().tolist()
+                                            try:
+                                                if "supabase" in globals() and supabase and silinecek_idler:
+                                                    for idx_chunk in range(0, len(silinecek_idler), 100):
+                                                        supabase.table("maclar").delete().in_("id", silinecek_idler[idx_chunk:idx_chunk+100]).execute()
+                                            except Exception:
+                                                pass
+                                                
+                                            st.session_state.skor_tablosu = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] != sec_g]
+                                            st.session_state.mac_programi = st.session_state.mac_programi[st.session_state.mac_programi['Grup'] != sec_g]
+                                            
+                                            st.session_state.takim_kadrolari[g_hedef] = yeni_k_yapisi
+                                            st.session_state.grup_formatlari[g_hedef] = yeni_format
+                                            st.session_state.grup_kategorileri[g_hedef] = yeni_kategori
+                                            st.session_state.grup_asamalari[g_hedef] = aktif_asama
+                                            st.session_state.grup_yas_gruplari[g_hedef] = yeni_yas
+                                            
+                                            if sec_g != g_hedef:
+                                                if sec_g in st.session_state.takim_kadrolari: del st.session_state.takim_kadrolari[sec_g]
+                                                if sec_g in st.session_state.grup_formatlari: del st.session_state.grup_formatlari[sec_g]
+                                                if sec_g in st.session_state.grup_kategorileri: del st.session_state.grup_kategorileri[sec_g]
+                                                if sec_g in st.session_state.grup_asamalari: del st.session_state.grup_asamalari[sec_g]
+                                                if sec_g in st.session_state.grup_siralamalari: st.session_state.grup_siralamalari[g_hedef] = st.session_state.grup_siralamalari.pop(sec_g)
+                                                if sec_g in st.session_state.grup_tamamlandi: st.session_state.grup_tamamlandi[g_hedef] = st.session_state.grup_tamamlandi.pop(sec_g)
+                                                if sec_g in st.session_state.grup_yas_gruplari: st.session_state.grup_yas_gruplari[g_hedef] = st.session_state.grup_yas_gruplari.pop(sec_g)
+                                                
+                                            yeni_takim_listesi = list(yeni_k_yapisi.keys())
+                                            yeni_df = pd.DataFrame(eslesmeleri_olustur(g_hedef, yeni_takim_listesi, yeni_grup_tipi, yeni_format))
+                                            if st.session_state.skor_tablosu.empty: st.session_state.skor_tablosu = yeni_df
+                                            else: st.session_state.skor_tablosu = pd.concat([st.session_state.skor_tablosu, yeni_df], ignore_index=True)
+                                            
+                                            if ortak_veriyi_kaydet():
+                                                st.success("Grup ayarları güncellendi ve yeni fikstür başarıyla oluşturuldu!")
+                                            else:
+                                                st.error("Sistem meşgul, lütfen tekrar deneyin.")
+                                            
                                         else:
-                                            st.error("Sistem meşgul, lütfen tekrar deneyin.")
-                                    st.rerun()
-
-            st.markdown("### 🗑️ Grup Silme İşlemleri")
-            if not st.session_state.skor_tablosu.empty:
-                silinecek_gruplar = dogal_sirala([g for g in st.session_state.skor_tablosu['Grup'].unique() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama])
-                secilen_sil_grup = st.selectbox("Silinecek Grubu Seçin:", ["Seçiniz"] + silinecek_gruplar, key="grup_sil_secim")
-                
-                if secilen_sil_grup != "Seçiniz":
-                    st.warning(f"⚠️ DİKKAT: '{secilen_sil_grup}' grubunu ve bu gruba ait tüm fikstür/kadro kayıtlarını kalıcı olarak sileceksiniz!")
-                    
-                    if st.button(f"🚨 '{secilen_sil_grup}' Grubunu Tamamen Sil"):
-                        # GARANTİLİ SİLME YÖNTEMİ: İsimle değil, ID'lerle vuruyoruz
-                        silinecek_idler = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] == secilen_sil_grup]['id'].dropna().tolist()
-                        try:
-                            if "supabase" in globals() and supabase and silinecek_idler:
-                                for idx_chunk in range(0, len(silinecek_idler), 100):
-                                    supabase.table("maclar").delete().in_("id", silinecek_idler[idx_chunk:idx_chunk+100]).execute()
-                        except Exception:
-                            pass
-                            
-                        st.session_state.skor_tablosu = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] != secilen_sil_grup]
-                        st.session_state.mac_programi = st.session_state.mac_programi[st.session_state.mac_programi['Grup'] != secilen_sil_grup]
-                        
-                        if secilen_sil_grup in st.session_state.takim_kadrolari: del st.session_state.takim_kadrolari[secilen_sil_grup]
-                        if secilen_sil_grup in st.session_state.grup_formatlari: del st.session_state.grup_formatlari[secilen_sil_grup]
-                        if secilen_sil_grup in st.session_state.grup_kategorileri: del st.session_state.grup_kategorileri[secilen_sil_grup]
-                        if secilen_sil_grup in st.session_state.grup_asamalari: del st.session_state.grup_asamalari[secilen_sil_grup]
-                        if secilen_sil_grup in st.session_state.grup_siralamalari: del st.session_state.grup_siralamalari[secilen_sil_grup]
-                        if secilen_sil_grup in st.session_state.grup_tamamlandi: del st.session_state.grup_tamamlandi[secilen_sil_grup]
-                        if secilen_sil_grup in st.session_state.grup_yas_gruplari: del st.session_state.grup_yas_gruplari[secilen_sil_grup]
-                        
-                        # --- HAYALET ESAMELERİN TEMİZLİĞİ ---
-                        keys_to_delete = [k for k in st.session_state.esame_kasasi.keys() if k.startswith(secilen_sil_grup + "_")]
-                        for k in keys_to_delete:
-                            del st.session_state.esame_kasasi[k]
-                        keys_to_delete_onay = [k for k in st.session_state.esame_onayli.keys() if k.startswith(secilen_sil_grup + "_")]
-                        for k in keys_to_delete_onay:
-                            del st.session_state.esame_onayli[k]
-                        
-                        if ortak_veriyi_kaydet():
-                            st.success(f"'{secilen_sil_grup}' grubu ve esame kalıntıları sistemden başarıyla silindi!")
-                            st.rerun()
-                        else:
-                            st.error("Sistem meşgul, lütfen tekrar deneyin.")
-            else:
-                st.info(f"{aktif_asama} için silinecek herhangi bir grup bulunmuyor.")
-
-            st.markdown("---")
-            st.markdown("### 💾 Yedekleme Paneli")
-            c_sv, c_ld = st.columns(2)
-            with c_sv:
-                export_data = {
-                    "skor_tablosu": st.session_state.skor_tablosu.to_dict(orient="records") if not st.session_state.skor_tablosu.empty else [],
-                    "mac_programi": st.session_state.mac_programi.to_dict(orient="records") if not st.session_state.mac_programi.empty else [],
-                    "takim_kadrolari": st.session_state.get("takim_kadrolari", {}),
-                    "grup_formatlari": st.session_state.get("grup_formatlari", {}),
-                    "grup_kategorileri": st.session_state.get("grup_kategorileri", {}),
-                    "grup_asamalari": st.session_state.get("grup_asamalari", {}),
-                    "duyuru_metni": st.session_state.get("duyuru_metni", ""),
-                    "gunluk_notlar": st.session_state.get("gunluk_notlar", {}),
-                    "takim_havuzu": st.session_state.get("takim_havuzu", {}),
-                    "havuz_kategorileri": st.session_state.get("havuz_kategorileri", {}),
-                    "havuz_yas_gruplari": st.session_state.get("havuz_yas_gruplari", {}),
-                    "grup_siralamalari": st.session_state.get("grup_siralamalari", {}),
-                    "grup_tamamlandi": st.session_state.get("grup_tamamlandi", {}),
-                    "grup_yas_gruplari": st.session_state.get("grup_yas_gruplari", {}),
-                    "takim_pinleri": st.session_state.get("takim_pinleri", {}),
-                    "esame_kasasi": st.session_state.get("esame_kasasi", {}),
-                    "esame_onayli": st.session_state.get("esame_onayli", {}),
-                    "hakem_listesi": st.session_state.get("hakem_listesi", []),
-                    "hakem_pinleri": st.session_state.get("hakem_pinleri", {})
-                }
-                zaman_damgasi = datetime.datetime.now().strftime("%d_%m_%Y_%H%M")
-                yedek_adi = f"turnuva_yedek_{zaman_damgasi}.json"
-                st.download_button("📥 Turnuva Veritabanını İndir (.json)", data=json.dumps(export_data, ensure_ascii=False, indent=4), file_name=yedek_adi, mime="application/json")
-            with c_ld:
-                up_file = st.file_uploader("Geri Yüklemek İçin Yedek Dosyası Seçin:", type=["json"])
-                if up_file is not None and st.button("📤 Seçilen Yedeği Sisteme Entegre Et"):
-                    try:
-                        d = json.load(up_file)
-                        st.session_state.skor_tablosu = pd.DataFrame(d.get("skor_tablosu", []))
-                        st.session_state.mac_programi = pd.DataFrame(d.get("mac_programi", []))
-                        st.session_state.takim_kadrolari = d.get("takim_kadrolari", {})
-                        st.session_state.grup_formatlari = d.get("grup_formatlari", {})
-                        st.session_state.grup_kategorileri = d.get("grup_kategorileri", {})
-                        st.session_state.grup_asamalari = d.get("grup_asamalari", {})
-                        st.session_state.duyuru_metni = d.get("duyuru_metni", "")
-                        st.session_state.gunluk_notlar = d.get("gunluk_notlar", {})
-                        st.session_state.takim_havuzu = d.get("takim_havuzu", {})
-                        st.session_state.havuz_kategorileri = d.get("havuz_kategorileri", {})
-                        st.session_state.havuz_yas_gruplari = d.get("havuz_yas_gruplari", {})
-                        st.session_state.grup_siralamalari = d.get("grup_siralamalari", {})
-                        st.session_state.grup_tamamlandi = d.get("grup_tamamlandi", {})
-                        st.session_state.grup_yas_gruplari = d.get("grup_yas_gruplari", {})
-                        st.session_state.takim_pinleri = d.get("takim_pinleri", {})
-                        st.session_state.esame_kasasi = d.get("esame_kasasi", {})
-                        st.session_state.esame_onayli = d.get("esame_onayli", {})
-                        st.session_state.hakem_listesi = d.get("hakem_listesi", [])
-                        st.session_state.hakem_pinleri = d.get("hakem_pinleri", {})
-                        
-                        if ortak_veriyi_kaydet():
-                            st.success("Yedek başarıyla yüklendi!")
-                            st.rerun()
-                        else:
-                            st.error("Sistem meşgul, lütfen tekrar deneyin.")
-                    except Exception as ex: st.error(f"Hata: {ex}")
-            st.markdown("---")
-            st.markdown("### ⚠️ Sistem Sıfırlama (Tehlikeli İşlem)")
-            
-            if "confirm_reset" not in st.session_state:
-                st.session_state.confirm_reset = False
-
-            if not st.session_state.confirm_reset:
-                if st.button("🗑️ Tüm Turnuva Verilerini Kalıcı Olarak Sıfırla"):
-                    st.session_state.confirm_reset = True
-                    st.rerun()
-            else:
-                st.warning("⚠️ DİKKAT: Tüm turnuva verileri (maçlar, kadrolar, skorlar, yüklenen belgeler) kalıcı olarak silinecektir. Bu işlem geri alınamaz!")
-                col_evet, col_hayir = st.columns(2)
-                if col_evet.button("✅ Evet, Tüm Verileri Sil"):
-                    if supabase:
-                        try:
-                            res = supabase.table("maclar").select("id").execute()
-                            if res.data:
-                                ids = [item['id'] for item in res.data]
-                                for i in range(0, len(ids), 100):
-                                    batch_ids = ids[i:i+100]
-                                    supabase.table("maclar").delete().in_("id", batch_ids).execute()
-                            
-                            bos_ayarlar = {
-                                "takim_kadrolari": {}, "grup_formatlari": {}, "grup_kategorileri": {}, "grup_asamalari": {},
-                                "duyuru_metni": "", "gunluk_notlar": {}, "takim_havuzu": {}, "havuz_kategorileri": {},
-                                "havuz_yas_gruplari": {}, "grup_siralamalari": {}, "grup_tamamlandi": {}, "grup_yas_gruplari": {},
-                                "takim_pinleri": {}, "esame_kasasi": {}, "esame_onayli": {}, "mac_programi": [], "hakem_listesi": [], "hakem_pinleri": {}
-                            }
-                            supabase.table("turnuva_ayarlari").update(bos_ayarlar).eq("id", 1).execute()
-                        except Exception as e:
-                            st.error(f"Veritabanı silinirken hata oluştu: {e}")
-
-                    if os.path.exists(BELGELER_KLASORU): shutil.rmtree(BELGELER_KLASORU)
-                    st.session_state.clear()
-                    st.session_state.confirm_reset = False
-                    st.success("Tüm veritabanı başarıyla temizlendi!")
-                    time.sleep(1.5)
-                    st.rerun()
-                if col_hayir.button("❌ Vazgeç"):
-                    st.session_state.confirm_reset = False
-                    st.rerun()
+                                            st.session_state.takim_kadrolari[sec_g] = yeni_k_yapisi
+                                            st.session_state.grup_kategorileri[sec_g] = yeni_kategori
+                                            st.session_state.grup_asamalari[sec_g] = aktif_asama
+                                            st.session_state.grup_yas_gruplari[sec_g] = yeni_yas
+                                            
+                                            if isim_degisiklikleri:
+                                                mask_s = st.session_state.skor_tablosu['Grup'] == sec_g
+                                                mask_m = st.session_state.mac_programi['Grup'] == sec_g
+                                                for e_a, y_a in isim_degisiklikleri.items():
+                                                    st.session_state.skor_tablosu.loc[mask_s, 'Takım 1'] = st.session_state.skor_tablosu.loc[mask_s, 'Takım 1'].replace(e_a, y_a)
+                                                    st.session_state.skor_tablosu.loc[mask_s, 'Takım 2'] = st.session_state.skor_tablosu.loc[mask_s, 'Takım 2'].replace(e_a, y_a)
+                                                    st.session_state.mac_programi.loc[mask_m, 'Takım 1'] = st.session_state.mac_programi.loc[mask_m, 'Takım 1'].replace(e_a, y_a)
+                                                    st.session_state.mac_programi.loc[mask_m, 'Takım 2'] = st.session_state.mac_programi.loc[mask_m, 'Takım 2'].replace(e_a, y_a)
+                                            
+                                            if g_hedef != sec_g:
+                                                st.session_state.skor_tablosu.loc[st.session_state.skor_tablosu['Grup'] == sec_g, 'Grup'] = g_hedef
+                                                st.session_state.mac_programi.loc[st.session_state.mac_programi['Grup'] == sec_g, 'Grup'] = g_hedef
+                                                st.session_state.takim_kadrolari[g_hedef] = st.session_state.takim_kadrolari.pop(sec_g)
+                                                if sec_g in st.session_state.grup_formatlari: st.session_state.grup_formatlari[g_hedef] = st.session_state.grup_formatlari.pop(sec_g)
+                                                if sec_g in st.session_state.grup_kategorileri: st.session_state.grup_kategorileri[g_hedef] = st.session_state.grup_kategorileri.pop(sec_g)
+                                                if sec_g in st.session_state.grup_asamalari: st.session_state.grup_asamalari[g_hedef] = st.session_state.grup_asamalari.pop(sec_g)
+                                                if sec_g in st.session_state.grup_siralamalari: st.session_state.grup_siralamalari[g_hedef] = st.session_state.grup_siralamalari.pop(sec_g)
+                                                if sec_g in st.session_state.grup_tamamlandi: st.session_state.grup_tamamlandi[g_hedef] = st.session_state.grup_tamamlandi.pop(sec_g)
+                                                if sec_g in st.session_state.grup_yas_gruplari: st.session_state.grup_yas_gruplari[g_hedef] = st.session_state.grup_yas_gruplari.pop(sec_g)
+                                            
+                                            if ortak_veriyi_kaydet():
+                                                st.success("Takım ve kadro bilgileri başarıyla güncellendi!")
+                                            else:
+                                                st.error("Sistem meşgul, lütfen tekrar deneyin.")
+                                        st.rerun()
