@@ -784,7 +784,6 @@ def hesapla_tum_puan_durumu(df_girdi):
         s2_t1, s2_t2 = int(row['2.Set T1']), int(row['2.Set T2'])
         s3_t1, s3_t2 = int(row['3.Set T1']), int(row['3.Set T2'])
         
-        # YENİ: Otomatik STB Algılama (Averaj hesabı için)
         is_stb = bool(row.get('STB', False)) or (s3_t1 >= 10 or s3_t2 >= 10)
 
         if durum == "Çift Taraflı W/O": return pd.Series([0, 0, 0, 0])
@@ -868,9 +867,7 @@ def hesapla_tum_puan_durumu(df_girdi):
                         elif t2_s3_win: t2_set += 1
                         else:
                             t2_set += 1
-                            # Eğer zaten öndeyse puanı aldı, tekrar verme!
                             if not (s3_t2 > s3_t1): t2_oyun += 1
-                            # Rakip haksız yere puan aldıysa geri al!
                             if s3_t1 > s3_t2: t1_oyun = max(0, t1_oyun - 1)
                     else:
                         if t1_s3_win: t1_set += 1
@@ -905,11 +902,23 @@ def hesapla_tum_puan_durumu(df_girdi):
     df['T1_Match_Point'] = df.apply(lambda r: get_match_point(r, 1), axis=1)
     df['T2_Match_Point'] = df.apply(lambda r: get_match_point(r, 2), axis=1)
 
+    # --- TEKLER (SINGLES) GALİBİYETLERİNİ SAYMA ---
+    def get_singles_win(row, team_idx):
+        brans = str(row.get('Branş', '')).lower()
+        if "tek" in brans:
+            if team_idx == 1 and row['T1_Match_Win'] > row['T2_Match_Win']: return 1
+            if team_idx == 2 and row['T2_Match_Win'] > row['T1_Match_Win']: return 1
+        return 0
+
+    df['T1_Singles_Win'] = df.apply(lambda r: get_singles_win(r, 1), axis=1)
+    df['T2_Singles_Win'] = df.apply(lambda r: get_singles_win(r, 2), axis=1)
+
     seriler = df.groupby(['Grup', 'Gün', 'Eşleşme', 'Takım 1', 'Takım 2']).agg({
         'T1_Match_Win': 'sum', 'T2_Match_Win': 'sum', 
         'T1_Set_Skor': 'sum', 'T2_Set_Skor': 'sum', 
         'T1_Oyun': 'sum', 'T2_Oyun': 'sum',
-        'T1_Match_Point': 'sum', 'T2_Match_Point': 'sum'
+        'T1_Match_Point': 'sum', 'T2_Match_Point': 'sum',
+        'T1_Singles_Win': 'sum', 'T2_Singles_Win': 'sum'
     }).reset_index()
     
     def determine_team_win(r):
@@ -928,7 +937,11 @@ def hesapla_tum_puan_durumu(df_girdi):
                 oyun_av_t2 = r['T2_Oyun'] - r['T1_Oyun']
                 if oyun_av_t1 > oyun_av_t2: return 1, 0
                 elif oyun_av_t2 > oyun_av_t1: return 0, 1
-                else: return 0, 0 
+                else: 
+                    # --- YENİ KURAL: Puan, Set ve Oyun Averajı Eşitse Tekler Maçına Bak ---
+                    if r['T1_Singles_Win'] > r['T2_Singles_Win']: return 1, 0
+                    elif r['T2_Singles_Win'] > r['T1_Singles_Win']: return 0, 1
+                    else: return 0, 0 
                 
     win_res = seriler.apply(lambda r: determine_team_win(r), axis=1)
     seriler['T1_Win'] = [x[0] for x in win_res]
