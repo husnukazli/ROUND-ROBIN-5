@@ -645,7 +645,6 @@ def render_html_matrix(takimlar, df_grup):
     return html
 
 def generate_matrix_pdf(grup_adi, takimlar, df_grup):
-    # Alt maç skorlarını düz yazı formatına (PDF'e uygun) çeviren yardımcı fonksiyon
     def get_plain_score(row, target_t1):
         is_t1 = row['Takım 1'] == target_t1
         durum = str(row.get('Durum', 'Tamamlandı'))
@@ -690,6 +689,17 @@ def generate_matrix_pdf(grup_adi, takimlar, df_grup):
     matrix = matrix.fillna("")
     for t in takimlar: matrix.at[t, t] = "X"
     
+    # --- OPTİMİZASYON: Önceden tüm galibiyetleri hesapla ---
+    on_hesap_sonuclari = {}
+    for (t_a, t_b), group_df in df_grup.groupby(['Takım 1', 'Takım 2']):
+        match_key = tuple(sorted([t_a, t_b]))
+        if match_key not in on_hesap_sonuclari:
+            aradaki_maclar = df_grup[((df_grup['Takım 1'] == match_key[0]) & (df_grup['Takım 2'] == match_key[1])) | 
+                                     ((df_grup['Takım 1'] == match_key[1]) & (df_grup['Takım 2'] == match_key[0]))]
+            stats = hesapla_tum_puan_durumu(aradaki_maclar)
+            on_hesap_sonuclari[match_key] = stats
+    # -------------------------------------------------------
+
     for (t1, t2), group in df_grup.groupby(['Takım 1', 'Takım 2']):
         t1_total, t2_total = 0, 0
         t1_details = []
@@ -704,8 +714,9 @@ def generate_matrix_pdf(grup_adi, takimlar, df_grup):
             if det2: t2_details.append(det2)
 
         if t1_total > 0 or t2_total > 0:
-            # --- GERÇEK KAZANANI BULMA (Tie-break / Averaj Kontrolü) ---
-            temp_stats = hesapla_tum_puan_durumu(group)
+            match_key = tuple(sorted([t1, t2]))
+            temp_stats = on_hesap_sonuclari.get(match_key, pd.DataFrame())
+            
             t1_galibiyet = 0
             t2_galibiyet = 0
             if not temp_stats.empty:
@@ -727,7 +738,6 @@ def generate_matrix_pdf(grup_adi, takimlar, df_grup):
     apply_font(pdf, bold=True, size=14)
     pdf.cell(0, 8, to_pdf_text(f"{grup_adi} - Takım Maçları Matrisi"), ln=True, align='C')
     
-    # --- BİLGİ NOTU EKLENDİ ---
     apply_font(pdf, bold=False, size=8)
     pdf.cell(0, 4, to_pdf_text("Not: Skorun yanındaki (*) yıldız işareti, kazanan takımı gösterir."), ln=True, align='C')
     pdf.ln(5)
