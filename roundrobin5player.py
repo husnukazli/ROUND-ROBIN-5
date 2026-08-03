@@ -3397,12 +3397,13 @@ else:
                             st.markdown("<br>", unsafe_allow_html=True)
                             pdf_turu = st.radio("📄 Belge Başlığı (PDF'te ne yazsın?):", ["Maç Programı (Sabah)", "Günün Sonuçları (Akşam)"], horizontal=True)
                             
+                            # --- TARİH VE GÜN ADINI BAŞLIĞA BİRLEŞTİRME ---
                             if "Sonuçları" in pdf_turu:
-                                baslik_metni = f"Mac Sonuclari - {formatted_tarih}"
+                                baslik_metni = f"{formatted_tarih} {gun_adi} - Günün Sonuçları"
                                 dosya_adi = f"mac_sonuclari_{formatted_tarih}.pdf"
                                 buton_adi = "📥 Günün Sonuçlarını PDF Olarak İndir"
                             else:
-                                baslik_metni = f"Mac Programi - {formatted_tarih}"
+                                baslik_metni = f"{formatted_tarih} {gun_adi} - Maç Programı"
                                 dosya_adi = f"mac_programi_{formatted_tarih}.pdf"
                                 buton_adi = "📥 Maç Programını PDF Olarak İndir"
                                 
