@@ -570,17 +570,32 @@ def render_html_matrix(takimlar, df_grup):
         html += f'<th style="border: 1px solid rgba(128,128,128,0.3); padding: 10px;">{t}</th>'
     html += '</tr>'
 
+    # --- OPTİMİZASYON: N^2 Yükünü Sıfırlayan Ön Hesaplama Sözlüğü ---
+    on_hesap_sonuclari = {}
+    for (t_a, t_b), group_df in df_grup.groupby(['Takım 1', 'Takım 2']):
+        match_key = tuple(sorted([t_a, t_b]))
+        if match_key not in on_hesap_sonuclari:
+            aradaki_maclar = df_grup[((df_grup['Takım 1'] == match_key[0]) & (df_grup['Takım 2'] == match_key[1])) | 
+                                     ((df_grup['Takım 1'] == match_key[1]) & (df_grup['Takım 2'] == match_key[0]))]
+            stats = hesapla_tum_puan_durumu(aradaki_maclar)
+            on_hesap_sonuclari[match_key] = stats
+    # -----------------------------------------------------------------
+
     for t1 in takimlar:
         html += f'<tr><td style="border: 1px solid rgba(128,128,128,0.3); padding: 10px; font-weight: bold; background-color: rgba(128,128,128,0.1);">{t1}</td>'
         for t2 in takimlar:
             if t1 == t2:
                 html += '<td style="border: 1px solid rgba(128,128,128,0.3); padding: 10px; background-color: rgba(128,128,128,0.2);"><b>X</b></td>'
             else:
+                match_key = tuple(sorted([t1, t2]))
                 matches = df_grup[((df_grup['Takım 1'] == t1) & (df_grup['Takım 2'] == t2)) | ((df_grup['Takım 1'] == t2) & (df_grup['Takım 2'] == t1))]
+                
                 if matches.empty:
                     html += '<td style="border: 1px solid rgba(128,128,128,0.3); padding: 10px;"></td>'
                 else:
-                    temp_stats = hesapla_tum_puan_durumu(matches)
+                    # Ağır fonksiyonu döngü içinde çağırmak yerine sözlükten çekiyoruz!
+                    temp_stats = on_hesap_sonuclari.get(match_key, pd.DataFrame())
+                    
                     t1_wins = 0; t2_wins = 0
                     t1_puan_info = 0.0; t2_puan_info = 0.0
                     details = []
