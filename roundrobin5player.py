@@ -356,7 +356,94 @@ def render_html_matrix(takimlar, df_grup):
         html += '</tr>'
     html += '</table>'
     return html
+    
+def generate_matrix_pdf(grup_adi, takimlar, df_grup):
+    def get_plain_score(row, target_t1):
+        is_t1 = row['Takım 1'] == target_t1
+        durum = str(row.get('Durum', 'Tamamlandı'))
+        if durum == "Takım 1 (W/O)": durum = "Takım 2 Kazandı (W/O)"
+        elif durum == "Takım 2 (W/O)": durum = "Takım 1 Kazandı (W/O)"
+        elif durum == "Takım 1 (Ret.)": durum = "Takım 2 Kazandı (Ret.)"
+        elif durum == "Takım 2 (Ret.)": durum = "Takım 1 Kazandı (Ret.)"
 
+        brans = str(row['Branş']).replace("1. Tekler", "1T").replace("2. Tekler", "2T").replace("3. Tekler", "3T").replace("1. Çiftler", "1Ç").replace("2. Çiftler", "2Ç").replace("Çiftler", "Ç")
+
+        if durum == "Çift Taraflı W/O": 
+            return f"{brans}: Çift W/O"
+        if durum == "Takım 1 Kazandı (W/O)": 
+            return f"{brans}: W/O(G)" if is_t1 else f"{brans}: W/O(M)"
+        if durum == "Takım 2 Kazandı (W/O)": 
+            return f"{brans}: W/O(M)" if is_t1 else f"{brans}: W/O(G)"
+
+        s1_1, s1_2 = int(row.get('1.Set T1', 0)), int(row.get('1.Set T2', 0))
+        s2_1, s2_2 = int(row.get('2.Set T1', 0)), int(row.get('2.Set T2', 0))
+        s3_1, s3_2 = int(row.get('3.Set T1', 0)), int(row.get('3.Set T2', 0))
+
+        if not is_t1:
+            s1_1, s1_2 = s1_2, s1_1
+            s2_1, s2_2 = s2_2, s2_1
+            s3_1, s3_2 = s3_2, s3_1
+
+        if s1_1 == 0 and s1_2 == 0 and s2_1 == 0 and s2_2 == 0 and "Ret." not in durum:
+            return ""
+
+        score_str = f"{s1_1}-{s1_2}"
+        if s2_1 != 0 or s2_2 != 0 or s1_1 != 0 or s1_2 != 0: score_str += f" | {s2_1}-{s2_2}"
+        if s3_1 != 0 or s3_2 != 0: score_str += f" | {s3_1}-{s3_2}"
+
+        if durum == "Takım 1 Kazandı (Ret.)": 
+            score_str += " Ret.(G)" if is_t1 else " Ret.(M)"
+        elif durum == "Takım 2 Kazandı (Ret.)": 
+            score_str += " Ret.(M)" if is_t1 else " Ret.(G)"
+
+        return f"{brans}: {score_str}"
+
+    matrix = pd.DataFrame(index=takimlar, columns=takimlar)
+    matrix = matrix.fillna("")
+    for t in takimlar: matrix.at[t, t] = "X"
+    
+    on_hesap_sonuclari = {}
+    for (t_a, t_b), group_df in df_grup.groupby(['Takım 1', 'Takım 2']):
+        match_key = tuple(sorted([t_a, t_b]))
+        if match_key not in on_hesap_sonuclari:
+            aradaki_maclar = df_grup[((df_grup['Takım 1'] == match_key[0]) & (df_grup['Takım 2'] == match_key[1])) | 
+                                     ((df_grup['Takım 1'] == match_key[1]) & (df_grup['Takım 2'] == match_key[0]))]
+            stats = hesapla_tum_puan_durumu(aradaki_maclar)
+            on_hesap_sonuclari[match_key] = stats
+
+    for (t1, t2), group in df_grup.groupby(['Takım 1', 'Takım 2']):
+        t1_total, t2_total = 0, 0
+        t1_details = []
+        t2_details = []
+        for _, row in sort_maclar(group).iterrows():
+            w1, w2 = hesapla_mac_kazanani(row)
+            t1_total += w1; t2_total += w2
+            
+            det1 = get_plain_score(row, t1)
+            if det1: t1_details.append(det1)
+            det2 = get_plain_score(row, t2)
+            if det2: t2_details.append(det2)
+
+        if t1_total > 0 or t2_total > 0:
+            match_key = tuple(sorted([t1, t2]))
+            temp_stats = on_hesap_sonuclari.get(match_key, pd.DataFrame())
+            
+            t1_galibiyet = 0
+            t2_galibiyet = 0
+            if not temp_stats.empty:
+                r1 = temp_stats[temp_stats['Takım'] == t1]
+                r2 = temp_stats[temp_stats['Takım'] == t2]
+                if not r1.empty: t1_galibiyet = r1.iloc[0]['Galibiyet']
+                if not r2.empty: t2_galibiyet = r2.iloc[0]['Galibiyet']
+
+            yildiz_t1 = "*" if t1_galibiyet > t2_galibiyet else ""
+            yildiz_t2 = "*" if t2_galibiyet > t1_galibiyet else ""
+            
+            matrix.at[t1, t2] = f"{t1_total}{yildiz_t1} - {t2_total}{yildiz_t2}\n" + "\n".join(t1_details)
+            matrix.at[t2, t1] = f"{t2_total}{yildiz_t2} - {t1_total}{yildiz_t1}\n" + "\n".join(t2_details)
+            
+    # PDF çizim motorunu harici dosyadan çağırıyoruz
+    return draw_matrix_pdf(grup_adi, takimlar, matrix)
 def hesapla_tum_puan_durumu(df_girdi):
     if df_girdi.empty: return pd.DataFrame()
     df = df_girdi.copy()
