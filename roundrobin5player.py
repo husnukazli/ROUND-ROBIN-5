@@ -2164,6 +2164,8 @@ else:
                     gosterilecek_gruplar = mevcut_gruplar if "Tüm Grupları Göster" in secilen_gruplar or len(secilen_gruplar) == 0 else [g for g in secilen_gruplar if g != "Tüm Grupları Göster"]
 
                     pdf_gruplar_data = {}
+                    manuel_siralanan_gruplar = [] # --- YENİ EKLENEN LİSTE ---
+
                     for gp in dogal_sirala(gosterilecek_gruplar):
                         if gp in mevcut_gruplar:
                             g_kat = st.session_state.grup_kategorileri.get(gp, "Erkekler")
@@ -2188,6 +2190,7 @@ else:
                                     
                                 if gp in st.session_state.grup_siralamalari and st.session_state.grup_siralamalari[gp]:
                                     st.warning("⚠️ Bu grupta averaj eşitliği veya başka bir sebeple Başhakem kararıyla Manuel Sıralama uygulanmıştır.")
+                                    manuel_siralanan_gruplar.append(gp)
                                 
                             with t_ic2:
                                 df_gp_matches = df_asama_t3[df_asama_t3['Grup'] == gp]
@@ -2271,8 +2274,9 @@ else:
                             st.markdown("<br><hr>", unsafe_allow_html=True)
 
                     if pdf_gruplar_data:
-                        combined_pdf_bytes = generate_combined_standings_pdf(pdf_gruplar_data)
-                        st.download_button(label=f"📥 Seçili Grupların Puan Durumunu Tek PDF Olarak İndir", data=combined_pdf_bytes, file_name=f"puan_durumu_toplu.pdf", mime="application/pdf", key="pdf_puan_toplu")
+                        # --- GÜNCEL SATIR (manuel_gruplar listesi PDF fonksiyonuna gönderiliyor) ---
+                        combined_pdf_bytes = generate_combined_standings_pdf(pdf_gruplar_data, manuel_gruplar=manuel_siralanan_gruplar)
+                        st.download_button(label=f"📥 Seçili Grupların Puan Durumunu Tek PDF Olarak İndir", data=combined_pdf_bytes, file_name=f"puan_durumu_toplu.pdf", mime="application/pdf", key="pdf_puan_toplu"), key="pdf_puan_toplu")
                     
                     st.markdown("---")
                     with st.expander("⚖️ Gelişmiş Averaj ve Mini Lig Hesaplayıcı"):
