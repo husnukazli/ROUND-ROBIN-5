@@ -2276,7 +2276,7 @@ else:
                     if pdf_gruplar_data:
                         # --- GÜNCEL SATIR (manuel_gruplar listesi PDF fonksiyonuna gönderiliyor) ---
                         combined_pdf_bytes = generate_combined_standings_pdf(pdf_gruplar_data, manuel_gruplar=manuel_siralanan_gruplar)
-                        st.download_button(label=f"📥 Seçili Grupların Puan Durumunu Tek PDF Olarak İndir", data=combined_pdf_bytes, file_name=f"puan_durumu_toplu.pdf", mime="application/pdf", key="pdf_puan_toplu"), key="pdf_puan_toplu")
+                        st.download_button(label=f"📥 Seçili Grupların Puan Durumunu Tek PDF Olarak İndir", data=combined_pdf_bytes, file_name=f"puan_durumu_toplu.pdf", mime="application/pdf", key="pdf_puan_toplu"), key="pdf_puan_toplu"))
                     
                     st.markdown("---")
                     with st.expander("⚖️ Gelişmiş Averaj ve Mini Lig Hesaplayıcı"):
