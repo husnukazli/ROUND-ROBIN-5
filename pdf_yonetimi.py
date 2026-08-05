@@ -128,14 +128,21 @@ def generate_pdf(df, baslik, not_metni=""):
             pdf.ln()
     return get_pdf_bytes(pdf)
 
-def generate_combined_standings_pdf(gruplar_dict):
+def generate_combined_standings_pdf(gruplar_dict, manuel_gruplar=None):
+    if manuel_gruplar is None:
+        manuel_gruplar = []
+        
     pdf = FPDF(orientation='P', unit='mm', format='A4')
     pdf.add_page()
     setup_pdf_fonts(pdf)
     
     for grup_adi, df in gruplar_dict.items():
         satir_sayisi = len(df)
-        gerekli_yukseklik = 10 + 8 + (satir_sayisi * 8) + 10 
+        
+        # Manuel uyarı eklenecekse PDF'te sayfa sonu taşmasını önlemek için ekstra pay bırakıyoruz
+        ekstra_pay = 10 if grup_adi in manuel_gruplar else 0
+        gerekli_yukseklik = 10 + 8 + (satir_sayisi * 8) + 10 + ekstra_pay 
+        
         if pdf.get_y() + gerekli_yukseklik > 280: 
             pdf.add_page()
 
@@ -151,6 +158,16 @@ def generate_combined_standings_pdf(gruplar_dict):
                 for i, item in enumerate(row): 
                     pdf_cell_fit(pdf, col_widths[i], 8, str(item), is_bold=False)
                 pdf.ln()
+                
+        # --- YENİ EKLENEN MANUEL SIRALAMA BİLGİ NOTU ---
+        if grup_adi in manuel_gruplar:
+            pdf.ln(2)
+            apply_font(pdf, bold=True, size=9)
+            pdf.set_text_color(200, 50, 50) # Şık bir kırmızı uyarı rengi
+            pdf.cell(0, 6, to_pdf_text("* Not: Bu grupta averaj eşitliği veya Başhakem kararıyla Manuel Sıralama uygulanmıştır."), ln=True, align='L')
+            pdf.set_text_color(0, 0, 0) # Sonraki tablolar için rengi tekrar siyaha döndür
+        # ------------------------------------------------
+        
         pdf.ln(5)
     return get_pdf_bytes(pdf)
 
