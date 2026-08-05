@@ -14,7 +14,15 @@ import random
 import time
 import uuid
 from supabase import create_client, Client
-from fpdf import FPDF
+
+# --- YENİ EKLENEN PDF MOTORU BAĞLANTISI ---
+from pdf_islemleri import (
+    generate_pdf, 
+    generate_combined_standings_pdf, 
+    generate_klasman_pdf, 
+    generate_toplu_klasman_pdf, 
+    generate_matrix_pdf
+)
 
 def arkaplan_ekle(resim_yolu):
     try:
@@ -49,7 +57,7 @@ def init_supabase() -> Client:
         key = st.secrets["SUPABASE_KEY"]
         return create_client(url, key)
     except:
-        return None # İnternet veya şifre yoksa hata verme, uçak moduna hazır ol
+        return None
 
 supabase = init_supabase()
 
@@ -89,7 +97,7 @@ if not os.path.exists(BELGELER_KLASORU):
     os.makedirs(BELGELER_KLASORU)
 
 # ==============================================================================
-# SİSTEM FONKSİYONLARI
+# SİSTEM FONKSİYONLARI (PDF GÖREVLERİ DIŞARI AKTARILDI)
 # ==============================================================================
 
 def dogal_sirala(liste):
@@ -108,295 +116,6 @@ def sort_maclar(df):
         return df_temp.sort_values(['Grup', 'Eşleşme', 'sira']).drop(columns=['sira'])
     else:
         return df_temp.sort_values('sira').drop(columns=['sira'])
-
-FONT_YUKLENDI = os.path.exists("arial.ttf")
-FONT_BOLD_YUKLENDI = os.path.exists("arialbd.ttf")
-
-def to_pdf_text(text):
-    if FONT_YUKLENDI: return str(text)
-    return str(text).encode('latin-1', 'replace').decode('latin-1')
-
-def setup_pdf_fonts(pdf):
-    if FONT_YUKLENDI:
-        try:
-            pdf.add_font("ArialTR", "", "arial.ttf", uni=True)
-            if FONT_BOLD_YUKLENDI:
-                pdf.add_font("ArialTR", "B", "arialbd.ttf", uni=True)
-        except:
-            pass
-
-def apply_font(pdf, bold=False, size=10):
-    if FONT_YUKLENDI:
-        if bold and FONT_BOLD_YUKLENDI:
-            pdf.set_font("ArialTR", "B", size)
-        else:
-            pdf.set_font("ArialTR", "", size)
-    else:
-        pdf.set_font("Arial", 'B' if bold else '', size)
-
-def pdf_cell_fit(pdf, w, h, txt, border=1, align='C', is_bold=False, fill=False, base_size=9):
-    size = base_size
-    apply_font(pdf, bold=is_bold, size=size)
-    while pdf.get_string_width(to_pdf_text(txt)) > (w - 2) and size > 5:
-        size -= 0.5
-        apply_font(pdf, bold=is_bold, size=size)
-    pdf.cell(w, h, to_pdf_text(txt), border=border, align=align, fill=fill)
-    apply_font(pdf, bold=False, size=9) 
-
-def get_proportional_widths(pdf, df, usable_width=190):
-    col_widths = []
-    for col in df.columns:
-        max_w = pdf.get_string_width(to_pdf_text(col)) + 4
-        for _, row in df.iterrows():
-            text = str(row[col])
-            if text.startswith("**") and text.endswith("**"): text = text[2:-2]
-            w = pdf.get_string_width(to_pdf_text(text)) + 4
-            if w > max_w: max_w = w
-        col_widths.append(max_w)
-    
-    total_w = sum(col_widths)
-    return [w * (usable_width / total_w) for w in col_widths]
-
-def get_pdf_bytes(pdf):
-    out = pdf.output(dest='S')
-    return out.encode('latin-1') if isinstance(out, str) else bytes(out)
-
-def generate_pdf(df, baslik, not_metni=""):
-    pdf = FPDF(orientation='P', unit='mm', format='A4')
-    pdf.add_page()
-    setup_pdf_fonts(pdf)
-    
-    apply_font(pdf, bold=True, size=14)
-    pdf.cell(0, 10, to_pdf_text(baslik), ln=True, align='C')
-    
-    if not_metni:
-        pdf.ln(2)
-        apply_font(pdf, bold=False, size=10)
-        pdf.multi_cell(0, 6, to_pdf_text(f"Bashakem Notu: {not_metni}"), align='C')
-        pdf.ln(5)
-    else:
-        pdf.ln(5)
-    
-    df_print = df.copy()
-    
-    # GİZLİ KOLON KONTROLÜ
-    has_header_col = "_IS_HEADER_" in df_print.columns
-    if has_header_col:
-        header_flags = df_print["_IS_HEADER_"].tolist()
-        df_print = df_print.drop(columns=["_IS_HEADER_"])
-    
-    if len(df_print.columns) > 0:
-        col_widths = get_proportional_widths(pdf, df_print)
-        
-        pdf.set_fill_color(200, 200, 200)
-        for i, col in enumerate(df_print.columns): 
-            pdf_cell_fit(pdf, col_widths[i], 10, col, is_bold=True, fill=True, base_size=10)
-        pdf.ln()
-        
-        for row_idx, row in df_print.reset_index(drop=True).iterrows():
-            is_takim_satiri = False
-            
-            if has_header_col:
-                is_takim_satiri = bool(header_flags[row_idx])
-            else:
-                if "Skor" in df_print.columns and str(row["Skor"]).startswith("**"):
-                    is_takim_satiri = True
-                else:
-                    for val in row.values:
-                        if "**TAKIM EŞLEŞMESİ**" in str(val):
-                            is_takim_satiri = True
-                            break
-                    if not is_takim_satiri and "Takım 1" in df_print.columns and "Takım 2" in df_print.columns:
-                        if str(row["Takım 1"]).startswith("**") and str(row["Takım 2"]).startswith("**"):
-                            is_takim_satiri = True
-            
-            if is_takim_satiri:
-                pdf.set_fill_color(225, 225, 225)
-            
-            for i, item in enumerate(row): 
-                text = str(item)
-                is_bold = False
-                
-                if text.startswith("**") and text.endswith("**"):
-                    text = text[2:-2]
-                    is_bold = True
-                
-                hedef_punto = 10.5 if is_takim_satiri else 9
-                    
-                if is_bold and FONT_YUKLENDI and not FONT_BOLD_YUKLENDI:
-                    text = f"{text} *" 
-                    
-                pdf_cell_fit(pdf, col_widths[i], 8, text, is_bold=is_bold, fill=is_takim_satiri, base_size=hedef_punto)
-            pdf.ln()
-    return get_pdf_bytes(pdf)
-
-def generate_combined_standings_pdf(gruplar_dict):
-    pdf = FPDF(orientation='P', unit='mm', format='A4')
-    pdf.add_page()
-    setup_pdf_fonts(pdf)
-    
-    for grup_adi, df in gruplar_dict.items():
-        satir_sayisi = len(df)
-        gerekli_yukseklik = 10 + 8 + (satir_sayisi * 8) + 10 
-        if pdf.get_y() + gerekli_yukseklik > 280: 
-            pdf.add_page()
-
-        apply_font(pdf, bold=True, size=12)
-        pdf.cell(0, 10, to_pdf_text(grup_adi + " Puan Durumu"), ln=True, align='L')
-        
-        if len(df.columns) > 0:
-            col_widths = get_proportional_widths(pdf, df)
-            for i, col in enumerate(df.columns): 
-                pdf_cell_fit(pdf, col_widths[i], 8, col, is_bold=True)
-            pdf.ln()
-            for _, row in df.iterrows():
-                for i, item in enumerate(row): 
-                    pdf_cell_fit(pdf, col_widths[i], 8, str(item), is_bold=False)
-                pdf.ln()
-        pdf.ln(5)
-    return get_pdf_bytes(pdf)
-
-def generate_klasman_pdf(kategori_adi, birinciler_liste, ikinciler_liste, ligde_kalanlar, dusenler):
-    pdf = FPDF(orientation='P', unit='mm', format='A4')
-    pdf.add_page()
-    setup_pdf_fonts(pdf)
-
-    # Resmi Antet
-    apply_font(pdf, bold=True, size=16)
-    pdf.cell(0, 8, to_pdf_text("TÜRKİYE TENİS FEDERASYONU"), ln=True, align='C')
-    apply_font(pdf, bold=False, size=12)
-    pdf.cell(0, 6, to_pdf_text("Takım Şampiyonası Resmi Sonuç Bildirgesi"), ln=True, align='C')
-    pdf.line(10, pdf.get_y()+2, 200, pdf.get_y()+2)
-    pdf.ln(10)
-
-    # Ana Başlık
-    apply_font(pdf, bold=True, size=14)
-    pdf.cell(0, 10, to_pdf_text(f"KATEGORİ: {kategori_adi.upper()} - NİHAİ KLASMAN"), ln=True, align='C')
-    pdf.ln(5)
-
-    current_rank = 1
-
-    if birinciler_liste:
-        pdf.set_fill_color(220, 220, 220)
-        apply_font(pdf, bold=True, size=11)
-        pdf.cell(0, 8, to_pdf_text("ŞAMPİYONLUK KÜRSÜSÜ"), border=1, ln=True, fill=True, align='L')
-        apply_font(pdf, bold=False, size=11)
-        pdf.ln(2)
-        for takim in birinciler_liste:
-            unvan = ""
-            if current_rank == 1: unvan = " (Şampiyon)"
-            elif current_rank == 2: unvan = " (İkinci)"
-            elif current_rank == 3: unvan = " (Üçüncü)"
-            elif current_rank == 4: unvan = " (Dördüncü)"
-            pdf.cell(0, 7, to_pdf_text(f"  {current_rank}. Sıra: {takim}{unvan}"), ln=True)
-            current_rank += 1
-        pdf.ln(5)
-
-    if ikinciler_liste:
-        pdf.set_fill_color(235, 235, 235)
-        apply_font(pdf, bold=True, size=11)
-        pdf.cell(0, 8, to_pdf_text("İKİNCİLER GRUBU (Klasman)"), border=1, ln=True, fill=True, align='L')
-        apply_font(pdf, bold=False, size=11)
-        pdf.ln(2)
-        for takim in ikinciler_liste:
-            pdf.cell(0, 7, to_pdf_text(f"  {current_rank}. Sıra: {takim}"), ln=True)
-            current_rank += 1
-        pdf.ln(5)
-
-    if ligde_kalanlar:
-        pdf.set_fill_color(245, 245, 245)
-        apply_font(pdf, bold=True, size=11)
-        pdf.cell(0, 8, to_pdf_text("LİGDE KALANLAR (Play-Out Üst Sıralar)"), border=1, ln=True, fill=True, align='L')
-        apply_font(pdf, bold=False, size=11)
-        pdf.ln(2)
-        for takim in dogal_sirala(ligde_kalanlar):
-            pdf.cell(0, 7, to_pdf_text(f"  - {takim}"), ln=True)
-        pdf.ln(5)
-
-    if dusenler:
-        pdf.set_fill_color(245, 245, 245)
-        apply_font(pdf, bold=True, size=11)
-        pdf.cell(0, 8, to_pdf_text("LİGDEN DÜŞENLER (Play-Out Alt Sıralar)"), border=1, ln=True, fill=True, align='L')
-        apply_font(pdf, bold=False, size=11)
-        pdf.ln(2)
-        for takim in dogal_sirala(dusenler):
-            pdf.cell(0, 7, to_pdf_text(f"  - {takim}"), ln=True)
-
-    return get_pdf_bytes(pdf)
-
-
-def generate_toplu_klasman_pdf(kategoriler_verisi):
-    pdf = FPDF(orientation='P', unit='mm', format='A4')
-    setup_pdf_fonts(pdf)
-
-    for kat_adi, veriler in kategoriler_verisi.items():
-        pdf.add_page()
-        
-        # Resmi Antet
-        apply_font(pdf, bold=True, size=16)
-        pdf.cell(0, 8, to_pdf_text("TÜRKİYE TENİS FEDERASYONU"), ln=True, align='C')
-        apply_font(pdf, bold=False, size=12)
-        pdf.cell(0, 6, to_pdf_text("Takım Şampiyonası Resmi Sonuç Bildirgesi"), ln=True, align='C')
-        pdf.line(10, pdf.get_y()+2, 200, pdf.get_y()+2)
-        pdf.ln(10)
-        
-        apply_font(pdf, bold=True, size=14)
-        pdf.cell(0, 10, to_pdf_text(f"KATEGORİ: {kat_adi.upper()} - NİHAİ KLASMAN"), ln=True, align='C')
-        pdf.ln(5)
-
-        current_rank = 1
-        birinciler = veriler.get("birinciler", [])
-        ikinciler = veriler.get("ikinciler", [])
-        ligde_kalanlar = veriler.get("ligde_kalanlar", [])
-        dusenler = veriler.get("dusenler", [])
-
-        if birinciler:
-            pdf.set_fill_color(220, 220, 220)
-            apply_font(pdf, bold=True, size=11)
-            pdf.cell(0, 8, to_pdf_text("ŞAMPİYONLUK KÜRSÜSÜ"), border=1, ln=True, fill=True, align='L')
-            apply_font(pdf, bold=False, size=11)
-            pdf.ln(2)
-            for takim in birinciler:
-                unvan = ""
-                if current_rank == 1: unvan = " (Şampiyon)"
-                elif current_rank == 2: unvan = " (İkinci)"
-                elif current_rank == 3: unvan = " (Üçüncü)"
-                elif current_rank == 4: unvan = " (Dördüncü)"
-                pdf.cell(0, 7, to_pdf_text(f"  {current_rank}. Sıra: {takim}{unvan}"), ln=True)
-                current_rank += 1
-            pdf.ln(5)
-
-        if ikinciler:
-            pdf.set_fill_color(235, 235, 235)
-            apply_font(pdf, bold=True, size=11)
-            pdf.cell(0, 8, to_pdf_text("İKİNCİLER GRUBU (Klasman)"), border=1, ln=True, fill=True, align='L')
-            apply_font(pdf, bold=False, size=11)
-            pdf.ln(2)
-            for takim in ikinciler:
-                pdf.cell(0, 7, to_pdf_text(f"  {current_rank}. Sıra: {takim}"), ln=True)
-                current_rank += 1
-            pdf.ln(5)
-
-        if ligde_kalanlar:
-            pdf.set_fill_color(245, 245, 245)
-            apply_font(pdf, bold=True, size=11)
-            pdf.cell(0, 8, to_pdf_text("LİGDE KALANLAR (Play-Out Üst Sıralar)"), border=1, ln=True, fill=True, align='L')
-            apply_font(pdf, bold=False, size=11)
-            pdf.ln(2)
-            for takim in dogal_sirala(ligde_kalanlar):
-                pdf.cell(0, 7, to_pdf_text(f"  - {takim}"), ln=True)
-            pdf.ln(5)
-
-        if dusenler:
-            pdf.set_fill_color(245, 245, 245)
-            apply_font(pdf, bold=True, size=11)
-            pdf.cell(0, 8, to_pdf_text("LİGDEN DÜŞENLER (Play-Out Alt Sıralar)"), border=1, ln=True, fill=True, align='L')
-            apply_font(pdf, bold=False, size=11)
-            pdf.ln(2)
-            for takim in dogal_sirala(dusenler):
-                pdf.cell(0, 7, to_pdf_text(f"  - {takim}"), ln=True)
-
-    return get_pdf_bytes(pdf)
 
 def set_gecerli_mi(t1, t2, is_set3=False, durum="Tamamlandı"):
     if durum != "Tamamlandı": return True, ""
@@ -489,7 +208,6 @@ def eslesmeleri_olustur(grup_adi, takimlar, grup_tipi, format_secimi):
             program.append(satir)
     return program
 
-    
 def hesapla_mac_kazanani(row):
     durum = str(row.get('Durum', 'Tamamlandı'))
     if durum == "Takım 1 (W/O)": durum = "Takım 2 Kazandı (W/O)"
@@ -506,7 +224,6 @@ def hesapla_mac_kazanani(row):
     s3_t1, s3_t2 = int(row['3.Set T1']), int(row['3.Set T2'])
     if s1_t1 == 0 and s1_t2 == 0 and s2_t1 == 0 and s2_t2 == 0: return 0, 0
     
-    # YENİ: Otomatik STB Algılama (Kutu seçili VEYA 3. set skoru 10'dan büyükse)
     is_stb = bool(row.get('STB', False)) or (s3_t1 >= 10 or s3_t2 >= 10)
     
     t1_s1_win = s1_t1 >= 6 and (s1_t1 - s1_t2) >= 2 or s1_t1 == 7
@@ -562,6 +279,7 @@ def get_formatted_match_score(row, target_t1):
 
     return f"<b>{brans}</b>: <span style='opacity: 0.8;'>{score_str}</span>"
 
+# --- PERFORMANS OPTİMİZASYONU EKLENMİŞ MATRİS FONKSİYONU ---
 def render_html_matrix(takimlar, df_grup):
     html = '<table style="width:100%; border-collapse: collapse; text-align:center; font-family: sans-serif; font-size: 14px;">'
     html += '<tr style="background-color: rgba(128,128,128,0.1);">'
@@ -570,7 +288,6 @@ def render_html_matrix(takimlar, df_grup):
         html += f'<th style="border: 1px solid rgba(128,128,128,0.3); padding: 10px;">{t}</th>'
     html += '</tr>'
 
-    # --- OPTİMİZASYON: N^2 Yükünü Sıfırlayan Ön Hesaplama Sözlüğü ---
     on_hesap_sonuclari = {}
     for (t_a, t_b), group_df in df_grup.groupby(['Takım 1', 'Takım 2']):
         match_key = tuple(sorted([t_a, t_b]))
@@ -579,7 +296,6 @@ def render_html_matrix(takimlar, df_grup):
                                      ((df_grup['Takım 1'] == match_key[1]) & (df_grup['Takım 2'] == match_key[0]))]
             stats = hesapla_tum_puan_durumu(aradaki_maclar)
             on_hesap_sonuclari[match_key] = stats
-    # -----------------------------------------------------------------
 
     for t1 in takimlar:
         html += f'<tr><td style="border: 1px solid rgba(128,128,128,0.3); padding: 10px; font-weight: bold; background-color: rgba(128,128,128,0.1);">{t1}</td>'
@@ -593,9 +309,7 @@ def render_html_matrix(takimlar, df_grup):
                 if matches.empty:
                     html += '<td style="border: 1px solid rgba(128,128,128,0.3); padding: 10px;"></td>'
                 else:
-                    # Ağır fonksiyonu döngü içinde çağırmak yerine sözlükten çekiyoruz!
                     temp_stats = on_hesap_sonuclari.get(match_key, pd.DataFrame())
-                    
                     t1_wins = 0; t2_wins = 0
                     t1_puan_info = 0.0; t2_puan_info = 0.0
                     details = []
@@ -643,156 +357,6 @@ def render_html_matrix(takimlar, df_grup):
         html += '</tr>'
     html += '</table>'
     return html
-
-def generate_matrix_pdf(grup_adi, takimlar, df_grup):
-    def get_plain_score(row, target_t1):
-        is_t1 = row['Takım 1'] == target_t1
-        durum = str(row.get('Durum', 'Tamamlandı'))
-        if durum == "Takım 1 (W/O)": durum = "Takım 2 Kazandı (W/O)"
-        elif durum == "Takım 2 (W/O)": durum = "Takım 1 Kazandı (W/O)"
-        elif durum == "Takım 1 (Ret.)": durum = "Takım 2 Kazandı (Ret.)"
-        elif durum == "Takım 2 (Ret.)": durum = "Takım 1 Kazandı (Ret.)"
-
-        brans = str(row['Branş']).replace("1. Tekler", "1T").replace("2. Tekler", "2T").replace("3. Tekler", "3T").replace("1. Çiftler", "1Ç").replace("2. Çiftler", "2Ç").replace("Çiftler", "Ç")
-
-        if durum == "Çift Taraflı W/O": 
-            return f"{brans}: Çift W/O"
-        if durum == "Takım 1 Kazandı (W/O)": 
-            return f"{brans}: W/O(G)" if is_t1 else f"{brans}: W/O(M)"
-        if durum == "Takım 2 Kazandı (W/O)": 
-            return f"{brans}: W/O(M)" if is_t1 else f"{brans}: W/O(G)"
-
-        s1_1, s1_2 = int(row['1.Set T1']), int(row['1.Set T2'])
-        s2_1, s2_2 = int(row['2.Set T1']), int(row['2.Set T2'])
-        s3_1, s3_2 = int(row['3.Set T1']), int(row['3.Set T2'])
-
-        if not is_t1:
-            s1_1, s1_2 = s1_2, s1_1
-            s2_1, s2_2 = s2_2, s2_1
-            s3_1, s3_2 = s3_2, s3_1
-
-        if s1_1 == 0 and s1_2 == 0 and s2_1 == 0 and s2_2 == 0 and "Ret." not in durum:
-            return ""
-
-        score_str = f"{s1_1}-{s1_2}"
-        if s2_1 != 0 or s2_2 != 0 or s1_1 != 0 or s1_2 != 0: score_str += f" | {s2_1}-{s2_2}"
-        if s3_1 != 0 or s3_2 != 0: score_str += f" | {s3_1}-{s3_2}"
-
-        if durum == "Takım 1 Kazandı (Ret.)": 
-            score_str += " Ret.(G)" if is_t1 else " Ret.(M)"
-        elif durum == "Takım 2 Kazandı (Ret.)": 
-            score_str += " Ret.(M)" if is_t1 else " Ret.(G)"
-
-        return f"{brans}: {score_str}"
-
-    matrix = pd.DataFrame(index=takimlar, columns=takimlar)
-    matrix = matrix.fillna("")
-    for t in takimlar: matrix.at[t, t] = "X"
-    
-    # --- OPTİMİZASYON: Önceden tüm galibiyetleri hesapla ---
-    on_hesap_sonuclari = {}
-    for (t_a, t_b), group_df in df_grup.groupby(['Takım 1', 'Takım 2']):
-        match_key = tuple(sorted([t_a, t_b]))
-        if match_key not in on_hesap_sonuclari:
-            aradaki_maclar = df_grup[((df_grup['Takım 1'] == match_key[0]) & (df_grup['Takım 2'] == match_key[1])) | 
-                                     ((df_grup['Takım 1'] == match_key[1]) & (df_grup['Takım 2'] == match_key[0]))]
-            stats = hesapla_tum_puan_durumu(aradaki_maclar)
-            on_hesap_sonuclari[match_key] = stats
-    # -------------------------------------------------------
-
-    for (t1, t2), group in df_grup.groupby(['Takım 1', 'Takım 2']):
-        t1_total, t2_total = 0, 0
-        t1_details = []
-        t2_details = []
-        for _, row in sort_maclar(group).iterrows():
-            w1, w2 = hesapla_mac_kazanani(row)
-            t1_total += w1; t2_total += w2
-            
-            det1 = get_plain_score(row, t1)
-            if det1: t1_details.append(det1)
-            det2 = get_plain_score(row, t2)
-            if det2: t2_details.append(det2)
-
-        if t1_total > 0 or t2_total > 0:
-            match_key = tuple(sorted([t1, t2]))
-            temp_stats = on_hesap_sonuclari.get(match_key, pd.DataFrame())
-            
-            t1_galibiyet = 0
-            t2_galibiyet = 0
-            if not temp_stats.empty:
-                r1 = temp_stats[temp_stats['Takım'] == t1]
-                r2 = temp_stats[temp_stats['Takım'] == t2]
-                if not r1.empty: t1_galibiyet = r1.iloc[0]['Galibiyet']
-                if not r2.empty: t2_galibiyet = r2.iloc[0]['Galibiyet']
-
-            yildiz_t1 = "*" if t1_galibiyet > t2_galibiyet else ""
-            yildiz_t2 = "*" if t2_galibiyet > t1_galibiyet else ""
-            
-            matrix.at[t1, t2] = f"{t1_total}{yildiz_t1} - {t2_total}{yildiz_t2}\n" + "\n".join(t1_details)
-            matrix.at[t2, t1] = f"{t2_total}{yildiz_t2} - {t1_total}{yildiz_t1}\n" + "\n".join(t2_details)
-            
-    pdf = FPDF(orientation='P', unit='mm', format='A4')
-    pdf.add_page()
-    setup_pdf_fonts(pdf)
-    
-    apply_font(pdf, bold=True, size=14)
-    pdf.cell(0, 8, to_pdf_text(f"{grup_adi} - Takım Maçları Matrisi"), ln=True, align='C')
-    
-    apply_font(pdf, bold=False, size=8)
-    pdf.cell(0, 4, to_pdf_text("Not: Skorun yanındaki (*) yıldız işareti, kazanan takımı gösterir."), ln=True, align='C')
-    pdf.ln(5)
-    
-    cols = ["Takımlar"] + takimlar
-    col_width = 190 / len(cols) 
-    
-    for col in cols:
-        pdf_cell_fit(pdf, col_width, 10, col, is_bold=True, base_size=11)
-    pdf.ln()
-    
-    for t1 in takimlar:
-        max_lines = 1
-        for t2 in takimlar:
-            val = str(matrix.at[t1, t2])
-            if val:
-                lines = len(val.split('\n'))
-                if lines > max_lines: max_lines = lines
-        
-        row_height = max_lines * 4.5 + 5
-        x_start = pdf.get_x()
-        y_start = pdf.get_y()
-        
-        if y_start + row_height > 280:
-            pdf.add_page()
-            x_start = pdf.get_x()
-            y_start = pdf.get_y()
-        
-        pdf.rect(x_start, y_start, col_width, row_height)
-        pdf.set_xy(x_start, y_start + (row_height/2) - 2)
-        apply_font(pdf, bold=True, size=10)
-        pdf_cell_fit(pdf, col_width, 4, to_pdf_text(t1), border=0, is_bold=True)
-        
-        for t2 in takimlar:
-            x_start += col_width
-            val = str(matrix.at[t1, t2])
-            
-            pdf.rect(x_start, y_start, col_width, row_height)
-            pdf.set_xy(x_start, y_start + 2.5)
-            
-            if val == "X":
-                pdf.set_xy(x_start, y_start + (row_height/2) - 2)
-                apply_font(pdf, bold=True, size=11)
-                pdf.cell(col_width, 4, "X", align='C')
-            elif val != "":
-                lines = val.split('\n')
-                apply_font(pdf, bold=True, size=10.5)
-                pdf.cell(col_width, 4.5, to_pdf_text(lines[0]), align='C', ln=2)
-                apply_font(pdf, bold=False, size=7.5)
-                for line in lines[1:]:
-                    pdf.cell(col_width, 4, to_pdf_text(line), align='C', ln=2)
-        
-        pdf.set_xy(10, y_start + row_height)
-        
-    return get_pdf_bytes(pdf)
 
 def hesapla_tum_puan_durumu(df_girdi):
     if df_girdi.empty: return pd.DataFrame()
@@ -927,7 +491,6 @@ def hesapla_tum_puan_durumu(df_girdi):
     df['T1_Match_Point'] = df.apply(lambda r: get_match_point(r, 1), axis=1)
     df['T2_Match_Point'] = df.apply(lambda r: get_match_point(r, 2), axis=1)
 
-    # --- TEKLER (SINGLES) GALİBİYETLERİNİ SAYMA ---
     def get_singles_win(row, team_idx):
         brans = str(row.get('Branş', '')).lower()
         if "tek" in brans:
@@ -963,7 +526,6 @@ def hesapla_tum_puan_durumu(df_girdi):
                 if oyun_av_t1 > oyun_av_t2: return 1, 0
                 elif oyun_av_t2 > oyun_av_t1: return 0, 1
                 else: 
-                    # --- YENİ KURAL: Puan, Set ve Oyun Averajı Eşitse Tekler Maçına Bak ---
                     if r['T1_Singles_Win'] > r['T2_Singles_Win']: return 1, 0
                     elif r['T2_Singles_Win'] > r['T1_Singles_Win']: return 0, 1
                     else: return 0, 0 
@@ -1057,7 +619,7 @@ def ortak_veriyi_kaydet():
         "grup_siralamalari": st.session_state.get("grup_siralamalari", {}),
         "grup_tamamlandi": st.session_state.get("grup_tamamlandi", {}),
         "grup_yas_gruplari": st.session_state.get("grup_yas_gruplari", {}),
-        "grup_statuleri": st.session_state.get("grup_statuleri", {}), # YENİ EKLENEN: GRUP STATÜSÜ
+        "grup_statuleri": st.session_state.get("grup_statuleri", {}),
         "takim_pinleri": st.session_state.get("takim_pinleri", {}),
         "esame_kasasi": st.session_state.get("esame_kasasi", {}),
         "esame_onayli": st.session_state.get("esame_onayli", {}),
@@ -1067,7 +629,6 @@ def ortak_veriyi_kaydet():
     }
     
     ayarlar["sistem_kilitli"] = st.session_state.get("sistem_kilitli", False)
-
     cevrimdisi = st.session_state.get("cevrimdisi_mod", False)
     
     if cevrimdisi:
@@ -1140,7 +701,7 @@ def ortak_veriyi_yukle():
         st.session_state.grup_siralamalari = data.get("grup_siralamalari", {})
         st.session_state.grup_tamamlandi = data.get("grup_tamamlandi", {})
         st.session_state.grup_yas_gruplari = data.get("grup_yas_gruplari", {})
-        st.session_state.grup_statuleri = data.get("grup_statuleri", {}) # YENİ EKLENEN: GRUP STATÜSÜ
+        st.session_state.grup_statuleri = data.get("grup_statuleri", {})
         st.session_state.takim_pinleri = data.get("takim_pinleri", {})
         st.session_state.esame_kasasi = data.get("esame_kasasi", {})
         st.session_state.esame_onayli = data.get("esame_onayli", {})
@@ -1192,7 +753,7 @@ if "havuz_yas_gruplari" not in st.session_state: st.session_state.havuz_yas_grup
 if "grup_siralamalari" not in st.session_state: st.session_state.grup_siralamalari = {}
 if "grup_tamamlandi" not in st.session_state: st.session_state.grup_tamamlandi = {}
 if "grup_yas_gruplari" not in st.session_state: st.session_state.grup_yas_gruplari = {}
-if "grup_statuleri" not in st.session_state: st.session_state.grup_statuleri = {} # YENİ EKLENEN: GRUP STATÜSÜ
+if "grup_statuleri" not in st.session_state: st.session_state.grup_statuleri = {}
 if "takim_pinleri" not in st.session_state: st.session_state.takim_pinleri = {}
 if "esame_kasasi" not in st.session_state: st.session_state.esame_kasasi = {}
 if "esame_onayli" not in st.session_state: st.session_state.esame_onayli = {}
@@ -1229,9 +790,6 @@ def render_big_button(icon, title, target_page):
         st.session_state.current_page = target_page
         st.rerun()
 
-# ==============================================================================
-# YAN MENÜ (SIDEBAR) - HER YERDEN ERİŞİLEBİLİR
-# ==============================================================================
 with st.sidebar:
     st.markdown("<h3 style='text-align: center;'>🎾 Menü</h3>", unsafe_allow_html=True)
     st.markdown("---")
@@ -1319,9 +877,6 @@ with st.sidebar:
             ortak_veriyi_yukle()
         st.rerun()
 
-# ==============================================================================
-# EN ÜST BÖLÜM (LOGOLAR VE AŞAMA SEÇİMİ)
-# ==============================================================================
 c_st1, c_st2, c_space, c_logos = st.columns([1.5, 1.5, 6, 3])
 with c_st1:
     if st.button("1. Aşama", type="primary" if st.session_state.aktif_asama == "1. Aşama" else "secondary", use_container_width=True, key="top_1"):
@@ -1351,9 +906,6 @@ st.markdown("<hr style='margin-top: 5px; margin-bottom: 15px;'>", unsafe_allow_h
 if st.session_state.get("sistem_kilitli", False) and not st.session_state.admin_mi:
     st.error("🚨 **SİSTEM ÇEVRİMDIŞI BAKIM MODUNDA:** Başhakem şu an masaüstü programda veri girişi yapmaktadır. Kaptanların ve Hakemlerin giriş yetkileri geçici olarak durdurulmuştur.")
 
-# ==============================================================================
-# ANA SAYFA GÖRÜNÜMÜ (DEV BUTONLAR, NAVBAR YOK)
-# ==============================================================================
 if st.session_state.current_page == "Home":
     st.markdown("<div class='dev-buton'>", unsafe_allow_html=True)
     st.markdown("<h1 style='text-align:center;'>🎾 Turnuva Ana Ekranı</h1><br>", unsafe_allow_html=True)
@@ -1534,14 +1086,10 @@ elif st.session_state.current_page == "📈 İstatistikler":
             s3.metric("🔢 Toplam Oynanan Set", int(toplam_set))
             s4.metric("🎯 Toplam Oynanan Oyun", int(toplam_oyun))
 
-# ==============================================================================
-# ALT SAYFALARIN İÇERİKLERİ (YATAY MENÜ SADECE BURADA ÇIKAR)
-# ==============================================================================
 else:
     aktif_asama = st.session_state.aktif_asama
     menu_secim = st.session_state.current_page
     
-    # --- İÇ SAYFA YATAY NAVBAR ---
     if st.session_state.admin_mi:
         menu_items_top = ["🏠 Ana Sayfa", "👥 Grup Ayarları", "📝 Esame Kontrol Merkezi", "✍️ Skor Girişi", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular", "👮‍♂️ Hakem Yönetimi", "⚙️ Yönetim"]
     elif st.session_state.kaptan_mi:
@@ -1569,7 +1117,6 @@ else:
     st.markdown("---")
     st.markdown(f"<h3 style='margin-top: -10px;'>{menu_secim} ({aktif_asama})</h3>", unsafe_allow_html=True)
 
-    # --- KAPTAN SAYFASI: ESAME BİLDİRİMİ ---
     if menu_secim == "👨‍✈️ Kaptan Esame Girişi":
         if st.session_state.get("sistem_kilitli", False) and not st.session_state.admin_mi:
             st.error("🚨 SİSTEM BAKIMDA: Başhakem şu an çevrimdışı (Uçak) modunda maç programını düzenliyor. Lütfen esamelerinizi kağıt üzerinde Başhakem masasına iletiniz.")
@@ -1740,7 +1287,6 @@ else:
                                             st.error("⚠️ Sistem şu an başka bir takımın kaydını işliyor (Meşgul). Çakışma önlendi, lütfen 3 saniye bekleyip butona tekrar basınız.")
                     st.divider()
 
-    # --- HAKEM GİRİŞ SAYFASI (Eksik Olan ve Geri Getirilen Kısım) ---
     elif menu_secim == "👮‍♂️ Gözlemci Hakem Girişi":
         if st.session_state.get("sistem_kilitli", False) and not st.session_state.admin_mi:
             st.error("🚨 SİSTEM BAKIMDA: Başhakem şu an çevrimdışı (Uçak) modunda maç programını düzenliyor.")
@@ -1770,7 +1316,6 @@ else:
         else:
             st.success(f"Zaten {st.session_state.aktif_hakem} olarak giriş yaptınız. Lütfen menüden Hakem Paneli'ne geçiş yapın.")
 
-   # --- HAKEM SAYFASI: SKOR GİRİŞ PANELİ ---
     elif menu_secim == "✍️ Gözlemci Hakem Paneli":
         if st.session_state.get("sistem_kilitli", False) and not st.session_state.admin_mi:
             st.error("🚨 SİSTEM BAKIMDA: Başhakem şu an çevrimdışı (Uçak) modunda maç programı düzenliyor. Lütfen skor değişikliklerini kağıt üzerinde Başhakem masasına iletiniz.")
@@ -1790,7 +1335,6 @@ else:
                 tarihler = df_hakem_maclari['Tarih'].dropna().unique()
                 tarihler_sirali = sorted(tarihler, key=lambda x: datetime.datetime.strptime(x, "%d.%m.%Y").date())
                 
-                # --- YENİ EKLENEN VİTRİN DÜZENİ ---
                 st.markdown("### ☀️ Bugünün Maçları")
                 container_bugun = st.container()
                 st.markdown("<br>", unsafe_allow_html=True)
@@ -1804,7 +1348,6 @@ else:
                     is_gelecek = mac_tarihi > bugun
                     is_kilitli = is_gecmis or is_gelecek
                     
-                    # Maçın kilitli (geçmiş/gelecek) olup olmamasına göre hangi kutuya atılacağını belirliyoruz
                     hedef_alan = container_diger if is_kilitli else container_bugun
                     
                     with hedef_alan:
@@ -1936,12 +1479,10 @@ else:
                                                 else:
                                                     st.error("Sistem meşgul, lütfen tekrar deneyin.")
 
-                # Eğer o gün atanmış hiç maç yoksa hakeme bilgi veriyoruz
                 if not bugun_mac_var_mi:
                     with container_bugun:
                         st.info("✅ Bugün için üzerinize atanmış bir maç bulunmamaktadır.")
 
-    # --- BAŞHAKEM SAYFASI: ESAME KONTROL MERKEZİ ---
     elif menu_secim == "📝 Esame Kontrol Merkezi":
         if st.session_state.admin_mi:
             st.info("ℹ️ Kaptanların girdikleri kadrolar (kapalı zarflar) burada toplanır. Geçmiş veya gelecek tüm esameleri tarih seçerek inceleyebilirsin.")
@@ -2013,7 +1554,6 @@ else:
                                     else:
                                         st.error("⚠️ Sistem şu an meşgul. Çakışma önlendi, lütfen tekrar deneyin.")
 
-    # --- SAYFA 1: GRUP AYARLARI ---
     elif menu_secim == "👥 Grup Ayarları":
         yas_secenekleri = ["Yaş Belirtme"] + [f"{i}+" for i in range(30, 85, 5)]
         
@@ -2120,7 +1660,6 @@ else:
                 format_secimi = st.radio("Müsabaka Maç Formatı:", ["3 Maçlık (2 Tek, 1 Çift)", "5 Maçlık (3 Tek, 2 Çift)"], horizontal=True)
             
             grup_adi_raw = st.text_input("Grup Özel Adı (Örn: A Grubu, 1. Grup, Şampiyonluk Grubu):", placeholder="Sadece grubun harfini veya numarasını yazın")
-            # --- YENİ EKLENEN: SADECE 2. AŞAMADA ÇIKAN STATÜ SEÇİMİ ---
             grup_statusu = "Play-out Grubu (Düşme Hattı)"
             if aktif_asama == "2. Aşama":
                 grup_statusu = st.radio("🏅 Grup Statüsü:", ["Birinciler Grubu (Kürsü)", "İkinciler Grubu (Orta Klasman)", "Play-out Grubu (Düşme Hattı)"], horizontal=True, index=2, key="yeni_grup_statu")
@@ -2288,7 +1827,6 @@ else:
         else:
             st.warning("🔒 Bu panel dışarıya kapalıdır. Lütfen giriş yapınız.")
 
-   # --- SAYFA 2: SKOR GİRİŞİ ---
     elif menu_secim == "✍️ Skor Girişi":
         if st.session_state.admin_mi:
             st.info("💡 **Not:** Kaptanların girdiği isimler onaylandıktan sonra buraya otomatik düşer. Kaydedilen skorlar anında puan durumuna yansır.")
@@ -2309,10 +1847,9 @@ else:
                     format_secimi = st.session_state.grup_formatlari.get(secilen_grup, "3 Maçlık (2 Tek, 1 Çift)")
                     
                     form_verileri = {}
-                    current_eslesme = None  # GÖRSEL AYRAÇ İÇİN TAKİPÇİ
+                    current_eslesme = None 
                     
                     for idx, row in sort_maclar(df_gun).iterrows():
-                        # 1. GÖRSEL AYRAÇ: YENİ BİR TAKIM MAÇI BAŞLADIĞINDA ŞERİT AT
                         if row['Eşleşme'] != current_eslesme:
                             current_eslesme = row['Eşleşme']
                             st.markdown(f"""
@@ -2557,7 +2094,6 @@ else:
         else:
             st.warning("🔒 Skor ve esame giriş paneli dışarıya kapalıdır. Lütfen giriş yapınız.")
 
-    # --- SAYFA: HAKEM YÖNETİMİ ---
     elif menu_secim == "👮‍♂️ Hakem Yönetimi":
         if st.session_state.admin_mi:
             st.subheader("👮‍♂️ Hakem Tanımlama ve Yönetim Paneli")
@@ -2610,12 +2146,11 @@ else:
                         if ortak_veriyi_kaydet():
                             st.success(f"{sil_hakem} sistemden kaldırıldı.")
                             st.rerun()
-# --- SAYFA 3: PUAN DURUMU ---
+
     elif menu_secim == "🏆 Puan Durumu":
         if not st.session_state.skor_tablosu.empty:
             tab_puan, tab_klasman = st.tabs(["📊 Grup Puan Durumları", "Nihai Klasman"])
             
-            # === BİRİNCİ SEKME: STANDART PUAN DURUMU ===
             with tab_puan:
                 gecerli_gruplar_t3 = [g for g in st.session_state.skor_tablosu['Grup'].unique() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama]
                 df_asama_t3 = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'].isin(gecerli_gruplar_t3)]
@@ -2771,7 +2306,6 @@ else:
                             elif len(secilen_takimlar_avg) == 1:
                                 st.warning("Averaj hesaplamak için en az 2 takım seçmelisiniz.")
                                 
-            # === İKİNCİ SEKME: ŞEREF KÜRSÜSÜ VE NİHAİ KLASMAN ===
             with tab_klasman:
                 st.markdown("### Nihai Klasman Vitrini")
                 if aktif_asama != "2. Aşama":
@@ -2779,11 +2313,9 @@ else:
                 else:
                     st.info("Bu vitrin, maçları ve Başhakem onayları tamamen bitmiş olan kategorilerin şampiyonlarını ve play-out durumlarını listeler.")
                     
-                    # 1. Turnuvadaki TÜM grupları bul (sadece 2. Aşamayı değil)
                     tum_gruplar_listesi = st.session_state.skor_tablosu['Grup'].unique()
                     tum_stats_genel = hesapla_tum_puan_durumu(st.session_state.skor_tablosu)
                     
-                    # 2. Her kategori için Hangi Aşamaların olduğunu haritala
                     kategori_asama_map = {}
                     for gp in tum_gruplar_listesi:
                         g_kat = st.session_state.grup_kategorileri.get(gp, "Erkekler")
@@ -2795,13 +2327,12 @@ else:
                             kategori_asama_map[etiket] = {"1. Aşama": [], "2. Aşama": []}
                         kategori_asama_map[etiket][asama_bilgisi].append(gp)
                         
-                    # 3. Kategorinin Nihai Gruplarını Belirle (2. Aşaması varsa 2'yi, yoksa 1'i baz al)
                     kat_gruplari_map = {}
                     for kat_ad, asamalar in kategori_asama_map.items():
                         if len(asamalar["2. Aşama"]) > 0:
-                            kat_gruplari_map[kat_ad] = asamalar["2. Aşama"] # Çok aşamalılar (örn: 55+)
+                            kat_gruplari_map[kat_ad] = asamalar["2. Aşama"] 
                         else:
-                            kat_gruplari_map[kat_ad] = asamalar["1. Aşama"] # Tek aşamalılar (örn: 60+, 65+)
+                            kat_gruplari_map[kat_ad] = asamalar["1. Aşama"] 
                             
                     tamamlanan_kategoriler = []
                     for kat_ad, gruplar_listesi in kat_gruplari_map.items():
@@ -2827,15 +2358,14 @@ else:
                                 for gp in gruplar:
                                     statu = st.session_state.grup_statuleri.get(gp, "")
                                     
-                                    # AKILLI KİMLİK TESPİTİ
                                     if len(gruplar) == 1:
-                                        birinciler.append(gp) # 60+ ve 65+ gibi tek gruplu kategoriler doğrudan Şampiyonluk grubudur
+                                        birinciler.append(gp) 
                                     elif "Birinciler" in statu or "Birinciler" in gp:
                                         birinciler.append(gp)
                                     elif "İkinciler" in statu or "İkinciler" in gp:
                                         ikinciler.append(gp)
                                     else:
-                                        playoutlar.append(gp) # Geriye kalan A ve B paralel grupları Play-out'tur
+                                        playoutlar.append(gp) 
                                         
                                 current_rank = 1
                                 kat_verisi = {"birinciler": [], "ikinciler": [], "ligde_kalanlar": [], "dusenler": []}
@@ -2917,7 +2447,7 @@ else:
                             )
         else:
             st.info(f"Bu aşamada henüz maç bulunmuyor.")
-    # --- SAYFA 4: TAKIM KADROLARI (DİKEY LİSTE) ---
+
     elif menu_secim == "🛡️ Takım Kadroları":
         st.markdown(f"### 🛡️ Takımlar ve Oyuncu Kadroları ({aktif_asama})")
         if st.session_state.takim_kadrolari:
@@ -2940,7 +2470,6 @@ else:
         else:
             st.info("Kayıtlı takım bulunmamaktadır.")
 
-    # --- SAYFA 5: MAÇ PROGRAMI ---
     elif menu_secim == "📅 Maç Programı":
         tab_gunluk, tab_genel = st.tabs(["🗓️ Günlük Akış (Tarihe Göre)", "📋 Tüm Maçların Genel Durumu"])
         
@@ -3397,7 +2926,6 @@ else:
                             st.markdown("<br>", unsafe_allow_html=True)
                             pdf_turu = st.radio("📄 Belge Başlığı (PDF'te ne yazsın?):", ["Maç Programı (Sabah)", "Günün Sonuçları (Akşam)"], horizontal=True)
                             
-                            # --- TARİH VE GÜN ADINI BAŞLIĞA BİRLEŞTİRME ---
                             if "Sonuçları" in pdf_turu:
                                 baslik_metni = f"{formatted_tarih} {gun_adi} - Günün Sonuçları"
                                 dosya_adi = f"mac_sonuclari_{formatted_tarih}.pdf"
@@ -3465,7 +2993,6 @@ else:
             else:
                 st.info("Gruplar oluşturulmadan maç programı aktif edilemez.")                     
 
-    # --- SAYFA 6: DUYURULAR ---
     elif menu_secim == "📢 Duyurular":
         st.subheader("📢 Turnuva Duyuruları ve Belgeler")
         if st.session_state.admin_mi:
@@ -3520,7 +3047,6 @@ else:
             else:
                 st.write("Sisteme henüz herhangi bir belge yüklenmemiş.")
 
-# --- SAYFA 7: YÖNETİM & DOSYA İŞLEMLERİ ---
     elif menu_secim == "⚙️ Yönetim & Dosya":
         st.subheader(f"⚙️ Gelişmiş Yönetim Paneli ({aktif_asama})")
 
@@ -3591,7 +3117,6 @@ else:
                             
                             st.caption("💡 Not: Yaş grubunu veya kategoriyi değiştirirseniz, sistem karışıklığını önlemek için yukarıdaki 'Grup Adı' içindeki metni de elle düzeltmeyi unutmayın.")
                             
-                            # --- YENİ EKLENEN: SADECE 2. AŞAMADA ÇIKAN STATÜ SEÇİMİ ---
                             grup_statusu = "Play-out Grubu (Düşme Hattı)"
                             if aktif_asama == "2. Aşama":
                                 mevcut_statu = st.session_state.grup_statuleri.get(sec_g, "Play-out Grubu (Düşme Hattı)")
@@ -3611,7 +3136,6 @@ else:
                             for i in range(beklenen_yeni_sayi):
                                 esk_ad = mevcut_takim_isimleri[i] if i < len(mevcut_takim_isimleri) else f"Yeni Takım {i+1}"
                                 
-                                # --- GÜVENLİ AÇILIR PENCERE VE BYE MANTIĞI ---
                                 tum_takimlar = dogal_sirala(list(st.session_state.takim_havuzu.keys()))
                                 bye_opt = "--- BOŞ (BYE) ---"
                                 if bye_opt not in tum_takimlar: tum_takimlar.insert(0, bye_opt)
@@ -3624,7 +3148,6 @@ else:
                                     if i < len(mevcut_takim_isimleri) and y_ad != esk_ad: 
                                         isim_degisiklikleri[esk_ad] = y_ad
                                         
-                                        # --- OTOMATİK OYUNCU DOLDURMA SİHİRBAZI ---
                                         if y_ad == bye_opt:
                                             aktif_oyuncular = ["(Boş)"]
                                         else:
@@ -3639,7 +3162,6 @@ else:
                             if st.button("💾 Yapılan Değişiklikleri Veritabanına Yaz"):
                                 g_hedef = yeni_grup_adi if yeni_grup_adi.strip() != "" else sec_g
                                 
-                                # --- GRUPLARIN ÜST ÜSTE BİNMESİNİ ÖNLEYEN GÜVENLİK DUVARI ---
                                 if g_hedef != sec_g and g_hedef in st.session_state.takim_kadrolari:
                                     st.error(f"⚠️ KRİTİK HATA: '{g_hedef}' adında bir grup zaten sistemde mevcut! İki grubu birleştiremezsiniz, lütfen farklı bir ad girin.")
                                 else:
@@ -3650,14 +3172,12 @@ else:
                                         if g_n != sec_g and g_kat == yeni_kategori and g_asam == aktif_asama:
                                             for t_n in g_k.keys(): kullanilan_baska_takimlar_tab6[t_n] = g_n
                                     
-                                    # --- BYE (BOŞ) TAKIMININ ÇAKIŞMA HESABINDAN MUAF TUTULMASI ---
                                     cakisanlar_tab6 = [t for t in list(yeni_k_yapisi.keys()) if t in kullanilan_baska_takimlar_tab6 and t != bye_opt]
                                     if cakisanlar_tab6:
                                         hata_msj = ", ".join([f"'{t}' ({kullanilan_baska_takimlar_tab6[t]})" for t in cakisanlar_tab6])
                                         st.error(f"⚠️ Hata: Eklemek veya değiştirmek istediğiniz takım(lar) {yeni_kategori} kategorisinde ({aktif_asama}) zaten başka gruplarda kayıtlı!\nÇakışanlar: {hata_msj}")
                                     else:
                                         if fikstur_sifirlanacak_mi:
-                                            # GARANTİLİ SİLME YÖNTEMİ: İsimle değil, ID'lerle vuruyoruz
                                             silinecek_idler = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] == sec_g]['id'].dropna().tolist()
                                             try:
                                                 if "supabase" in globals() and supabase and silinecek_idler:
@@ -3674,7 +3194,7 @@ else:
                                             st.session_state.grup_kategorileri[g_hedef] = yeni_kategori
                                             st.session_state.grup_asamalari[g_hedef] = aktif_asama
                                             st.session_state.grup_yas_gruplari[g_hedef] = yeni_yas
-                                            st.session_state.grup_statuleri[g_hedef] = grup_statusu # YENİ GRUP STATÜSÜNÜ KAYDET
+                                            st.session_state.grup_statuleri[g_hedef] = grup_statusu 
                                             
                                             if sec_g != g_hedef:
                                                 if sec_g in st.session_state.takim_kadrolari: del st.session_state.takim_kadrolari[sec_g]
@@ -3701,7 +3221,7 @@ else:
                                             st.session_state.grup_kategorileri[sec_g] = yeni_kategori
                                             st.session_state.grup_asamalari[sec_g] = aktif_asama
                                             st.session_state.grup_yas_gruplari[sec_g] = yeni_yas
-                                            st.session_state.grup_statuleri[sec_g] = grup_statusu # MEVCUT GRUBUN STATÜSÜNÜ GÜNCELLE
+                                            st.session_state.grup_statuleri[sec_g] = grup_statusu 
                                             
                                             if isim_degisiklikleri:
                                                 mask_s = st.session_state.skor_tablosu['Grup'] == sec_g
@@ -3739,7 +3259,6 @@ else:
                     st.warning(f"⚠️ DİKKAT: '{secilen_sil_grup}' grubunu ve bu gruba ait tüm fikstür/kadro kayıtlarını kalıcı olarak sileceksiniz!")
                     
                     if st.button(f"🚨 '{secilen_sil_grup}' Grubunu Tamamen Sil"):
-                        # GARANTİLİ SİLME YÖNTEMİ: İsimle değil, ID'lerle vuruyoruz
                         silinecek_idler = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] == secilen_sil_grup]['id'].dropna().tolist()
                         try:
                             if "supabase" in globals() and supabase and silinecek_idler:
@@ -3758,9 +3277,8 @@ else:
                         if secilen_sil_grup in st.session_state.grup_siralamalari: del st.session_state.grup_siralamalari[secilen_sil_grup]
                         if secilen_sil_grup in st.session_state.grup_tamamlandi: del st.session_state.grup_tamamlandi[secilen_sil_grup]
                         if secilen_sil_grup in st.session_state.grup_yas_gruplari: del st.session_state.grup_yas_gruplari[secilen_sil_grup]
-                        if secilen_sil_grup in st.session_state.grup_statuleri: del st.session_state.grup_statuleri[secilen_sil_grup] # EKLENDİ
+                        if secilen_sil_grup in st.session_state.grup_statuleri: del st.session_state.grup_statuleri[secilen_sil_grup] 
                         
-                        # --- HAYALET ESAMELERİN TEMİZLİĞİ ---
                         keys_to_delete = [k for k in st.session_state.esame_kasasi.keys() if k.startswith(secilen_sil_grup + "_")]
                         for k in keys_to_delete:
                             del st.session_state.esame_kasasi[k]
