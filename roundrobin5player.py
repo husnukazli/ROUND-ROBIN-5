@@ -73,39 +73,50 @@ st.markdown("""
         box-shadow: 0 6px 12px rgba(0,0,0,0.15);
     }
     
-    /* MOBİL UYUMLU DEVASA SKOR BUTONLARI (+/-) */
-    div[data-testid="stNumberInputContainer"] {
+    /* MOBİL UYUMLU DEVASA SKOR BUTONLARI (+/-) V2 */
+    [data-testid="stNumberInputContainer"] {
         display: flex !important;
+        flex-direction: row !important;
+        align-items: stretch !important;
+        height: 55px !important; /* Kutunun genel boyunu uzattık */
         border-radius: 10px !important;
         overflow: hidden !important;
         border: 1px solid #d1d5db !important;
     }
-    div[data-testid="stNumberInputStepDown"], 
-    div[data-testid="stNumberInputStepUp"] {
-        flex: 1 1 35% !important; /* Butonlara toplam alanın %70'ini verdik */
+    
+    /* Streamlit'in sabit genişlik kısıtlamasını eziyoruz */
+    [data-testid="stNumberInputStepDown"], 
+    [data-testid="stNumberInputStepUp"] {
+        width: 40% !important; /* Toplamın %80'i butonlara */
+        max-width: none !important; /* Sabit kısıtlamayı kaldır! */
         background-color: #f3f4f6 !important;
-        min-height: 48px !important;
         display: flex !important;
         justify-content: center !important;
         align-items: center !important;
+        border: none !important;
         cursor: pointer !important;
-        transition: all 0.1s !important; /* Basılma efekti için */
+        transition: background-color 0.1s !important;
     }
-    div[data-testid="stNumberInputStepDown"]:active, 
-    div[data-testid="stNumberInputStepUp"]:active {
+    
+    [data-testid="stNumberInputStepDown"]:active, 
+    [data-testid="stNumberInputStepUp"]:active {
         background-color: #cbd5e1 !important;
-        transform: scale(0.90) !important; /* Tıklanınca küçülerek reaksiyon verir */
     }
-    div[data-testid="stNumberInputStepDown"] svg, 
-    div[data-testid="stNumberInputStepUp"] svg {
-        width: 22px !important;
-        height: 22px !important;
-        color: #1f2937 !important;
+    
+    /* Artı ve Eksi ikonlarını da büyütüyoruz */
+    [data-testid="stNumberInputStepDown"] svg, 
+    [data-testid="stNumberInputStepUp"] svg {
+        width: 26px !important;
+        height: 26px !important;
+        fill: #1f2937 !important;
     }
-    div[data-testid="stNumberInputContainer"] input {
-        flex: 1 1 30% !important; /* Rakam alanını daralttık */
+    
+    /* Rakam alanına kalan boşluk */
+    [data-testid="stNumberInputContainer"] input {
+        width: 20% !important; /* Sayıya %20 alan kaldı */
+        min-width: 40px !important;
         text-align: center !important;
-        font-size: 22px !important;
+        font-size: 24px !important;
         font-weight: 800 !important;
         padding: 0 !important;
         background-color: white !important;
