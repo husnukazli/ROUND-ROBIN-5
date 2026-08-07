@@ -72,37 +72,6 @@ st.markdown("""
         transform: translateY(-2px);
         box-shadow: 0 6px 12px rgba(0,0,0,0.15);
     }
-    
-    /* GÜVENLİ VE DEVASA SKOR BUTONLARI (Orijinal yapıyı bozmadan) */
-    div[data-testid="stNumberInputContainer"] {
-        height: 60px !important; /* Kutuları uzattık */
-        border-radius: 10px !important;
-    }
-    
-    /* Artı ve Eksi Butonlarına devasa sabit genişlik verdik */
-    div[data-testid="stNumberInputStepDown"], 
-    div[data-testid="stNumberInputStepUp"] {
-        width: 80px !important; 
-        background-color: #e5e7eb !important; 
-    }
-    
-    div[data-testid="stNumberInputStepDown"]:active, 
-    div[data-testid="stNumberInputStepUp"]:active {
-        background-color: #9ca3af !important;
-    }
-    
-    div[data-testid="stNumberInputStepDown"] svg, 
-    div[data-testid="stNumberInputStepUp"] svg {
-        width: 26px !important;
-        height: 26px !important;
-        color: #111827 !important;
-    }
-    
-    div[data-testid="stNumberInputContainer"] input {
-        font-size: 26px !important;
-        font-weight: 800 !important;
-        text-align: center !important;
-    }
 </style>
 """, unsafe_allow_html=True)
 
