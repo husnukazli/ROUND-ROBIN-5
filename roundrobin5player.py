@@ -17,7 +17,7 @@ from supabase import create_client, Client
 
 # --- YENİ EKLENEN PDF MOTORU BAĞLANTISI ---
 from pdf_yonetimi import generate_pdf, generate_combined_standings_pdf, generate_klasman_pdf, generate_toplu_klasman_pdf, draw_matrix_pdf, generate_mac_sonuc_belgesi
-
+from pdf_yonetimi import generate_matrix_pdf
 def arkaplan_ekle(resim_yolu):
     try:
         with open(resim_yolu, "rb") as image_file:
