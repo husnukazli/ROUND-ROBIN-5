@@ -1549,23 +1549,23 @@ else:
                                             elif mevcut_durum == "Takım 2 (Ret.)": mevcut_durum = "Takım 1 Kazandı (Ret.)"
                                             d_idx = durum_opts.index(mevcut_durum) if mevcut_durum in durum_opts else 0
                                             
-                                           with r_cols[0]: secilen_durum = st.selectbox("Maç Durumu", options=durum_opts, index=d_idx, key=f"h_durum_{idx}_{idx_mp}", disabled=is_kilitli)
-                                            with r_cols[1]: secilen_stb = st.checkbox("Süper Tie-Break", value=bool(row.get('STB', False)), key=f"h_stb_{idx}_{idx_mp}", disabled=is_kilitli)
+                                            with r_cols[0]: secilen_durum = st.selectbox("Durum", options=durum_opts, index=d_idx, key=f"h_durum_{idx}_{idx_mp}", disabled=is_kilitli)
+                                            with r_cols[1]: secilen_stb = st.checkbox("STB", value=bool(row.get('STB', False)), key=f"h_stb_{idx}_{idx_mp}", disabled=is_kilitli)
                                             
                                             is_wo = "W/O" in secilen_durum
                                             kutu_kilitli = is_wo or is_kilitli 
                                             
-                                            # Etiketleri (label) mobilde anlaşılsın diye açık ve takım isimli hale getirdik!
-                                            s1t1 = r_cols[2].number_input(f"1. Set ({t1})", min_value=0, value=0 if is_wo else int(row['1.Set T1']), step=1, key=f"h_s1t1_{idx}_{idx_mp}", disabled=kutu_kilitli)
-                                            s1t2 = r_cols[3].number_input(f"1. Set ({t2})", min_value=0, value=0 if is_wo else int(row['1.Set T2']), step=1, key=f"h_s1t2_{idx}_{idx_mp}", disabled=kutu_kilitli)
-                                            r_cols[4].markdown("<br>", unsafe_allow_html=True)
+                                            # Takım isimlerini başlığa koyduk, gizlemeyi (label_visibility) kaldırdık.
+                                            s1t1 = r_cols[2].number_input(f"1.S({t1[:5]})", min_value=0, value=0 if is_wo else int(row['1.Set T1']), step=1, key=f"h_s1t1_{idx}_{idx_mp}", disabled=kutu_kilitli)
+                                            s1t2 = r_cols[3].number_input(f"1.S({t2[:5]})", min_value=0, value=0 if is_wo else int(row['1.Set T2']), step=1, key=f"h_s1t2_{idx}_{idx_mp}", disabled=kutu_kilitli)
+                                            r_cols[4].markdown("<br><br>", unsafe_allow_html=True)
                                             
-                                            s2t1 = r_cols[5].number_input(f"2. Set ({t1})", min_value=0, value=0 if is_wo else int(row['2.Set T1']), step=1, key=f"h_s2t1_{idx}_{idx_mp}", disabled=kutu_kilitli)
-                                            s2t2 = r_cols[6].number_input(f"2. Set ({t2})", min_value=0, value=0 if is_wo else int(row['2.Set T2']), step=1, key=f"h_s2t2_{idx}_{idx_mp}", disabled=kutu_kilitli)
-                                            r_cols[7].markdown("<br>", unsafe_allow_html=True)
+                                            s2t1 = r_cols[5].number_input(f"2.S({t1[:5]})", min_value=0, value=0 if is_wo else int(row['2.Set T1']), step=1, key=f"h_s2t1_{idx}_{idx_mp}", disabled=kutu_kilitli)
+                                            s2t2 = r_cols[6].number_input(f"2.S({t2[:5]})", min_value=0, value=0 if is_wo else int(row['2.Set T2']), step=1, key=f"h_s2t2_{idx}_{idx_mp}", disabled=kutu_kilitli)
+                                            r_cols[7].markdown("<br><br>", unsafe_allow_html=True)
                                             
-                                            s3t1 = r_cols[8].number_input(f"3. Set ({t1})", min_value=0, value=0 if is_wo else int(row['3.Set T1']), step=1, key=f"h_s3t1_{idx}_{idx_mp}", disabled=kutu_kilitli)
-                                            s3t2 = r_cols[9].number_input(f"3. Set ({t2})", min_value=0, value=0 if is_wo else int(row['3.Set T2']), step=1, key=f"h_s3t2_{idx}_{idx_mp}", disabled=kutu_kilitli)
+                                            s3t1 = r_cols[8].number_input(f"3.S({t1[:5]})", min_value=0, value=0 if is_wo else int(row['3.Set T1']), step=1, key=f"h_s3t1_{idx}_{idx_mp}", disabled=kutu_kilitli)
+                                            s3t2 = r_cols[9].number_input(f"3.S({t2[:5]})", min_value=0, value=0 if is_wo else int(row['3.Set T2']), step=1, key=f"h_s3t2_{idx}_{idx_mp}", disabled=kutu_kilitli)
                                             
                                             form_verileri[idx] = {
                                                 "1.Set T1": s1t1, "1.Set T2": s1t2, "2.Set T1": s2t1, "2.Set T2": s2t2, "3.Set T1": s3t1, "3.Set T2": s3t2,
