@@ -72,6 +72,45 @@ st.markdown("""
         transform: translateY(-2px);
         box-shadow: 0 6px 12px rgba(0,0,0,0.15);
     }
+    
+    /* MOBİL UYUMLU DEVASA SKOR BUTONLARI (+/-) */
+    div[data-testid="stNumberInputContainer"] {
+        display: flex !important;
+        border-radius: 10px !important;
+        overflow: hidden !important;
+        border: 1px solid #d1d5db !important;
+    }
+    div[data-testid="stNumberInputStepDown"], 
+    div[data-testid="stNumberInputStepUp"] {
+        flex: 1 1 35% !important; /* Butonlara toplam alanın %70'ini verdik */
+        background-color: #f3f4f6 !important;
+        min-height: 48px !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        cursor: pointer !important;
+        transition: all 0.1s !important; /* Basılma efekti için */
+    }
+    div[data-testid="stNumberInputStepDown"]:active, 
+    div[data-testid="stNumberInputStepUp"]:active {
+        background-color: #cbd5e1 !important;
+        transform: scale(0.90) !important; /* Tıklanınca küçülerek reaksiyon verir */
+    }
+    div[data-testid="stNumberInputStepDown"] svg, 
+    div[data-testid="stNumberInputStepUp"] svg {
+        width: 22px !important;
+        height: 22px !important;
+        color: #1f2937 !important;
+    }
+    div[data-testid="stNumberInputContainer"] input {
+        flex: 1 1 30% !important; /* Rakam alanını daralttık */
+        text-align: center !important;
+        font-size: 22px !important;
+        font-weight: 800 !important;
+        padding: 0 !important;
+        background-color: white !important;
+        color: black !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
