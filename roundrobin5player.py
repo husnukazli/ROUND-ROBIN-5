@@ -73,77 +73,35 @@ st.markdown("""
         box-shadow: 0 6px 12px rgba(0,0,0,0.15);
     }
     
-    /* 3 EŞİT VE BAĞIMSIZ KUTU (SKOR | EKSİ | ARTI) */
+    /* GÜVENLİ VE DEVASA SKOR BUTONLARI (Orijinal yapıyı bozmadan) */
     div[data-testid="stNumberInputContainer"] {
-        display: flex !important;
-        flex-direction: row !important;
-        height: 60px !important; 
-        border: none !important; /* Dış çerçeveyi tamamen sildik */
-        background-color: transparent !important;
-        gap: 12px !important; /* 3 Kutu arasındaki fiziksel boşluk */
+        height: 60px !important; /* Kutuları uzattık */
+        border-radius: 10px !important;
     }
     
-    /* İçindeki 3 bloğa da tam olarak %33.3 eşit alan veriyoruz */
-    div[data-testid="stNumberInputContainer"] > * {
-        flex: 1 1 33.33% !important;
-        max-width: 33.33% !important;
-        border-radius: 12px !important;
-        border: 2px solid #d1d5db !important; /* Her kutunun kendi çerçevesi var */
+    /* Artı ve Eksi Butonlarına devasa sabit genişlik verdik */
+    div[data-testid="stNumberInputStepDown"], 
+    div[data-testid="stNumberInputStepUp"] {
+        width: 80px !important; 
+        background-color: #e5e7eb !important; 
     }
     
-    /* 1. KUTU: SKOR (Orijinal 2. elemanı zorla en başa alıyoruz) */
-    div[data-testid="stNumberInputContainer"] > :nth-child(2) {
-        order: 1 !important;
-        background-color: white !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        padding: 0 !important;
+    div[data-testid="stNumberInputStepDown"]:active, 
+    div[data-testid="stNumberInputStepUp"]:active {
+        background-color: #9ca3af !important;
     }
+    
+    div[data-testid="stNumberInputStepDown"] svg, 
+    div[data-testid="stNumberInputStepUp"] svg {
+        width: 26px !important;
+        height: 26px !important;
+        color: #111827 !important;
+    }
+    
     div[data-testid="stNumberInputContainer"] input {
-        width: 100% !important;
         font-size: 26px !important;
         font-weight: 800 !important;
         text-align: center !important;
-        color: black !important;
-        background-color: transparent !important;
-        border: none !important;
-        padding: 0 !important;
-    }
-    
-    /* 2. KUTU: EKSİ (-) */
-    div[data-testid="stNumberInputContainer"] > :nth-child(1) {
-        order: 2 !important;
-        background-color: #f3f4f6 !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        cursor: pointer !important;
-        transition: all 0.1s !important;
-    }
-    
-    /* 3. KUTU: ARTI (+) */
-    div[data-testid="stNumberInputContainer"] > :nth-child(3) {
-        order: 3 !important;
-        background-color: #f3f4f6 !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        cursor: pointer !important;
-        transition: all 0.1s !important;
-    }
-    
-    /* Tıklama Efekti ve İkonlar */
-    div[data-testid="stNumberInputStepDown"]:active, 
-    div[data-testid="stNumberInputStepUp"]:active {
-        transform: scale(0.90) !important; /* Basılınca tepki verir */
-        background-color: #d1d5db !important;
-    }
-    div[data-testid="stNumberInputStepDown"] svg, 
-    div[data-testid="stNumberInputStepUp"] svg {
-        width: 28px !important;
-        height: 28px !important;
-        fill: #1f2937 !important;
     }
 </style>
 """, unsafe_allow_html=True)
