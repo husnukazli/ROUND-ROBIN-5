@@ -73,66 +73,39 @@ st.markdown("""
         box-shadow: 0 6px 12px rgba(0,0,0,0.15);
     }
     
-    /* MOBİL UYUMLU DEVASA SKOR BUTONLARI (+/-) V3 (Ayrık Tasarım) */
+    /* GÜVENLİ VE GENİŞ SKOR BUTONLARI (Orijinal yapıyı bozmadan) */
     div[data-testid="stNumberInputContainer"] {
-        display: flex !important;
-        flex-direction: row !important;
-        align-items: stretch !important;
-        height: 55px !important; 
-        border: none !important; /* Ana çerçeveyi tamamen sildik */
-        background-color: transparent !important;
-        gap: 15px !important; /* İşte aradaki o "boş buton" mesafesi! */
-        padding: 0 !important;
-        box-shadow: none !important;
+        height: 60px !important; /* Skor kutusunun boyunu uzattık */
     }
     
-    /* Eksi ve Artı Butonları Bağımsız Kutu Oluyor */
+    /* Artı ve Eksi Butonları - Sabit genişlik ile büyütüldü */
     div[data-testid="stNumberInputStepDown"], 
     div[data-testid="stNumberInputStepUp"] {
-        flex: 1 1 35% !important; /* Alanın %70'i tuşlara tahsis edildi */
-        max-width: none !important;
-        background-color: #f3f4f6 !important;
-        border: 2px solid #d1d5db !important; /* Kendilerine ait çerçeve */
-        border-radius: 12px !important; 
-        display: flex !important;
-        justify-content: center !important;
-        align-items: center !important;
-        cursor: pointer !important;
-        transition: transform 0.1s, background-color 0.1s !important;
+        width: 70px !important; 
+        background-color: #e5e7eb !important; 
+        transition: background-color 0.1s !important;
     }
     
-    /* Tıklama Efekti */
+    /* Dokunma Hissi (Tıklayınca koyulaşır) */
     div[data-testid="stNumberInputStepDown"]:active, 
     div[data-testid="stNumberInputStepUp"]:active {
-        background-color: #e2e8f0 !important;
-        transform: scale(0.92) !important;
+        background-color: #9ca3af !important;
     }
     
+    /* İkonların Büyüklüğü */
     div[data-testid="stNumberInputStepDown"] svg, 
     div[data-testid="stNumberInputStepUp"] svg {
-        width: 26px !important;
-        height: 26px !important;
-        fill: #1f2937 !important;
+        width: 24px !important;
+        height: 24px !important;
+        color: #111827 !important;
     }
     
-    /* Ortadaki Rakam Kutusu Bağımsız Kutu Oluyor */
-    div[data-testid="stNumberInputContainer"] > div {
-        flex: 1 1 30% !important; /* Kalan %30 rakamın */
-        background-color: transparent !important; 
-    }
-    
+    /* Ortadaki Rakam (Artı ve eksi arasına fiziksel mesafe koyar) */
     div[data-testid="stNumberInputContainer"] input {
-        width: 100% !important;
-        height: 100% !important;
-        min-height: 51px !important;
-        text-align: center !important;
         font-size: 24px !important;
         font-weight: 800 !important;
-        background-color: white !important;
-        color: black !important;
-        border: 2px solid #d1d5db !important; /* Rakamın kendi çerçevesi */
-        border-radius: 12px !important;
-        padding: 0 !important;
+        text-align: center !important;
+        padding: 0 25px !important; /* Butonların birbirine yaklaşmasını engeller */
     }
 </style>
 """, unsafe_allow_html=True)
