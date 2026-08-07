@@ -330,7 +330,25 @@ def draw_matrix_pdf(grup_adi, takimlar, matrix):
     for t1 in takimlar:
         max_lines = 1
         for t2 in takimlar:
-            val = str(matrix.at[t1, t2])
+            x_start += col_width
+            val = ""
+            # Esnek ve güvenli arama (boşluk/karakter farkı olsa bile veriyi bulur)
+            try:
+                if t1 in matrix.index and t2 in matrix.columns:
+                    val = str(matrix.at[t1, t2])
+                else:
+                    # Alternatif esnek eşleştirme (strip edilmiş arama)
+                    bulundu = False
+                    for m_idx in matrix.index:
+                        if str(m_idx).strip() == str(t1).strip():
+                            for m_col in matrix.columns:
+                                if str(m_col).strip() == str(t2).strip():
+                                    val = str(matrix.at[m_idx, m_col])
+                                    bulundu = True
+                                    break
+                            if bulundu: break
+            except Exception:
+                val = ""
             if val:
                 lines = len(val.split('\n'))
                 if lines > max_lines: max_lines = lines
