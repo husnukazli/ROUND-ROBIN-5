@@ -1373,155 +1373,207 @@ else:
                             t1_kaptan_girdi = t1 in kasadaki_veri and kasadaki_veri[t1].get("_kaynak", "Kaptan") == "Kaptan"
                             t2_kaptan_girdi = t2 in kasadaki_veri and kasadaki_veri[t2].get("_kaynak", "Kaptan") == "Kaptan"
 
-                            hk_onay_state_key = f"hk_onay_{match_key}"
-                            is_review_mode = st.session_state.get(hk_onay_state_key, False)
-
                             baslik_durumu = "🔒 (Kilitli)" if is_kilitli else ("✍️ (Skor Girişi)" if is_approved else "📋 (Esame Bekleniyor)")
                             expander_baslik = f"🎾 {saat} - {kort} | {grup_adi} | {t1} vs {t2} {baslik_durumu}"
                             
                             with st.expander(expander_baslik, expanded=not is_kilitli):
                                 if not is_approved:
-                                    if is_review_mode:
-                                        # EŞLEŞMELERİ GÖSTER VİTRİNİ
-                                        st.markdown(f"<h3 style='text-align:center;'>🎾 MAÇ EŞLEŞMELERİ</h3>", unsafe_allow_html=True)
-                                        temp_secim = st.session_state.get(f"temp_secim_{match_key}", {})
-                                        
-                                        c_sum1, c_sum2 = st.columns(2)
-                                        with c_sum1:
-                                            st.markdown(f"<div style='background-color:#f0f2f6; padding:15px; border-radius:10px;'><h4 style='color:#0B3B24; text-align:center;'>🛡️ {t1}</h4>", unsafe_allow_html=True)
-                                            for brans, oyuncu in temp_secim.get(t1, {}).items():
-                                                if brans != "_kaynak": st.markdown(f"<b>{brans}:</b> {oyuncu}", unsafe_allow_html=True)
-                                            st.markdown("</div>", unsafe_allow_html=True)
-                                            
-                                        with c_sum2:
-                                            st.markdown(f"<div style='background-color:#f0f2f6; padding:15px; border-radius:10px;'><h4 style='color:#0B3B24; text-align:center;'>🛡️ {t2}</h4>", unsafe_allow_html=True)
-                                            for brans, oyuncu in temp_secim.get(t2, {}).items():
-                                                if brans != "_kaynak": st.markdown(f"<b>{brans}:</b> {oyuncu}", unsafe_allow_html=True)
-                                            st.markdown("</div>", unsafe_allow_html=True)
-                                            
-                                        st.write("")
-                                        col_btn1, col_btn2 = st.columns(2)
-                                        if col_btn1.button("✅ Eşleşmeleri Onayla ve Skora Geç", type="primary", key=f"btn_hk_onay_{match_key}", use_container_width=True):
-                                            if match_key not in st.session_state.esame_kasasi: st.session_state.esame_kasasi[match_key] = {}
-                                            if not t1_kaptan_girdi:
-                                                st.session_state.esame_kasasi[match_key][t1] = temp_secim[t1]
-                                                st.session_state.esame_kasasi[match_key][t1]["_kaynak"] = "Hakem"
-                                            if not t2_kaptan_girdi:
-                                                st.session_state.esame_kasasi[match_key][t2] = temp_secim[t2]
-                                                st.session_state.esame_kasasi[match_key][t2]["_kaynak"] = "Hakem"
-                                            
-                                            skor_mask = (st.session_state.skor_tablosu['Grup'] == grup_adi) & (st.session_state.skor_tablosu['Gün'] == gun_val) & (st.session_state.skor_tablosu['Eşleşme'] == eslesme_adi)
-                                            for idx_s, row_s in st.session_state.skor_tablosu[skor_mask].iterrows():
-                                                br = row_s['Branş']
-                                                st.session_state.skor_tablosu.at[idx_s, 'T1_Oyuncu'] = temp_secim[t1].get(br, "")
-                                                st.session_state.skor_tablosu.at[idx_s, 'T2_Oyuncu'] = temp_secim[t2].get(br, "")
-                                            
-                                            st.session_state.esame_onayli[match_key] = True
-                                            st.session_state[hk_onay_state_key] = False
-                                            ortak_veriyi_kaydet()
-                                            st.rerun()
-                                            
-                                        if col_btn2.button("🔙 Düzenlemeye Dön", key=f"btn_hk_iptal_{match_key}", use_container_width=True):
-                                            st.session_state[hk_onay_state_key] = False
-                                            st.rerun()
-
+                                    hk_sent = (t1 in kasadaki_veri and kasadaki_veri[t1].get("_kaynak") == "Hakem") or \
+                                              (t2 in kasadaki_veri and kasadaki_veri[t2].get("_kaynak") == "Hakem")
+                                    kaptan_sent = (t1 in kasadaki_veri and kasadaki_veri[t1].get("_kaynak") == "Kaptan") and \
+                                                  (t2 in kasadaki_veri and kasadaki_veri[t2].get("_kaynak") == "Kaptan")
+                                                  
+                                    if hk_sent or kaptan_sent:
+                                        st.info("✅ Takım Esame Listeleri Başhakem'e iletildi. Lütfen Başhakem'in onaylamasını bekleyiniz (Onaydan sonra Skor ekranı açılacaktır).")
                                     else:
-                                        # HAKEM İSİM GİRİŞ MODU
-                                        st.info("📌 Maçın esameleri henüz onaylanmamış. Hakem olarak isimleri korta siz girebilirsiniz. (Kaptanlar girdiyse kendi alanları kilitli gelecektir).")
+                                        # HAKEM TAKIM ESAME GİRİŞ AKIŞI (Sıralı Gizli Wizard)
+                                        st.info("📌 Maçın esameleri henüz onaylanmamış. Hakem olarak Takım Esame Listesini korta siz girebilirsiniz.")
+                                        
+                                        hk_adim_key = f"hk_adim_{match_key}"
+                                        if hk_adim_key not in st.session_state:
+                                            st.session_state[hk_adim_key] = 1
+                                            
+                                        hk_step = st.session_state[hk_adim_key]
                                         
                                         grup_kadro_dict = st.session_state.takim_kadrolari.get(grup_adi, {})
                                         t1_havuz = grup_kadro_dict.get(t1, ["Belirtilmedi"])
                                         t2_havuz = grup_kadro_dict.get(t2, ["Belirtilmedi"])
                                         
-                                        form_secimleri_t1 = kasadaki_veri.get(t1, {}) if t1_kaptan_girdi else {}
-                                        form_secimleri_t2 = kasadaki_veri.get(t2, {}) if t2_kaptan_girdi else {}
-                                        
-                                        with st.form(key=f"hk_esame_form_{match_key}"):
-                                            for idx_mp, row_mp in sort_maclar(g_df).iterrows():
-                                                brans = row_mp['Branş']
-                                                st.markdown(f"<h5 style='color:#0B3B24; margin-bottom: 2px;'>{brans}</h5>", unsafe_allow_html=True)
-                                                p_cols = st.columns(2)
-                                                
-                                                with p_cols[0]:
-                                                    if t1_kaptan_girdi:
-                                                        val = form_secimleri_t1.get(brans, "")
-                                                        st.text_input(f"{t1} (Kaptan Girdi)", value=val, disabled=True, key=f"hk_dis_t1_{idx_mp}")
-                                                        form_secimleri_t1[brans] = val
-                                                    else:
+                                        if hk_step == 1:
+                                            st.markdown(f"<h4 style='color:#0B3B24;'>1. Adım: Takım Esame Listesi ({t1})</h4>", unsafe_allow_html=True)
+                                            if t1_kaptan_girdi:
+                                                st.success(f"✅ {t1} kadrosu Kaptan tarafından uygulamadan girilmiş.")
+                                                st.session_state[f"temp_hk_t1_{match_key}"] = kasadaki_veri[t1]
+                                                if st.button("Sonraki Takıma Geç ➡️", use_container_width=True):
+                                                    st.session_state[hk_adim_key] = 2
+                                                    st.rerun()
+                                            else:
+                                                form_secimleri_t1 = st.session_state.get(f"temp_hk_t1_{match_key}", {})
+                                                with st.form(key=f"form_hk_t1_{match_key}"):
+                                                    for idx_mp, row_mp in sort_maclar(g_df).iterrows():
+                                                        brans = row_mp['Branş']
                                                         if "Çiftler" in brans:
                                                             eski_val = form_secimleri_t1.get(brans, "")
                                                             eski_liste = [o.strip() for o in eski_val.split(",") if o.strip() in t1_havuz]
-                                                            secim = st.multiselect(f"{t1} (Seçim)", options=t1_havuz, default=eski_liste, max_selections=2, key=f"hk_t1_{idx_mp}")
+                                                            secim = st.multiselect(f"{brans} Seçimi", options=t1_havuz, default=eski_liste, max_selections=2)
                                                             form_secimleri_t1[brans] = ", ".join(secim)
                                                         else:
                                                             eski_val = form_secimleri_t1.get(brans, "Seçiniz")
                                                             idx = (["Seçiniz"] + t1_havuz).index(eski_val) if eski_val in t1_havuz else 0
-                                                            sec = st.selectbox(f"{t1} (Seçim)", options=["Seçiniz"] + t1_havuz, index=idx, key=f"hk_t1_{idx_mp}")
+                                                            sec = st.selectbox(f"{brans} Seçimi", options=["Seçiniz"] + t1_havuz, index=idx)
                                                             form_secimleri_t1[brans] = sec if sec != "Seçiniz" else ""
+                                                    
+                                                    if st.form_submit_button("💾 Kaydet ve 2. Takıma Geç", use_container_width=True, type="primary"):
+                                                        hatalar = []
+                                                        format_secimi = st.session_state.grup_formatlari.get(grup_adi, "3 Maçlık (2 Tek, 1 Çift)")
+                                                        o1 = form_secimleri_t1.get("1. Tekler")
+                                                        o2 = form_secimleri_t1.get("2. Tekler")
+                                                        o3 = form_secimleri_t1.get("3. Tekler")
+                                                        r1 = t1_havuz.index(o1) if o1 in t1_havuz else -1
+                                                        r2 = t1_havuz.index(o2) if o2 in t1_havuz else -1
+                                                        r3 = t1_havuz.index(o3) if o3 in t1_havuz else -1
+                                                        
+                                                        for b in ["1. Çiftler", "2. Çiftler", "Çiftler"]:
+                                                            c_str = form_secimleri_t1.get(b, "")
+                                                            if c_str:
+                                                                c_list = [o.strip() for o in c_str.split(",") if o.strip()]
+                                                                if len(c_list) == 1: hatalar.append(f"❌ {b} maçına tek oyuncu yazılamaz.")
+                                                                
+                                                        if r1 != -1 and r2 != -1 and r1 >= r2: hatalar.append("❌ 1. Tekler oyuncusu, 2. Teklerden üst sırada olmalıdır.")
+                                                        if r2 != -1 and r3 != -1 and r2 >= r3: hatalar.append("❌ 2. Tekler oyuncusu, 3. Teklerden üst sırada olmalıdır.")
+                                                        if r1 != -1 and r3 != -1 and r2 == -1 and r1 >= r3: hatalar.append("❌ 1. Tekler oyuncusu, 3. Teklerden üst sırada olmalıdır.")
+                                                        
+                                                        if o1 and o1 != "Seçiniz" and o1 == o2: hatalar.append("❌ Aynı oyuncu birden fazla tekler maçına yazılamaz.")
+                                                        if o2 and o2 != "Seçiniz" and o2 == o3: hatalar.append("❌ Aynı oyuncu birden fazla tekler maçına yazılamaz.")
+                                                        if o1 and o1 != "Seçiniz" and o1 == o3: hatalar.append("❌ Aynı oyuncu birden fazla tekler maçına yazılamaz.")
+                                                        
+                                                        if "5 Maçlık" in format_secimi:
+                                                            c1_list = [o.strip() for o in form_secimleri_t1.get("1. Çiftler", "").split(",") if o.strip()]
+                                                            c2_list = [o.strip() for o in form_secimleri_t1.get("2. Çiftler", "").split(",") if o.strip()]
+                                                            ortak = set(c1_list).intersection(set(c2_list))
+                                                            if ortak: hatalar.append("❌ Aynı oyuncu iki çiftler maçına da yazılamaz.")
                                                             
-                                                with p_cols[1]:
-                                                    if t2_kaptan_girdi:
-                                                        val = form_secimleri_t2.get(brans, "")
-                                                        st.text_input(f"{t2} (Kaptan Girdi)", value=val, disabled=True, key=f"hk_dis_t2_{idx_mp}")
-                                                        form_secimleri_t2[brans] = val
-                                                    else:
+                                                            if len(c1_list) == 2 and len(c2_list) == 2 and not ortak:
+                                                                dortlu = sorted([(p, t1_havuz.index(p)) for p in c1_list + c2_list if p in t1_havuz], key=lambda x: x[1])
+                                                                yeni_rank = {p: i+1 for i, (p, _) in enumerate(dortlu)}
+                                                                t_c1 = yeni_rank.get(c1_list[0], 99) + yeni_rank.get(c1_list[1], 99)
+                                                                t_c2 = yeni_rank.get(c2_list[0], 99) + yeni_rank.get(c2_list[1], 99)
+                                                                if t_c1 > t_c2: hatalar.append("❌ 1. Çiftler, 2. Çiftlerden daha güçlü (veya eşit) olmalıdır.")
+
+                                                        if hatalar:
+                                                            for h in hatalar: st.error(h)
+                                                        else:
+                                                            st.session_state[f"temp_hk_t1_{match_key}"] = form_secimleri_t1
+                                                            st.session_state[hk_adim_key] = 2
+                                                            st.rerun()
+
+                                        elif hk_step == 2:
+                                            st.markdown(f"<h4 style='color:#0B3B24;'>2. Adım: Takım Esame Listesi ({t2})</h4>", unsafe_allow_html=True)
+                                            if t2_kaptan_girdi:
+                                                st.success(f"✅ {t2} kadrosu Kaptan tarafından uygulamadan girilmiş.")
+                                                st.session_state[f"temp_hk_t2_{match_key}"] = kasadaki_veri[t2]
+                                                col_b1, col_b2 = st.columns(2)
+                                                if col_b1.button("🔙 Geri Dön", use_container_width=True):
+                                                    st.session_state[hk_adim_key] = 1
+                                                    st.rerun()
+                                                if col_b2.button("Eşleşmeleri Göster ➡️", use_container_width=True):
+                                                    st.session_state[hk_adim_key] = 3
+                                                    st.rerun()
+                                            else:
+                                                form_secimleri_t2 = st.session_state.get(f"temp_hk_t2_{match_key}", {})
+                                                with st.form(key=f"form_hk_t2_{match_key}"):
+                                                    for idx_mp, row_mp in sort_maclar(g_df).iterrows():
+                                                        brans = row_mp['Branş']
                                                         if "Çiftler" in brans:
                                                             eski_val = form_secimleri_t2.get(brans, "")
                                                             eski_liste = [o.strip() for o in eski_val.split(",") if o.strip() in t2_havuz]
-                                                            secim = st.multiselect(f"{t2} (Seçim)", options=t2_havuz, default=eski_liste, max_selections=2, key=f"hk_t2_{idx_mp}")
+                                                            secim = st.multiselect(f"{brans} Seçimi", options=t2_havuz, default=eski_liste, max_selections=2)
                                                             form_secimleri_t2[brans] = ", ".join(secim)
                                                         else:
                                                             eski_val = form_secimleri_t2.get(brans, "Seçiniz")
                                                             idx = (["Seçiniz"] + t2_havuz).index(eski_val) if eski_val in t2_havuz else 0
-                                                            sec = st.selectbox(f"{t2} (Seçim)", options=["Seçiniz"] + t2_havuz, index=idx, key=f"hk_t2_{idx_mp}")
+                                                            sec = st.selectbox(f"{brans} Seçimi", options=["Seçiniz"] + t2_havuz, index=idx)
                                                             form_secimleri_t2[brans] = sec if sec != "Seçiniz" else ""
-                                                            
-                                            st.write("")
-                                            if st.form_submit_button("🔍 Esameleri Kontrol Et ve Eşleşmeleri Göster", use_container_width=True):
-                                                hatalar = []
-                                                format_secimi = st.session_state.grup_formatlari.get(grup_adi, "3 Maçlık (2 Tek, 1 Çift)")
-                                                
-                                                for havuz, secimler, t_isim in [(t1_havuz, form_secimleri_t1, t1), (t2_havuz, form_secimleri_t2, t2)]:
-                                                    o1 = secimler.get("1. Tekler")
-                                                    o2 = secimler.get("2. Tekler")
-                                                    o3 = secimler.get("3. Tekler")
-                                                    r1 = havuz.index(o1) if o1 in havuz else -1
-                                                    r2 = havuz.index(o2) if o2 in havuz else -1
-                                                    r3 = havuz.index(o3) if o3 in havuz else -1
                                                     
-                                                    for b in ["1. Çiftler", "2. Çiftler", "Çiftler"]:
-                                                        c_str = secimler.get(b, "")
-                                                        if c_str:
-                                                            c_list = [o.strip() for o in c_str.split(",") if o.strip()]
-                                                            if len(c_list) == 1: hatalar.append(f"❌ {t_isim}: {b} maçına tek oyuncu yazılamaz.")
-                                                            
-                                                    if r1 != -1 and r2 != -1 and r1 >= r2: hatalar.append(f"❌ {t_isim}: 1. Tekler oyuncusu, 2. Teklerden üst sırada olmalıdır.")
-                                                    if r2 != -1 and r3 != -1 and r2 >= r3: hatalar.append(f"❌ {t_isim}: 2. Tekler oyuncusu, 3. Teklerden üst sırada olmalıdır.")
-                                                    if r1 != -1 and r3 != -1 and r2 == -1 and r1 >= r3: hatalar.append(f"❌ {t_isim}: 1. Tekler oyuncusu, 3. Teklerden üst sırada olmalıdır.")
-                                                    
-                                                    if o1 and o1 == o2: hatalar.append(f"❌ {t_isim}: Aynı oyuncu birden fazla tekler maçına yazılamaz.")
-                                                    if o2 and o2 == o3: hatalar.append(f"❌ {t_isim}: Aynı oyuncu birden fazla tekler maçına yazılamaz.")
-                                                    if o1 and o1 == o3: hatalar.append(f"❌ {t_isim}: Aynı oyuncu birden fazla tekler maçına yazılamaz.")
-                                                    
-                                                    if "5 Maçlık" in format_secimi:
-                                                        c1_list = [o.strip() for o in secimler.get("1. Çiftler", "").split(",") if o.strip()]
-                                                        c2_list = [o.strip() for o in secimler.get("2. Çiftler", "").split(",") if o.strip()]
-                                                        ortak = set(c1_list).intersection(set(c2_list))
-                                                        if ortak: hatalar.append(f"❌ {t_isim}: Aynı oyuncu iki çiftler maçına da yazılamaz.")
+                                                    if st.form_submit_button("💾 Kaydet ve Eşleşmeleri Göster", use_container_width=True, type="primary"):
+                                                        hatalar = []
+                                                        format_secimi = st.session_state.grup_formatlari.get(grup_adi, "3 Maçlık (2 Tek, 1 Çift)")
+                                                        o1 = form_secimleri_t2.get("1. Tekler")
+                                                        o2 = form_secimleri_t2.get("2. Tekler")
+                                                        o3 = form_secimleri_t2.get("3. Tekler")
+                                                        r1 = t2_havuz.index(o1) if o1 in t2_havuz else -1
+                                                        r2 = t2_havuz.index(o2) if o2 in t2_havuz else -1
+                                                        r3 = t2_havuz.index(o3) if o3 in t2_havuz else -1
                                                         
-                                                        if len(c1_list) == 2 and len(c2_list) == 2 and not ortak:
-                                                            dortlu = sorted([(p, havuz.index(p)) for p in c1_list + c2_list if p in havuz], key=lambda x: x[1])
-                                                            yeni_rank = {p: i+1 for i, (p, _) in enumerate(dortlu)}
-                                                            t_c1 = yeni_rank.get(c1_list[0], 99) + yeni_rank.get(c1_list[1], 99)
-                                                            t_c2 = yeni_rank.get(c2_list[0], 99) + yeni_rank.get(c2_list[1], 99)
-                                                            if t_c1 > t_c2: hatalar.append(f"❌ {t_isim}: 1. Çiftler, 2. Çiftlerden daha güçlü (veya eşit) olmalıdır.")
+                                                        for b in ["1. Çiftler", "2. Çiftler", "Çiftler"]:
+                                                            c_str = form_secimleri_t2.get(b, "")
+                                                            if c_str:
+                                                                c_list = [o.strip() for o in c_str.split(",") if o.strip()]
+                                                                if len(c_list) == 1: hatalar.append(f"❌ {b} maçına tek oyuncu yazılamaz.")
+                                                                
+                                                        if r1 != -1 and r2 != -1 and r1 >= r2: hatalar.append("❌ 1. Tekler oyuncusu, 2. Teklerden üst sırada olmalıdır.")
+                                                        if r2 != -1 and r3 != -1 and r2 >= r3: hatalar.append("❌ 2. Tekler oyuncusu, 3. Teklerden üst sırada olmalıdır.")
+                                                        if r1 != -1 and r3 != -1 and r2 == -1 and r1 >= r3: hatalar.append("❌ 1. Tekler oyuncusu, 3. Teklerden üst sırada olmalıdır.")
+                                                        
+                                                        if o1 and o1 != "Seçiniz" and o1 == o2: hatalar.append("❌ Aynı oyuncu birden fazla tekler maçına yazılamaz.")
+                                                        if o2 and o2 != "Seçiniz" and o2 == o3: hatalar.append("❌ Aynı oyuncu birden fazla tekler maçına yazılamaz.")
+                                                        if o1 and o1 != "Seçiniz" and o1 == o3: hatalar.append("❌ Aynı oyuncu birden fazla tekler maçına yazılamaz.")
+                                                        
+                                                        if "5 Maçlık" in format_secimi:
+                                                            c1_list = [o.strip() for o in form_secimleri_t2.get("1. Çiftler", "").split(",") if o.strip()]
+                                                            c2_list = [o.strip() for o in form_secimleri_t2.get("2. Çiftler", "").split(",") if o.strip()]
+                                                            ortak = set(c1_list).intersection(set(c2_list))
+                                                            if ortak: hatalar.append("❌ Aynı oyuncu iki çiftler maçına da yazılamaz.")
+                                                            
+                                                            if len(c1_list) == 2 and len(c2_list) == 2 and not ortak:
+                                                                dortlu = sorted([(p, t2_havuz.index(p)) for p in c1_list + c2_list if p in t2_havuz], key=lambda x: x[1])
+                                                                yeni_rank = {p: i+1 for i, (p, _) in enumerate(dortlu)}
+                                                                t_c1 = yeni_rank.get(c1_list[0], 99) + yeni_rank.get(c1_list[1], 99)
+                                                                t_c2 = yeni_rank.get(c2_list[0], 99) + yeni_rank.get(c2_list[1], 99)
+                                                                if t_c1 > t_c2: hatalar.append("❌ 1. Çiftler, 2. Çiftlerden daha güçlü (veya eşit) olmalıdır.")
 
-                                                if hatalar:
-                                                    st.error("\n".join(hatalar))
-                                                else:
-                                                    st.session_state[hk_onay_state_key] = True
-                                                    st.session_state[f"temp_secim_{match_key}"] = {t1: form_secimleri_t1, t2: form_secimleri_t2}
+                                                        if hatalar:
+                                                            for h in hatalar: st.error(h)
+                                                        else:
+                                                            st.session_state[f"temp_hk_t2_{match_key}"] = form_secimleri_t2
+                                                            st.session_state[hk_adim_key] = 3
+                                                            st.rerun()
+                                                if st.button("🔙 1. Takıma Geri Dön", use_container_width=True):
+                                                    st.session_state[hk_adim_key] = 1
                                                     st.rerun()
+
+                                        elif hk_step == 3:
+                                            st.markdown("<h4 style='color:#0B3B24;'>3. Adım: Eşleşmeleri Onayla</h4>", unsafe_allow_html=True)
+                                            temp_t1 = st.session_state.get(f"temp_hk_t1_{match_key}", {})
+                                            temp_t2 = st.session_state.get(f"temp_hk_t2_{match_key}", {})
+                                            
+                                            st.info("Lütfen aşağıdaki eşleşmeleri kontrol edip Başhakem onayına gönderiniz.")
+                                            
+                                            for i, row_mp in enumerate(sort_maclar(g_df).iterrows()):
+                                                _, r_data = row_mp
+                                                brans = r_data['Branş']
+                                                o1 = temp_t1.get(brans, "Belirtilmedi")
+                                                o2 = temp_t2.get(brans, "Belirtilmedi")
+                                                st.markdown(f"**{i+1}. Maç ({brans}):** {o1} &nbsp;🆚&nbsp; {o2}")
+                                                
+                                            st.write("")
+                                            col1, col2 = st.columns(2)
+                                            if col1.button("🔙 Geri Dön (Düzenle)", use_container_width=True):
+                                                st.session_state[hk_adim_key] = 2
+                                                st.rerun()
+                                            if col2.button("📢 Başhakem Onayına Gönder", type="primary", use_container_width=True):
+                                                if match_key not in st.session_state.esame_kasasi:
+                                                    st.session_state.esame_kasasi[match_key] = {}
+                                                
+                                                if not t1_kaptan_girdi:
+                                                    st.session_state.esame_kasasi[match_key][t1] = temp_t1
+                                                    st.session_state.esame_kasasi[match_key][t1]["_kaynak"] = "Hakem"
+                                                if not t2_kaptan_girdi:
+                                                    st.session_state.esame_kasasi[match_key][t2] = temp_t2
+                                                    st.session_state.esame_kasasi[match_key][t2]["_kaynak"] = "Hakem"
+                                                
+                                                ortak_veriyi_kaydet()
+                                                st.rerun()
 
                                 else:
                                     # SKOR GİRİŞ MODU (Artık Onaylı)
@@ -1555,17 +1607,16 @@ else:
                                             is_wo = "W/O" in secilen_durum
                                             kutu_kilitli = is_wo or is_kilitli 
                                             
-                                            # Takım isimlerini başlığa koyduk, gizlemeyi (label_visibility) kaldırdık.
-                                            s1t1 = r_cols[2].number_input(f"1.S({t1[:5]})", min_value=0, value=0 if is_wo else int(row['1.Set T1']), step=1, key=f"h_s1t1_{idx}_{idx_mp}", disabled=kutu_kilitli)
-                                            s1t2 = r_cols[3].number_input(f"1.S({t2[:5]})", min_value=0, value=0 if is_wo else int(row['1.Set T2']), step=1, key=f"h_s1t2_{idx}_{idx_mp}", disabled=kutu_kilitli)
+                                            s1t1 = r_cols[2].number_input(f"1. Set - {t1}", min_value=0, value=0 if is_wo else int(row['1.Set T1']), step=1, key=f"h_s1t1_{idx}_{idx_mp}", disabled=kutu_kilitli)
+                                            s1t2 = r_cols[3].number_input(f"1. Set - {t2}", min_value=0, value=0 if is_wo else int(row['1.Set T2']), step=1, key=f"h_s1t2_{idx}_{idx_mp}", disabled=kutu_kilitli)
                                             r_cols[4].markdown("<br><br>", unsafe_allow_html=True)
                                             
-                                            s2t1 = r_cols[5].number_input(f"2.S({t1[:5]})", min_value=0, value=0 if is_wo else int(row['2.Set T1']), step=1, key=f"h_s2t1_{idx}_{idx_mp}", disabled=kutu_kilitli)
-                                            s2t2 = r_cols[6].number_input(f"2.S({t2[:5]})", min_value=0, value=0 if is_wo else int(row['2.Set T2']), step=1, key=f"h_s2t2_{idx}_{idx_mp}", disabled=kutu_kilitli)
+                                            s2t1 = r_cols[5].number_input(f"2. Set - {t1}", min_value=0, value=0 if is_wo else int(row['2.Set T1']), step=1, key=f"h_s2t1_{idx}_{idx_mp}", disabled=kutu_kilitli)
+                                            s2t2 = r_cols[6].number_input(f"2. Set - {t2}", min_value=0, value=0 if is_wo else int(row['2.Set T2']), step=1, key=f"h_s2t2_{idx}_{idx_mp}", disabled=kutu_kilitli)
                                             r_cols[7].markdown("<br><br>", unsafe_allow_html=True)
                                             
-                                            s3t1 = r_cols[8].number_input(f"3.S({t1[:5]})", min_value=0, value=0 if is_wo else int(row['3.Set T1']), step=1, key=f"h_s3t1_{idx}_{idx_mp}", disabled=kutu_kilitli)
-                                            s3t2 = r_cols[9].number_input(f"3.S({t2[:5]})", min_value=0, value=0 if is_wo else int(row['3.Set T2']), step=1, key=f"h_s3t2_{idx}_{idx_mp}", disabled=kutu_kilitli)
+                                            s3t1 = r_cols[8].number_input(f"3. Set - {t1}", min_value=0, value=0 if is_wo else int(row['3.Set T1']), step=1, key=f"h_s3t1_{idx}_{idx_mp}", disabled=kutu_kilitli)
+                                            s3t2 = r_cols[9].number_input(f"3. Set - {t2}", min_value=0, value=0 if is_wo else int(row['3.Set T2']), step=1, key=f"h_s3t2_{idx}_{idx_mp}", disabled=kutu_kilitli)
                                             
                                             form_verileri[idx] = {
                                                 "1.Set T1": s1t1, "1.Set T2": s1t2, "2.Set T1": s2t1, "2.Set T2": s2t2, "3.Set T1": s3t1, "3.Set T2": s3t2,
@@ -1672,7 +1723,7 @@ else:
                             if is_approved:
                                 st.success(f"Bu esameler onaylanmış ve {secilen_tarih} tarihli Maç Programına yansıtılmıştır.")
                                 if kaynak_t1 == "Hakem" or kaynak_t2 == "Hakem":
-                                    st.warning("⚠️ Bu kadrolardan biri veya ikisi Kaptan yerine **Gözlemci Hakem** tarafından girilip onaylanmıştır.")
+                                    st.warning("⚠️ Bu kadrolardan biri veya ikisi Gözlemci Hakem tarafından girilmiştir.")
                             
                             c1, c2 = st.columns(2)
                             with c1:
@@ -1692,7 +1743,7 @@ else:
                                 
                             if not is_approved:
                                 if kaynak_t1 == "Hakem" or kaynak_t2 == "Hakem":
-                                    st.warning("⚠️ Yukarıdaki girişlerden en az biri **Gözlemci Hakem** tarafından yapılmıştır.")
+                                    st.error("⚠️ Bu esame bilgileri hakem tarafından girilmiştir.")
                                     
                                 if st.button("📢 Esameleri Onayla ve Maç Programına Yansıt (Zarfları Aç)", key=f"onay_{match_key}", type="primary"):
                                     st.session_state.esame_onayli[match_key] = True
