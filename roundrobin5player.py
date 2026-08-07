@@ -22,8 +22,7 @@ from pdf_yonetimi import (
     generate_klasman_pdf, 
     generate_toplu_klasman_pdf, 
     draw_matrix_pdf,
-    generate_mac_sonuc_belgesi
-)
+    generate_mac_sonuc_belgesi)
 def arkaplan_ekle(resim_yolu):
     try:
         with open(resim_yolu, "rb") as image_file:
