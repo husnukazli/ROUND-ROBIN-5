@@ -15,8 +15,7 @@ import time
 import uuid
 from supabase import create_client, Client
 
-# --- YENİ EKLENEN PDF MOTORU BAĞLANTISI ---
-from pdf_yonetimi import *
+from pdf_yonetimi import generate_pdf, generate_combined_standings_pdf, generate_klasman_pdf, generate_toplu_klasman_pdf, draw_matrix_pdf, generate_mac_sonuc_belgesi
 
 def arkaplan_ekle(resim_yolu):
     try:
@@ -39,8 +38,6 @@ def arkaplan_ekle(resim_yolu):
     except FileNotFoundError:
         pass
 
-# --- GENEL SAYFA AYARLARI ---
-# --- GENEL SAYFA AYARLARI ---
 st.set_page_config(page_title="Tenis Turnuva Otomasyonu", page_icon="🎾", layout="wide", initial_sidebar_state="collapsed")
 arkaplan_ekle("arkaplan.jpg")
 
