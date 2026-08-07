@@ -16,13 +16,8 @@ import uuid
 from supabase import create_client, Client
 
 # --- YENİ EKLENEN PDF MOTORU BAĞLANTISI ---
-from pdf_yonetimi import (
-    generate_pdf, 
-    generate_combined_standings_pdf, 
-    generate_klasman_pdf, 
-    generate_toplu_klasman_pdf, 
-    draw_matrix_pdf
-)
+from pdf_yonetimi import generate_pdf, generate_combined_standings_pdf, generate_klasman_pdf, generate_toplu_klasman_pdf, draw_matrix_pdf, generate_mac_sonuc_belgesi
+
 def arkaplan_ekle(resim_yolu):
     try:
         with open(resim_yolu, "rb") as image_file:
@@ -357,93 +352,6 @@ def render_html_matrix(takimlar, df_grup):
     html += '</table>'
     return html
     
-def generate_matrix_pdf(grup_adi, takimlar, df_grup):
-    def get_plain_score(row, target_t1):
-        is_t1 = row['Takım 1'] == target_t1
-        durum = str(row.get('Durum', 'Tamamlandı'))
-        if durum == "Takım 1 (W/O)": durum = "Takım 2 Kazandı (W/O)"
-        elif durum == "Takım 2 (W/O)": durum = "Takım 1 Kazandı (W/O)"
-        elif durum == "Takım 1 (Ret.)": durum = "Takım 2 Kazandı (Ret.)"
-        elif durum == "Takım 2 (Ret.)": durum = "Takım 1 Kazandı (Ret.)"
-
-        brans = str(row['Branş']).replace("1. Tekler", "1T").replace("2. Tekler", "2T").replace("3. Tekler", "3T").replace("1. Çiftler", "1Ç").replace("2. Çiftler", "2Ç").replace("Çiftler", "Ç")
-
-        if durum == "Çift Taraflı W/O": 
-            return f"{brans}: Çift W/O"
-        if durum == "Takım 1 Kazandı (W/O)": 
-            return f"{brans}: W/O(G)" if is_t1 else f"{brans}: W/O(M)"
-        if durum == "Takım 2 Kazandı (W/O)": 
-            return f"{brans}: W/O(M)" if is_t1 else f"{brans}: W/O(G)"
-
-        s1_1, s1_2 = int(row.get('1.Set T1', 0)), int(row.get('1.Set T2', 0))
-        s2_1, s2_2 = int(row.get('2.Set T1', 0)), int(row.get('2.Set T2', 0))
-        s3_1, s3_2 = int(row.get('3.Set T1', 0)), int(row.get('3.Set T2', 0))
-
-        if not is_t1:
-            s1_1, s1_2 = s1_2, s1_1
-            s2_1, s2_2 = s2_2, s2_1
-            s3_1, s3_2 = s3_2, s3_1
-
-        if s1_1 == 0 and s1_2 == 0 and s2_1 == 0 and s2_2 == 0 and "Ret." not in durum:
-            return ""
-
-        score_str = f"{s1_1}-{s1_2}"
-        if s2_1 != 0 or s2_2 != 0 or s1_1 != 0 or s1_2 != 0: score_str += f" | {s2_1}-{s2_2}"
-        if s3_1 != 0 or s3_2 != 0: score_str += f" | {s3_1}-{s3_2}"
-
-        if durum == "Takım 1 Kazandı (Ret.)": 
-            score_str += " Ret.(G)" if is_t1 else " Ret.(M)"
-        elif durum == "Takım 2 Kazandı (Ret.)": 
-            score_str += " Ret.(M)" if is_t1 else " Ret.(G)"
-
-        return f"{brans}: {score_str}"
-
-    matrix = pd.DataFrame(index=takimlar, columns=takimlar)
-    matrix = matrix.fillna("")
-    for t in takimlar: matrix.at[t, t] = "X"
-    
-    on_hesap_sonuclari = {}
-    for (t_a, t_b), group_df in df_grup.groupby(['Takım 1', 'Takım 2']):
-        match_key = tuple(sorted([t_a, t_b]))
-        if match_key not in on_hesap_sonuclari:
-            aradaki_maclar = df_grup[((df_grup['Takım 1'] == match_key[0]) & (df_grup['Takım 2'] == match_key[1])) | 
-                                     ((df_grup['Takım 1'] == match_key[1]) & (df_grup['Takım 2'] == match_key[0]))]
-            stats = hesapla_tum_puan_durumu(aradaki_maclar)
-            on_hesap_sonuclari[match_key] = stats
-
-    for (t1, t2), group in df_grup.groupby(['Takım 1', 'Takım 2']):
-        t1_total, t2_total = 0, 0
-        t1_details = []
-        t2_details = []
-        for _, row in sort_maclar(group).iterrows():
-            w1, w2 = hesapla_mac_kazanani(row)
-            t1_total += w1; t2_total += w2
-            
-            det1 = get_plain_score(row, t1)
-            if det1: t1_details.append(det1)
-            det2 = get_plain_score(row, t2)
-            if det2: t2_details.append(det2)
-
-        if t1_total > 0 or t2_total > 0:
-            match_key = tuple(sorted([t1, t2]))
-            temp_stats = on_hesap_sonuclari.get(match_key, pd.DataFrame())
-            
-            t1_galibiyet = 0
-            t2_galibiyet = 0
-            if not temp_stats.empty:
-                r1 = temp_stats[temp_stats['Takım'] == t1]
-                r2 = temp_stats[temp_stats['Takım'] == t2]
-                if not r1.empty: t1_galibiyet = r1.iloc[0]['Galibiyet']
-                if not r2.empty: t2_galibiyet = r2.iloc[0]['Galibiyet']
-
-            yildiz_t1 = "*" if t1_galibiyet > t2_galibiyet else ""
-            yildiz_t2 = "*" if t2_galibiyet > t1_galibiyet else ""
-            
-            matrix.at[t1, t2] = f"{t1_total}{yildiz_t1} - {t2_total}{yildiz_t2}\n" + "\n".join(t1_details)
-            matrix.at[t2, t1] = f"{t2_total}{yildiz_t2} - {t1_total}{yildiz_t1}\n" + "\n".join(t2_details)
-            
-    # PDF çizim motorunu harici dosyadan çağırıyoruz
-    return draw_matrix_pdf(grup_adi, takimlar, matrix)
 def hesapla_tum_puan_durumu(df_girdi):
     if df_girdi.empty: return pd.DataFrame()
     df = df_girdi.copy()
@@ -2232,8 +2140,7 @@ else:
                         if ortak_veriyi_kaydet():
                             st.success(f"{sil_hakem} sistemden kaldırıldı.")
                             st.rerun()
-
-    elif menu_secim == "🏆 Puan Durumu":
+                            elif menu_secim == "🏆 Puan Durumu":
         if not st.session_state.skor_tablosu.empty:
             tab_puan, tab_klasman = st.tabs(["📊 Grup Puan Durumları", "Nihai Klasman"])
             
@@ -2250,7 +2157,7 @@ else:
                     gosterilecek_gruplar = mevcut_gruplar if "Tüm Grupları Göster" in secilen_gruplar or len(secilen_gruplar) == 0 else [g for g in secilen_gruplar if g != "Tüm Grupları Göster"]
 
                     pdf_gruplar_data = {}
-                    manuel_siralanan_gruplar = [] # --- YENİ EKLENEN LİSTE ---
+                    manuel_siralanan_gruplar = [] 
 
                     for gp in dogal_sirala(gosterilecek_gruplar):
                         if gp in mevcut_gruplar:
@@ -2940,6 +2847,57 @@ else:
                     if st.button("🔄 Tüm Bireysel Maçları Ekranda Göster / Gizle"):
                         st.session_state.expand_all = not st.session_state.expand_all; st.rerun()
                     
+                    with st.expander("🖨️ Islak İmzalı Hakem Maç Kağıtları"):
+                        st.info("Kortlara dağıtılacak boş skor/imza kağıtlarını buradan üretebilirsiniz. Tüm günün maçlarını tek PDF'te basabilir veya sadece seçtiğiniz bir eşleşmenin kağıdını çıkarabilirsiniz.")
+                        
+                        gunluk_eslesmeler_listesi = []
+                        eslesme_secenekleri = ["Seçiniz"]
+                        
+                        for (grup_adi, eslesme_adi), g_df in df_gunluk_safe.groupby(['Grup', 'Eşleşme']):
+                            tarih_str = g_df.iloc[0]['Tarih']
+                            saat = g_df.iloc[0]['Maç Saati']
+                            kort = g_df.iloc[0]['Kort']
+                            t1 = g_df.iloc[0]['Takım 1']
+                            t2 = g_df.iloc[0]['Takım 2']
+                            hakem = g_df.iloc[0]['Hakem']
+                            
+                            alt_maclar = [{"Branş": r['Branş']} for _, r in sort_maclar(g_df).iterrows()]
+                            
+                            mac_dict = {
+                                "Grup": grup_adi, "Tarih": tarih_str, "Maç Saati": saat, 
+                                "Kort": kort, "Takım 1": t1, "Takım 2": t2, "Hakem": hakem, 
+                                "Alt Maclar": alt_maclar, "Eşleşme": eslesme_adi
+                            }
+                            gunluk_eslesmeler_listesi.append(mac_dict)
+                            eslesme_secenekleri.append(f"{saat} | {kort} | {grup_adi} | {t1} vs {t2}")
+
+                        if gunluk_eslesmeler_listesi:
+                            pdf_bytes_toplu = generate_mac_sonuc_belgesi(gunluk_eslesmeler_listesi)
+                            st.download_button(
+                                label=f"📥 Günün Tüm Maç Kağıtlarını Tek PDF'te İndir ({len(gunluk_eslesmeler_listesi)} Sayfa)",
+                                data=pdf_bytes_toplu,
+                                file_name=f"Tum_Hakem_Kagitlari_{formatted_tarih}.pdf",
+                                mime="application/pdf",
+                                type="primary",
+                                use_container_width=True
+                            )
+                            
+                            st.markdown("<hr style='margin: 10px 0;'>", unsafe_allow_html=True)
+                            st.markdown("**Veya Tek Bir Eşleşmeyi Yeniden Yazdır:**")
+                            secilen_tekil = st.selectbox("Kağıdı çıkarılacak maçı seçin:", eslesme_secenekleri, key="tekil_kagit_secici")
+                            if secilen_tekil != "Seçiniz":
+                                secilen_idx = eslesme_secenekleri.index(secilen_tekil) - 1
+                                tekil_veri = [gunluk_eslesmeler_listesi[secilen_idx]]
+                                pdf_bytes_tekil = generate_mac_sonuc_belgesi(tekil_veri)
+                                st.download_button(
+                                    label="📥 Sadece Bu Maçın Kağıdını İndir",
+                                    data=pdf_bytes_tekil,
+                                    file_name=f"Hakem_Kagidi_{tekil_veri[0]['Takım 1']}_vs_{tekil_veri[0]['Takım 2']}.pdf",
+                                    mime="application/pdf"
+                                )
+                        else:
+                            st.warning("Bu tarih için programlanmış maç bulunmuyor.")
+
                     with st.expander("📄 PDF Çıktı Ayarları"):
                         gosterim_sekli = st.radio("PDF Gösterim Şekli:", ["Bireysel Maçlar (Detaylı Hiyerarşik Çıktı)", "Takım Maçları (Sadece Genel Skor)"], horizontal=True)
                         is_bireysel_pdf = "Bireysel" in gosterim_sekli
