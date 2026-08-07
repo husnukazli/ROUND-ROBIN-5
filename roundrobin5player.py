@@ -1664,7 +1664,7 @@ else:
 
     elif menu_secim == "📝 Esame Kontrol Merkezi":
         if st.session_state.admin_mi:
-            st.info("ℹ️ Kaptanların girdikleri kadrolar (kapalı zarflar) burada toplanır. Geçmiş veya gelecek tüm esameleri tarih seçerek inceleyebilirsin.")
+            st.info("ℹ️ Kaptanların veya Hakemlerin girdikleri kadrolar burada toplanır. Geçmiş veya gelecek tüm esameleri tarih seçerek inceleyebilirsin.")
             
             tum_tarihler = st.session_state.mac_programi['Tarih'].dropna().unique().tolist()
             
@@ -1698,26 +1698,38 @@ else:
                         t1_girdi = t1 in kasadaki_veri
                         t2_girdi = t2 in kasadaki_veri
                         
-                        durum_ikon_t1 = "✅ Teslim Etti" if t1_girdi else "❌ Bekleniyor"
-                        durum_ikon_t2 = "✅ Teslim Etti" if t2_girdi else "❌ Bekleniyor"
+                        kaynak_t1 = kasadaki_veri.get(t1, {}).get("_kaynak", "Kaptan") if t1_girdi else ""
+                        kaynak_t2 = kasadaki_veri.get(t2, {}).get("_kaynak", "Kaptan") if t2_girdi else ""
+                        
+                        durum_ikon_t1 = f"✅ Teslim Etti ({kaynak_t1})" if t1_girdi else "❌ Bekleniyor"
+                        durum_ikon_t2 = f"✅ Teslim Etti ({kaynak_t2})" if t2_girdi else "❌ Bekleniyor"
                         
                         with st.expander(f"{saat} | {kort} | {grup} | {t1} ({durum_ikon_t1})  VS  {t2} ({durum_ikon_t2})", expanded=not is_approved):
                             if is_approved:
                                 st.success(f"Bu esameler onaylanmış ve {secilen_tarih} tarihli Maç Programına yansıtılmıştır.")
+                                if kaynak_t1 == "Hakem" or kaynak_t2 == "Hakem":
+                                    st.warning("⚠️ Bu kadrolardan biri veya ikisi Kaptan yerine **Gözlemci Hakem** tarafından girilip onaylanmıştır.")
                             
                             c1, c2 = st.columns(2)
                             with c1:
                                 st.markdown(f"**🛡️ {t1} Kadrosu**")
                                 if t1_girdi:
-                                    for k, v in kasadaki_veri[t1].items(): st.write(f"- {k}: **{v}**")
-                                else: st.warning("Kaptan henüz giriş yapmadı.")
+                                    if kaynak_t1 == "Hakem": st.caption("*(Hakem Tarafından Girildi)*")
+                                    for k, v in kasadaki_veri[t1].items(): 
+                                        if k != "_kaynak": st.write(f"- {k}: **{v}**")
+                                else: st.warning("Henüz giriş yapılmadı.")
                             with c2:
                                 st.markdown(f"**🛡️ {t2} Kadrosu**")
                                 if t2_girdi:
-                                    for k, v in kasadaki_veri[t2].items(): st.write(f"- {k}: **{v}**")
-                                else: st.warning("Kaptan henüz giriş yapmadı.")
+                                    if kaynak_t2 == "Hakem": st.caption("*(Hakem Tarafından Girildi)*")
+                                    for k, v in kasadaki_veri[t2].items(): 
+                                        if k != "_kaynak": st.write(f"- {k}: **{v}**")
+                                else: st.warning("Henüz giriş yapılmadı.")
                                 
                             if not is_approved:
+                                if kaynak_t1 == "Hakem" or kaynak_t2 == "Hakem":
+                                    st.warning("⚠️ Yukarıdaki girişlerden en az biri **Gözlemci Hakem** tarafından yapılmıştır.")
+                                    
                                 if st.button("📢 Esameleri Onayla ve Maç Programına Yansıt (Zarfları Aç)", key=f"onay_{match_key}", type="primary"):
                                     st.session_state.esame_onayli[match_key] = True
                                     
