@@ -370,5 +370,129 @@ def draw_matrix_pdf(grup_adi, takimlar, matrix):
                     pdf.cell(col_width, 4, to_pdf_text(line), align='C', ln=2)
         
         pdf.set_xy(10, y_start + row_height)
+        def generate_mac_sonuc_belgesi(eslesmeler_listesi):
+    pdf = FPDF(orientation='P', unit='mm', format='A4')
+    setup_pdf_fonts(pdf)
+    
+    for eslesme in eslesmeler_listesi:
+        pdf.add_page() 
         
+        grup_adi = eslesme.get("Grup", "")
+        tarih = eslesme.get("Tarih", "")
+        saat = eslesme.get("Maç Saati", "")
+        kort = eslesme.get("Kort", "")
+        takim1 = eslesme.get("Takım 1", "")
+        takim2 = eslesme.get("Takım 2", "")
+        hakem = eslesme.get("Hakem", "")
+        alt_maclar = eslesme.get("Alt Maclar", [])
+        
+        apply_font(pdf, bold=True, size=14)
+        pdf.cell(0, 8, to_pdf_text(grup_adi), ln=True, align='C')
+        
+        apply_font(pdf, bold=False, size=12)
+        if tarih:
+            pdf.cell(0, 6, to_pdf_text(tarih), ln=True, align='C')
+            
+        saat_kort_metni = []
+        if saat: saat_kort_metni.append(f"Saat: {saat}")
+        if kort: saat_kort_metni.append(f"Kort: {kort}")
+        if saat_kort_metni:
+            pdf.cell(0, 6, to_pdf_text(" - ".join(saat_kort_metni)), ln=True, align='C')
+            
+        pdf.ln(8)
+        
+        apply_font(pdf, bold=True, size=12)
+        pdf.cell(65, 8, to_pdf_text(f"[  ]  {takim1}"), ln=0, align='L')
+        pdf.cell(65, 8, to_pdf_text(f"[  ]  {takim2}"), ln=0, align='L')
+        pdf.cell(60, 8, to_pdf_text("SKOR: [    ] - [    ]"), ln=1, align='R')
+        
+        pdf.ln(4)
+        
+        apply_font(pdf, bold=True, size=10)
+        pdf.set_fill_color(220, 220, 220)
+        pdf.cell(30, 8, to_pdf_text("Maç Türü"), border=1, fill=True, align='C')
+        pdf.cell(50, 8, to_pdf_text("1. Takım Oyuncusu"), border=1, fill=True, align='C')
+        pdf.cell(50, 8, to_pdf_text("2. Takım Oyuncusu"), border=1, fill=True, align='C')
+        pdf.cell(15, 8, to_pdf_text("1. S"), border=1, fill=True, align='C')
+        pdf.cell(15, 8, to_pdf_text("2. S"), border=1, fill=True, align='C')
+        pdf.cell(15, 8, to_pdf_text("3. S"), border=1, fill=True, align='C')
+        pdf.cell(15, 8, to_pdf_text("Skor"), border=1, fill=True, align='C')
+        pdf.ln()
+        
+        apply_font(pdf, bold=False, size=10)
+        
+        if not alt_maclar:
+            alt_maclar = [{"Branş": "1. Tekler"}, {"Branş": "2. Tekler"}, {"Branş": "Çiftler"}]
+            
+        for mac in alt_maclar:
+            brans = mac.get("Branş", "")
+            alt_etiket = "(1 Nolu)" if "1. Tekler" in brans else ("(2 Nolu)" if "2. Tekler" in brans else ("(3 Nolu)" if "3. Tekler" in brans else ""))
+            brans_metni = f"{brans}\n{alt_etiket}" if alt_etiket else brans
+            
+            is_ciftler = "Çiftler" in brans
+            satir_h = 16 if is_ciftler else 12 
+            
+            x = pdf.get_x()
+            y = pdf.get_y()
+            
+            pdf.rect(x, y, 30, satir_h)
+            pdf.set_xy(x, y + (satir_h/2) - 4)
+            pdf.multi_cell(30, 4, to_pdf_text(brans_metni), align='C')
+            
+            pdf.rect(x + 30, y, 50, satir_h)
+            pdf.rect(x + 80, y, 50, satir_h)
+            
+            if is_ciftler:
+                pdf.set_xy(x + 30, y)
+                pdf.cell(50, 8, to_pdf_text(" [  ] "), border='B', align='L')
+                pdf.set_xy(x + 30, y + 8)
+                pdf.cell(50, 8, to_pdf_text(""), border=0, align='L')
+                
+                pdf.set_xy(x + 80, y)
+                pdf.cell(50, 8, to_pdf_text(" [  ] "), border='B', align='L')
+                pdf.set_xy(x + 80, y + 8)
+                pdf.cell(50, 8, to_pdf_text(""), border=0, align='L')
+            else:
+                pdf.set_xy(x + 30, y)
+                pdf.cell(50, satir_h, to_pdf_text(" [  ] "), align='L')
+                
+                pdf.set_xy(x + 80, y)
+                pdf.cell(50, satir_h, to_pdf_text(" [  ] "), align='L')
+                
+            pdf.set_xy(x + 130, y)
+            pdf.rect(x + 130, y, 15, satir_h)
+            pdf.rect(x + 145, y, 15, satir_h)
+            pdf.rect(x + 160, y, 15, satir_h)
+            pdf.rect(x + 175, y, 15, satir_h)
+            
+            pdf.set_y(y + satir_h)
+            
+        pdf.ln(18) 
+        apply_font(pdf, bold=True, size=11)
+        pdf.cell(130, 8, to_pdf_text("KAZANAN TAKIM: ..........................................................................."), ln=0)
+        pdf.cell(60, 8, to_pdf_text("GENEL SKOR: [    ] - [    ]"), ln=1, align='R')
+        
+        pdf.ln(20) 
+        
+        apply_font(pdf, bold=True, size=10)
+        pdf.cell(63, 5, to_pdf_text(f"{takim1} Kaptanı"), align='C')
+        pdf.cell(64, 5, to_pdf_text("Müsabaka Hakemi"), align='C')
+        pdf.cell(63, 5, to_pdf_text(f"{takim2} Kaptanı"), align='C')
+        pdf.ln(5)
+        
+        apply_font(pdf, bold=False, size=9)
+        pdf.cell(63, 5, to_pdf_text("İmza"), align='C')
+        hakem_isim = hakem if hakem and hakem != "Atanmadı" else "İmza"
+        pdf.cell(64, 5, to_pdf_text(hakem_isim), align='C')
+        pdf.cell(63, 5, to_pdf_text("İmza"), align='C')
+        
+        pdf.ln(25) 
+        
+        apply_font(pdf, bold=True, size=10)
+        pdf.cell(0, 6, to_pdf_text("NOTLAR:"), ln=True)
+        pdf.set_font(style="")
+        for _ in range(4):
+            pdf.cell(0, 8, to_pdf_text("........................................................................................................................................................................................................"), ln=True)
+
+    return get_pdf_bytes(pdf)
     return get_pdf_bytes(pdf)
