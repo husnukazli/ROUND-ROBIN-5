@@ -2140,7 +2140,8 @@ else:
                         if ortak_veriyi_kaydet():
                             st.success(f"{sil_hakem} sistemden kaldırıldı.")
                             st.rerun()
-                    elif menu_secim == "🏆 Puan Durumu":
+
+    elif menu_secim == "🏆 Puan Durumu":
         if not st.session_state.skor_tablosu.empty:
             tab_puan, tab_klasman = st.tabs(["📊 Grup Puan Durumları", "Nihai Klasman"])
             
