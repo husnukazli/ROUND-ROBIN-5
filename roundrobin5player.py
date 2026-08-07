@@ -2940,7 +2940,56 @@ else:
                     st.markdown("### ⚙️ Görünüm ve Çıktı Ayarları")
                     if st.button("🔄 Tüm Bireysel Maçları Ekranda Göster / Gizle"):
                         st.session_state.expand_all = not st.session_state.expand_all; st.rerun()
-                    
+                    with st.expander("🖨️ Islak İmzalı Hakem Maç Kağıtları"):
+                        st.info("Kortlara dağıtılacak boş skor/imza kağıtlarını buradan üretebilirsiniz. Tüm günün maçlarını tek PDF'te basabilir veya sadece seçtiğiniz bir eşleşmenin kağıdını çıkarabilirsiniz.")
+                        
+                        gunluk_eslesmeler_listesi = []
+                        eslesme_secenekleri = ["Seçiniz"]
+                        
+                        for (grup_adi, eslesme_adi), g_df in df_gunluk_safe.groupby(['Grup', 'Eşleşme']):
+                            tarih_str = g_df.iloc[0]['Tarih']
+                            saat = g_df.iloc[0]['Maç Saati']
+                            kort = g_df.iloc[0]['Kort']
+                            t1 = g_df.iloc[0]['Takım 1']
+                            t2 = g_df.iloc[0]['Takım 2']
+                            hakem = g_df.iloc[0]['Hakem']
+                            
+                            alt_maclar = [{"Branş": r['Branş']} for _, r in sort_maclar(g_df).iterrows()]
+                            
+                            mac_dict = {
+                                "Grup": grup_adi, "Tarih": tarih_str, "Maç Saati": saat, 
+                                "Kort": kort, "Takım 1": t1, "Takım 2": t2, "Hakem": hakem, 
+                                "Alt Maclar": alt_maclar, "Eşleşme": eslesme_adi
+                            }
+                            gunluk_eslesmeler_listesi.append(mac_dict)
+                            eslesme_secenekleri.append(f"{saat} | {kort} | {grup_adi} | {t1} vs {t2}")
+
+                        if gunluk_eslesmeler_listesi:
+                            pdf_bytes_toplu = generate_mac_sonuc_belgesi(gunluk_eslesmeler_listesi)
+                            st.download_button(
+                                label=f"📥 Günün Tüm Maç Kağıtlarını Tek PDF'te İndir ({len(gunluk_eslesmeler_listesi)} Sayfa)",
+                                data=pdf_bytes_toplu,
+                                file_name=f"Tum_Hakem_Kagitlari_{formatted_tarih}.pdf",
+                                mime="application/pdf",
+                                type="primary",
+                                use_container_width=True
+                            )
+                            
+                            st.markdown("<hr style='margin: 10px 0;'>", unsafe_allow_html=True)
+                            st.markdown("**Veya Tek Bir Eşleşmeyi Yeniden Yazdır:**")
+                            secilen_tekil = st.selectbox("Kağıdı çıkarılacak maçı seçin:", eslesme_secenekleri, key="tekil_kagit_secici")
+                            if secilen_tekil != "Seçiniz":
+                                secilen_idx = eslesme_secenekleri.index(secilen_tekil) - 1
+                                tekil_veri = [gunluk_eslesmeler_listesi[secilen_idx]]
+                                pdf_bytes_tekil = generate_mac_sonuc_belgesi(tekil_veri)
+                                st.download_button(
+                                    label="📥 Sadece Bu Maçın Kağıdını İndir",
+                                    data=pdf_bytes_tekil,
+                                    file_name=f"Hakem_Kagidi_{tekil_veri[0]['Takım 1']}_vs_{tekil_veri[0]['Takım 2']}.pdf",
+                                    mime="application/pdf"
+                                )
+                        else:
+                            st.warning("Bu tarih için programlanmış maç bulunmuyor.")
                     with st.expander("📄 PDF Çıktı Ayarları"):
                         gosterim_sekli = st.radio("PDF Gösterim Şekli:", ["Bireysel Maçlar (Detaylı Hiyerarşik Çıktı)", "Takım Maçları (Sadece Genel Skor)"], horizontal=True)
                         is_bireysel_pdf = "Bireysel" in gosterim_sekli
