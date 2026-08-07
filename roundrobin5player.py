@@ -2406,7 +2406,7 @@ else:
                                 st.markdown(html_matrix, unsafe_allow_html=True)
                                 
                                 st.write("")
-                                matris_pdf_bytes = generate_matrix_pdf(gp, matris_takimlar, df_gp_matches)
+                                matris_pdf_bytes = draw_matrix_pdf(gp, matris_takimlar, df_gp_matches)
                                 st.download_button(label="📥 Matrisi İndir (PDF - Sade Görünüm)", data=matris_pdf_bytes, file_name=f"matris_{gp}.pdf", mime="application/pdf", key=f"mat_pdf_{gp}")
                             
                             if st.session_state.admin_mi:
