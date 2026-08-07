@@ -497,3 +497,6 @@ def generate_mac_sonuc_belgesi(eslesmeler_listesi):
             pdf.cell(0, 8, to_pdf_text("........................................................................................................................................................................................................"), ln=True)
 
     return get_pdf_bytes(pdf)
+
+def generate_matrix_pdf(grup_adi, takimlar, matrix):
+    return draw_matrix_pdf(grup_adi, takimlar, matrix)
