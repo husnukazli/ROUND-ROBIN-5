@@ -1324,7 +1324,7 @@ else:
             if df_hakem_maclari.empty:
                 st.success("Şu ana kadar üzerinize atanmış herhangi bir görev bulunmamaktadır.")
             else:
-                bugun = datetime.date.today()
+                bugun = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=3))).date()
                 
                 tarihler = df_hakem_maclari['Tarih'].dropna().unique()
                 tarihler_sirali = sorted(tarihler, key=lambda x: datetime.datetime.strptime(x, "%d.%m.%Y").date())
