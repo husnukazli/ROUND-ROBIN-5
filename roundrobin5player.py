@@ -1800,11 +1800,11 @@ else:
                                                             st.session_state.skor_tablosu.at[idx, k] = guncel_row[k]
                                                     if ortak_veriyi_kaydet():
                                                         # Kazananı bulup Mavi yapıyoruz
-                                                        t1_isim = f":blue[{t1}]" if t1_wins > t2_wins else t1
-                                                        t2_isim = f":blue[{t2}]" if t2_wins > t1_wins else t2
+                                                        t1_isim = f":red[{t1}]" if t1_wins > t2_wins else t1
+                                                        t2_isim = f":red[{t2}]" if t2_wins > t1_wins else t2
                                                         
-                                                        # Evrensel Skor Formatı: Takım1 2 - 1 Takım2
-                                                        st.session_state.basari_mesaji = f"Maç Skoru Kaydedildi! Güncel Sonuç: {t1_isim} {t1_wins} - {t2_wins} {t2_isim}"
+                                                        # Tam istediğin format: Takım 1 Skor - Takım 2 Skor
+                                                        st.session_state.basari_mesaji = f"Maç Skoru Kaydedildi! Güncel Sonuç: {t1_isim}: {t1_wins} - {t2_isim}: {t2_wins}"
                                                         st.rerun()
                                                     else:
                                                         st.error("Sistem meşgul, lütfen tekrar deneyin.")
