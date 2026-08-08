@@ -1383,6 +1383,15 @@ else:
             aktif_hakem = st.session_state.aktif_hakem
             st.info(f"Hoş geldin, **{aktif_hakem}**. Aşağıda turnuva boyunca üzerinize atanan maçlar listelenmiştir. Kaptanlardan gelen esameleri ve maç skorlarını buradan girebilirsiniz.")
             
+            # --- YENİ: ÇARPIYLA KAPATILAN KALICI BAŞARI MESAJI ---
+            if "basari_mesaji" in st.session_state:
+                st.success(f"🏆 **{st.session_state.basari_mesaji}**")
+                if st.button("✖️ Mesajı Kapat", key="btn_kapat_basari", use_container_width=True):
+                    del st.session_state.basari_mesaji
+                    st.rerun()
+                st.markdown("<br>", unsafe_allow_html=True)
+            # --------------------------------------------------------
+            
             df_hakem_maclari = st.session_state.mac_programi[st.session_state.mac_programi['Hakem'] == aktif_hakem]
             
             if df_hakem_maclari.empty:
