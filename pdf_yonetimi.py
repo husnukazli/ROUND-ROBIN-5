@@ -138,7 +138,6 @@ def generate_combined_standings_pdf(gruplar_dict, manuel_gruplar=None):
     for grup_adi, df in gruplar_dict.items():
         satir_sayisi = len(df)
         
-        # Manuel uyarı eklenecekse PDF'te sayfa sonu taşmasını önlemek için ekstra pay bırakıyoruz
         ekstra_pay = 10 if grup_adi in manuel_gruplar else 0
         gerekli_yukseklik = 10 + 8 + (satir_sayisi * 8) + 10 + ekstra_pay 
         
@@ -158,14 +157,12 @@ def generate_combined_standings_pdf(gruplar_dict, manuel_gruplar=None):
                     pdf_cell_fit(pdf, col_widths[i], 8, str(item), is_bold=False)
                 pdf.ln()
                 
-        # --- YENİ EKLENEN MANUEL SIRALAMA BİLGİ NOTU ---
         if grup_adi in manuel_gruplar:
             pdf.ln(2)
             apply_font(pdf, bold=True, size=9)
-            pdf.set_text_color(200, 50, 50) # Şık bir kırmızı uyarı rengi
+            pdf.set_text_color(200, 50, 50)
             pdf.cell(0, 6, to_pdf_text("* Not: Bu grupta averaj eşitliği veya Başhakem kararıyla Manuel Sıralama uygulanmıştır."), ln=True, align='L')
-            pdf.set_text_color(0, 0, 0) # Sonraki tablolar için rengi tekrar siyaha döndür
-        # ------------------------------------------------
+            pdf.set_text_color(0, 0, 0)
         
         pdf.ln(5)
     return get_pdf_bytes(pdf)
@@ -321,6 +318,9 @@ def draw_matrix_pdf(grup_adi, takimlar, matrix):
     pdf.ln(5)
     
     cols = ["Takımlar"] + takimlar
+    if not cols:
+        return get_pdf_bytes(pdf)
+        
     col_width = 190 / len(cols) 
     
     for col in cols:
@@ -330,25 +330,21 @@ def draw_matrix_pdf(grup_adi, takimlar, matrix):
     for t1 in takimlar:
         max_lines = 1
         for t2 in takimlar:
-            x_start += col_width
             val = ""
-            # Esnek ve güvenli arama (boşluk/karakter farkı olsa bile veriyi bulur)
             try:
                 if t1 in matrix.index and t2 in matrix.columns:
                     val = str(matrix.at[t1, t2])
                 else:
-                    # Alternatif esnek eşleştirme (strip edilmiş arama)
-                    bulundu = False
                     for m_idx in matrix.index:
                         if str(m_idx).strip() == str(t1).strip():
                             for m_col in matrix.columns:
                                 if str(m_col).strip() == str(t2).strip():
                                     val = str(matrix.at[m_idx, m_col])
-                                    bulundu = True
                                     break
-                            if bulundu: break
+                            if val: break
             except Exception:
                 val = ""
+                
             if val:
                 lines = len(val.split('\n'))
                 if lines > max_lines: max_lines = lines
@@ -367,15 +363,29 @@ def draw_matrix_pdf(grup_adi, takimlar, matrix):
         apply_font(pdf, bold=True, size=10)
         pdf_cell_fit(pdf, col_width, 4, to_pdf_text(t1), border=0, is_bold=True)
         
+        current_x = x_start
         for t2 in takimlar:
-            x_start += col_width
-            val = str(matrix.at[t1, t2])
+            current_x += col_width
+            val = ""
+            try:
+                if t1 in matrix.index and t2 in matrix.columns:
+                    val = str(matrix.at[t1, t2])
+                else:
+                    for m_idx in matrix.index:
+                        if str(m_idx).strip() == str(t1).strip():
+                            for m_col in matrix.columns:
+                                if str(m_col).strip() == str(t2).strip():
+                                    val = str(matrix.at[m_idx, m_col])
+                                    break
+                            if val: break
+            except Exception:
+                val = ""
             
-            pdf.rect(x_start, y_start, col_width, row_height)
-            pdf.set_xy(x_start, y_start + 2.5)
+            pdf.rect(current_x, y_start, col_width, row_height)
+            pdf.set_xy(current_x, y_start + 2.5)
             
             if val == "X":
-                pdf.set_xy(x_start, y_start + (row_height/2) - 2)
+                pdf.set_xy(current_x, y_start + (row_height/2) - 2)
                 apply_font(pdf, bold=True, size=11)
                 pdf.cell(col_width, 4, "X", align='C')
             elif val != "":
@@ -515,6 +525,3 @@ def generate_mac_sonuc_belgesi(eslesmeler_listesi):
             pdf.cell(0, 8, to_pdf_text("........................................................................................................................................................................................................"), ln=True)
 
     return get_pdf_bytes(pdf)
-
-def generate_matrix_pdf(grup_adi, takimlar, matrix):
-    return draw_matrix_pdf(grup_adi, takimlar, matrix)
