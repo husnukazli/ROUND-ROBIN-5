@@ -806,7 +806,7 @@ with st.sidebar:
     if st.session_state.admin_mi:
         menu_items_side = ["🏠 Ana Sayfa", "👥 Grup Ayarları", "📝 Esame Kontrol Merkezi", "✍️ Skor Girişi", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular", "👮‍♂️ Hakem Yönetimi", "⚙️ Yönetim & Dosya", "📈 İstatistikler"]
     elif st.session_state.hakem_mi:
-        menu_items_side = ["🏠 Ana Sayfa", "✍️ Gözlemci Hakem Paneli", "📅 Maç Programı"]
+        menu_items_side = ["🏠 Ana Sayfa", "✍️  Hakem Paneli", "📅 Maç Programı"]
     else:
         menu_items_side = ["🏠 Ana Sayfa", "👨‍✈️ Kaptan Girişi", "👮‍♂️ Gözlemci Hakem Girişi", "🛡️ Takım Kadroları", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular"]
 
@@ -1325,50 +1325,30 @@ else:
     # ==============================================================================
     elif menu_secim == "✍️ Gözlemci Hakem Paneli":
         
-        # --- GÜNCELLENMİŞ: KESİLMEYEN VE ARALARI AÇILMIŞ DEVASA BUTONLAR ---
+        # --- YENİ: MOBİL İÇİN DEVASA +/- BUTONLARI (UX DÜZELTMESİ) ---
         st.markdown("""
         <style>
-        /* Kapsayıcının yüksekliğini artırarak butonların yarım kalmasını (kesilmesini) engelle */
-        div[data-testid="stNumberInput"] {
-            min-height: 75px !important;
-        }
-        div[data-testid="stNumberInput"] > div {
-            min-height: 55px !important;
-            align-items: center !important;
-        }
-        
-        /* + ve - butonlarını devasa ve estetik yap */
+        /* + ve - butonlarını birbirinden uzaklaştır ve devasa yap */
         button[data-testid="stNumberInputStepDown"], 
         button[data-testid="stNumberInputStepUp"] {
-            width: 50px !important;
-            height: 50px !important;
+            width: 55px !important;
+            height: 55px !important;
+            margin: 0px 5px !important; /* Butonların arasını açar */
             background-color: #e6ecef !important;
-            border-radius: 12px !important;
-            border: 1px solid #cbd5e1 !important;
+            border-radius: 10px !important;
         }
-        
-        /* Butonlar ile ortadaki kutu arasına boşluk bırak */
-        button[data-testid="stNumberInputStepUp"] {
-            margin-left: 10px !important;
-        }
-        button[data-testid="stNumberInputStepDown"] {
-            margin-right: 10px !important;
-        }
-
-        /* Buton içindeki ok işaretlerini büyüt */
+        /* Buton içindeki ok işaretlerini kocaman yap */
         button[data-testid="stNumberInputStepDown"] svg, 
         button[data-testid="stNumberInputStepUp"] svg {
-            width: 22px !important;
-            height: 22px !important;
+            width: 25px !important;
+            height: 25px !important;
             fill: #0B3B24 !important;
         }
-        
-        /* Ortadaki skor rakamını ve kutu yüksekliğini eşitle */
+        /* Ortadaki skor rakamını büyüt */
         input[type="number"] {
-            font-size: 26px !important;
+            font-size: 24px !important;
             font-weight: bold !important;
             text-align: center !important;
-            height: 50px !important;
         }
         </style>
         """, unsafe_allow_html=True)
