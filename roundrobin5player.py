@@ -1666,10 +1666,21 @@ else:
                                                     if not ok3: hata_mesajlari.append(f"❌ {mac_tanimi} Set 3: {msg3}")
                                                     
                                                     if durum == "Tamamlandı":
-                                                        if ((s1t1 > s1t2) and (s2t1 > s2t2)) or ((s1t2 > s1t1) and (s2t2 > s2t1)): 
-                                                            if s3t1 != 0 or s3t2 != 0: hata_mesajlari.append(f"❌ {mac_tanimi}: Maç 2-0 bittiği için 3. sete skor girilemez.")
-                                                        elif ((s1t1 > s1t2) and (s2t2 > s2t1)) or ((s1t2 > s1t1) and (s2t1 > s2t2)):
-                                                            if s3t1 == 0 and s3t2 == 0: hata_mesajlari.append(f"❌ {mac_tanimi}: Setlerde 1-1 eşitlik var, 3. set skoru girilmelidir.")
+                                                                if s1t1 == 0 and s1t2 == 0 and s2t1 == 0 and s2t2 == 0 and s3t1 == 0 and s3t2 == 0:
+                                                                    hata_mesajlari.append(f"❌ {mac_tanimi}: Durum 'Tamamlandı' seçilmiş ama tüm skorlar 0-0! Maç oynanmadıysa durumunu 'Çift Taraflı W/O' veya benzeri bir seçenekle değiştirin.")
+                                                                else:
+                                                                    t1_s1_kazandi = s1t1 > s1t2
+                                                                    t2_s1_kazandi = s1t2 > s1t1
+                                                                    t1_s2_kazandi = s2t1 > s2t2
+                                                                    t2_s2_kazandi = s2t2 > s2t1
+                                                                    
+                                                                    if (t1_s1_kazandi and t1_s2_kazandi) or (t2_s1_kazandi and t2_s2_kazandi): 
+                                                                        if s3t1 != 0 or s3t2 != 0:
+                                                                            hata_mesajlari.append(f"❌ {mac_tanimi}: Maç 2-0 bittiği için 3. sete skor girilemez.")
+                                                                    
+                                                                    elif (t1_s1_kazandi and t2_s2_kazandi) or (t2_s1_kazandi and t1_s2_kazandi):
+                                                                        if s3t1 == 0 and s3t2 == 0:
+                                                                            hata_mesajlari.append(f"❌ {mac_tanimi}: Setlerde 1-1 eşitlik var, 3. set skoru girilmelidir.")
                                                 
                                                 if hata_mesajlari:
                                                     for h in hata_mesajlari: st.error(h)
@@ -2264,18 +2275,21 @@ else:
                             if not ok3: hata_mesajlari.append(f"{mac_tanimi} Set 3: {msg3}")
                             
                             if durum == "Tamamlandı":
-                                t1_s1_kazandi = s1t1 > s1t2
-                                t2_s1_kazandi = s1t2 > s1t1
-                                t1_s2_kazandi = s2t1 > s2t2
-                                t2_s2_kazandi = s2t2 > s2t1
-                                
-                                if (t1_s1_kazandi and t1_s2_kazandi) or (t2_s1_kazandi and t2_s2_kazandi): 
-                                    if s3t1 != 0 or s3t2 != 0:
-                                        hata_mesajlari.append(f"{mac_tanimi}: Maç 2-0 bittiği için 3. sete skor girilemez.")
-                                
-                                elif (t1_s1_kazandi and t2_s2_kazandi) or (t2_s1_kazandi and t1_s2_kazandi):
-                                    if s3t1 == 0 and s3t2 == 0:
-                                        hata_mesajlari.append(f"{mac_tanimi}: Setlerde 1-1 eşitlik var, 3. set skoru girilmelidir.")
+                                if s1t1 == 0 and s1t2 == 0 and s2t1 == 0 and s2t2 == 0 and s3t1 == 0 and s3t2 == 0:
+                                    hata_mesajlari.append(f"❌ {mac_tanimi}: Durum 'Tamamlandı' seçilmiş ama tüm skorlar 0-0! Maç oynanmadıysa durumunu 'Çift Taraflı W/O' veya benzeri bir seçenekle değiştirin.")
+                                else:
+                                    t1_s1_kazandi = s1t1 > s1t2
+                                    t2_s1_kazandi = s1t2 > s1t1
+                                    t1_s2_kazandi = s2t1 > s2t2
+                                    t2_s2_kazandi = s2t2 > s2t1
+                                    
+                                    if (t1_s1_kazandi and t1_s2_kazandi) or (t2_s1_kazandi and t2_s2_kazandi): 
+                                        if s3t1 != 0 or s3t2 != 0:
+                                            hata_mesajlari.append(f"❌ {mac_tanimi}: Maç 2-0 bittiği için 3. sete skor girilemez.")
+                                    
+                                    elif (t1_s1_kazandi and t2_s2_kazandi) or (t2_s1_kazandi and t1_s2_kazandi):
+                                        if s3t1 == 0 and s3t2 == 0:
+                                            hata_mesajlari.append(f"❌ {mac_tanimi}: Setlerde 1-1 eşitlik var, 3. set skoru girilmelidir.")
                         
                         if hata_mesajlari:
                             for h in hata_mesajlari: st.error(h)
