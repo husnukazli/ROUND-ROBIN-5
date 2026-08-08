@@ -1603,13 +1603,13 @@ else:
                                             st.markdown(f"**{row['Branş']}** &nbsp;&nbsp;|&nbsp;&nbsp; {row.get('T1_Oyuncu', '-')} vs {row.get('T2_Oyuncu', '-')}")
 
                                             st.markdown("<div style='background-color: rgba(128,128,128,0.05); padding: 15px; border-radius: 10px; border-left: 5px solid #0B3B24; margin-bottom: 10px;'>", unsafe_allow_html=True)
-                                                    durum_opts = ["Tamamlandı", "Takım 1 Kazandı (W/O)", "Takım 2 Kazandı (W/O)", "Takım 1 Kazandı (Ret.)", "Takım 2 Kazandı (Ret.)", "Çift Taraflı W/O"]
-                                                    mevcut_durum = str(row.get('Durum', 'Tamamlandı'))
-                                                    if mevcut_durum == "Takım 1 (W/O)": mevcut_durum = "Takım 2 Kazandı (W/O)"
-                                                    elif mevcut_durum == "Takım 2 (W/O)": mevcut_durum = "Takım 1 Kazandı (W/O)"
-                                                    elif mevcut_durum == "Takım 1 (Ret.)": mevcut_durum = "Takım 2 Kazandı (Ret.)"
-                                                    elif mevcut_durum == "Takım 2 (Ret.)": mevcut_durum = "Takım 1 Kazandı (Ret.)"
-                                                    d_idx = durum_opts.index(mevcut_durum) if mevcut_durum in durum_opts else 0
+                                            durum_opts = ["Tamamlandı", "Takım 1 Kazandı (W/O)", "Takım 2 Kazandı (W/O)", "Takım 1 Kazandı (Ret.)", "Takım 2 Kazandı (Ret.)", "Çift Taraflı W/O"]
+                                            mevcut_durum = str(row.get('Durum', 'Tamamlandı'))
+                                            if mevcut_durum == "Takım 1 (W/O)": mevcut_durum = "Takım 2 Kazandı (W/O)"
+                                            elif mevcut_durum == "Takım 2 (W/O)": mevcut_durum = "Takım 1 Kazandı (W/O)"
+                                            elif mevcut_durum == "Takım 1 (Ret.)": mevcut_durum = "Takım 2 Kazandı (Ret.)"
+                                            elif mevcut_durum == "Takım 2 (Ret.)": mevcut_durum = "Takım 1 Kazandı (Ret.)"
+                                            d_idx = durum_opts.index(mevcut_durum) if mevcut_durum in durum_opts else 0
                                                     
                                                     c_stb, c_durum = st.columns([1, 2])
                                                     with c_stb: secilen_stb = st.checkbox("Süper Tie-Break", value=bool(row.get('STB', False)), key=f"h_stb_{idx}_{idx_mp}", disabled=is_kilitli)
