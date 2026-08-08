@@ -2432,7 +2432,62 @@ else:
                                 st.markdown(html_matrix, unsafe_allow_html=True)
                                 
                                 st.write("")
-                                matris_pdf_bytes = draw_matrix_pdf(gp, matris_takimlar, df_gp_matches)
+                                
+                                # --- YENİ: PDF İÇİN GERÇEK 2B MATRİS OLUŞTURUCU ---
+                                pdf_matrix_df = pd.DataFrame(index=matris_takimlar, columns=matris_takimlar)
+                                on_hesap = {}
+                                for (t_a, t_b), group_df in df_gp_matches.groupby(['Takım 1', 'Takım 2']):
+                                    match_key = tuple(sorted([t_a, t_b]))
+                                    if match_key not in on_hesap:
+                                        ar_maclar = df_gp_matches[((df_gp_matches['Takım 1'] == match_key[0]) & (df_gp_matches['Takım 2'] == match_key[1])) | 
+                                                                  ((df_gp_matches['Takım 1'] == match_key[1]) & (df_gp_matches['Takım 2'] == match_key[0]))]
+                                        on_hesap[match_key] = hesapla_tum_puan_durumu(ar_maclar)
+                                        
+                                for t1 in matris_takimlar:
+                                    for t2 in matris_takimlar:
+                                        if t1 == t2:
+                                            pdf_matrix_df.at[t1, t2] = "X"
+                                        else:
+                                            match_key = tuple(sorted([t1, t2]))
+                                            matches = df_gp_matches[((df_gp_matches['Takım 1'] == t1) & (df_gp_matches['Takım 2'] == t2)) | ((df_gp_matches['Takım 1'] == t2) & (df_gp_matches['Takım 2'] == t1))]
+                                            if matches.empty:
+                                                pdf_matrix_df.at[t1, t2] = ""
+                                            else:
+                                                temp_stats = on_hesap.get(match_key, pd.DataFrame())
+                                                t1_w = 0; t2_w = 0
+                                                detay = []
+                                                for _, row_m in sort_maclar(matches).iterrows():
+                                                    w1, w2 = hesapla_mac_kazanani(row_m)
+                                                    if row_m['Takım 1'] == t1:
+                                                        t1_w += w1; t2_w += w2
+                                                    else:
+                                                        t1_w += w2; t2_w += w1
+                                                    
+                                                    fmt = get_formatted_match_score(row_m, t1)
+                                                    if fmt: 
+                                                        # HTML etiketlerini PDF için temizle
+                                                        clean_fmt = fmt.replace("<b>", "").replace("</b>", "").replace("<span style='opacity: 0.8;'>", "").replace("</span>", "")
+                                                        detay.append(clean_fmt)
+                                                
+                                                if t1_w == 0 and t2_w == 0 and not detay:
+                                                    pdf_matrix_df.at[t1, t2] = ""
+                                                else:
+                                                    t1_galib = 0; t2_galib = 0
+                                                    if not temp_stats.empty:
+                                                        r1 = temp_stats[temp_stats['Takım'] == t1]
+                                                        r2 = temp_stats[temp_stats['Takım'] == t2]
+                                                        if not r1.empty: t1_galib = r1.iloc[0]['Galibiyet']
+                                                        if not r2.empty: t2_galib = r2.iloc[0]['Galibiyet']
+                                                        
+                                                    c1 = "* " if t1_galib > t2_galib else ""
+                                                    c2 = " *" if t2_galib > t1_galib else ""
+                                                    
+                                                    hucre_metni = f"{c1}{t1_w} - {t2_w}{c2}"
+                                                    if detay:
+                                                        hucre_metni += "\n" + "\n".join(detay)
+                                                    pdf_matrix_df.at[t1, t2] = hucre_metni
+                                                    
+                                matris_pdf_bytes = draw_matrix_pdf(gp, matris_takimlar, pdf_matrix_df)
                                 st.download_button(label="📥 Matrisi İndir (PDF - Sade Görünüm)", data=matris_pdf_bytes, file_name=f"matris_{gp}.pdf", mime="application/pdf", key=f"mat_pdf_{gp}")
                             
                             if st.session_state.admin_mi:
