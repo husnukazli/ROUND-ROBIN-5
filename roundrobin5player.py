@@ -1655,7 +1655,7 @@ else:
                                                 ortak_veriyi_kaydet()
                                                 st.rerun()
 
-                                else:
+                            else:
                             form_verileri = {}
                             for idx_mp, row_mp in sort_maclar(g_df).iterrows():
                                 mask = (st.session_state.skor_tablosu['Grup'] == row_mp['Grup']) & \
