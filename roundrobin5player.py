@@ -1799,8 +1799,7 @@ else:
                                                         for k in ["1.Set T1", "1.Set T2", "2.Set T1", "2.Set T2", "3.Set T1", "3.Set T2", "Durum", "STB"]:
                                                             st.session_state.skor_tablosu.at[idx, k] = guncel_row[k]
                                                     if ortak_veriyi_kaydet():
-                                                        st.toast(f"✅ Kaydedildi! Sonuç: {t1} {t1_wins} - {t2_wins} {t2}", icon="🏆")
-                                                        time.sleep(1)
+                                                        st.session_state.basari_mesaji = f"Maç Skoru Kaydedildi! Güncel Sonuç: {t1} {t1_wins} - {t2_wins} {t2}"
                                                         st.rerun()
                                                     else:
                                                         st.error("Sistem meşgul, lütfen tekrar deneyin.")
