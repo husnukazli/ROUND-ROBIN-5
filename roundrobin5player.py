@@ -1436,10 +1436,27 @@ else:
                             t1_kaptan_girdi = t1 in kasadaki_veri and kasadaki_veri[t1].get("_kaynak", "Kaptan") == "Kaptan"
                             t2_kaptan_girdi = t2 in kasadaki_veri and kasadaki_veri[t2].get("_kaynak", "Kaptan") == "Kaptan"
 
-                            baslik_durumu = "🔒 (Kilitli)" if is_kilitli else ("✍️ (Skor Girişi)" if is_approved else "📋 (Esame Bekleniyor)")
-                            expander_baslik = f"🎾 {saat} - {kort} | {grup_adi} | {t1} vs {t2} {baslik_durumu}"
+                            # --- YENİ: CİDDİ VE TEMİZ METİN BELİRTEÇLERİ ---
+                            if is_kilitli:
+                                baslik_durumu = "🔒 [GEÇMİŞ/GELECEK]"
+                            elif is_approved:
+                                baslik_durumu = "✍️ [SKOR GİRİŞİ AÇIK]"
+                            else:
+                                baslik_durumu = "📋 [ESAME BEKLENİYOR]"
+                                
+                            # YENİ: Kort bilgisini KALIN, KIRMIZI RENKLİ ve Lokasyon ikonlu yaptık!
+                            expander_baslik = f"{saat} - :red[**📍 {kort}**] | {t1} vs {t2} | {baslik_durumu}"
                             
-                            with st.expander(expander_baslik, expanded=not is_kilitli):
+                            # --- YENİ: VARSAYILAN OLARAK HEPSİ KAPALI (expanded=False) ---
+                            with st.expander(expander_baslik, expanded=False):
+                                
+                                # Kutu açıldığında içeriye sade ve profesyonel uyarı bandı
+                                if not is_kilitli:
+                                    if is_approved:
+                                        st.markdown("<div style='background-color: #f8fff9; border-left: 5px solid #28a745; padding: 10px; border-radius: 4px; color: #155724; font-weight: bold; margin-bottom: 15px;'>BU MAÇIN SKOR GİRİŞİ AÇIKTIR</div>", unsafe_allow_html=True)
+                                    else:
+                                        st.markdown("<div style='background-color: #f4f8ff; border-left: 5px solid #17a2b8; padding: 10px; border-radius: 4px; color: #0c5460; font-weight: bold; margin-bottom: 15px;'>ESAMELERİN ONAYLANMASI BEKLENİYOR</div>", unsafe_allow_html=True)
+
                                 if not is_approved:
                                     hk_sent = (t1 in kasadaki_veri and kasadaki_veri[t1].get("_kaynak") == "Hakem") or \
                                               (t2 in kasadaki_veri and kasadaki_veri[t2].get("_kaynak") == "Hakem")
