@@ -1,50 +1,55 @@
 import streamlit as st
 import base64
 
-def get_base64_of_bin_file(bin_file):
-    """Görselleri HTML/CSS içinde kullanabilmek için Base64 formatına çevirir."""
-    with open(bin_file, 'rb') as f:
-        data = f.read()
-    return base64.b64encode(data).decode()
-
-def arka_plani_yukle(bg_image_path="arkaplan.jpg"):
-    """arkaplan.jpg dosyasını okuyup uygulamanın tüm sayfalarına arka plan olarak döşer."""
+def arkaplan_ekle(resim_yolu="arkaplan.jpg"):
     try:
-        bin_str = get_base64_of_bin_file(bg_image_path)
-        page_bg_img = f"""
-        <style>
-        .stApp {{
-            background-image: url("data:image/jpeg;base64,{bin_str}");
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-        }}
-        </style>
-        """
-        st.markdown(page_bg_img, unsafe_allow_html=True)
+        with open(resim_yolu, "rb") as image_file:
+            encoded_string = base64.b64encode(image_file.read()).decode()
+            
+        st.markdown(
+            f"""
+            <style>
+            .stApp {{
+                background-image: url("data:image/jpg;base64,{encoded_string}");
+                background-size: cover;
+                background-position: center;
+                background-attachment: fixed;
+            }}
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
     except FileNotFoundError:
-        # Eğer resim bulunamazsa sistem çökmesin, standart arka planla devam etsin
         pass
 
-def genel_css_ayarlarini_yukle():
-    """Uygulamanın genel kalabalıklarını (Streamlit menüleri vb.) gizler ve tabloları şıklaştırır."""
+def genel_css_yukle(admin_mi, kaptan_mi, hakem_mi):
     st.markdown("""
     <style>
-    /* Streamlit üst menüsünü ve alt bilgiyi gizle (Daha mobil/profesyonel görünüm) */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
-    
-    /* Genel tablo köşe yuvarlamaları */
-    .stDataFrame {
-        border-radius: 10px;
-        overflow: hidden;
-    }
+        footer {visibility: hidden !important;}
+        
+        .dev-buton .stButton > button {
+            border-radius: 12px;
+            min-height: 80px !important; 
+            font-size: 18px !important;
+            font-weight: 600 !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            transition: all 0.2s ease-in-out;
+        }
+        .dev-buton .stButton > button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }
     </style>
     """, unsafe_allow_html=True)
 
+    if not admin_mi and not kaptan_mi and not hakem_mi:
+        st.markdown("""
+        <style>
+            [data-testid="stToolbar"] {visibility: hidden !important;}
+        </style>
+        """, unsafe_allow_html=True)
+
 def hakem_mobil_css_yukle():
-    """Gözlemci Hakem Panelindeki devasa, kesilmeyen mobil skor butonlarının CSS kodları."""
     st.markdown("""
     <style>
     /* Kapsayıcının yüksekliğini artırarak butonların yarım kalmasını (kesilmesini) engelle */
