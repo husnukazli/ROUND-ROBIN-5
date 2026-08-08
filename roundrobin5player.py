@@ -1603,38 +1603,38 @@ else:
                                             st.markdown(f"**{row['Branş']}** &nbsp;&nbsp;|&nbsp;&nbsp; {row.get('T1_Oyuncu', '-')} vs {row.get('T2_Oyuncu', '-')}")
 
                                             st.markdown("<div style='background-color: rgba(128,128,128,0.05); padding: 15px; border-radius: 10px; border-left: 5px solid #0B3B24; margin-bottom: 10px;'>", unsafe_allow_html=True)
-                                                    durum_opts = ["Tamamlandı", "Takım 1 Kazandı (W/O)", "Takım 2 Kazandı (W/O)", "Takım 1 Kazandı (Ret.)", "Takım 2 Kazandı (Ret.)", "Çift Taraflı W/O"]
-                                                    mevcut_durum = str(row.get('Durum', 'Tamamlandı'))
-                                                    if mevcut_durum == "Takım 1 (W/O)": mevcut_durum = "Takım 2 Kazandı (W/O)"
-                                                    elif mevcut_durum == "Takım 2 (W/O)": mevcut_durum = "Takım 1 Kazandı (W/O)"
-                                                    elif mevcut_durum == "Takım 1 (Ret.)": mevcut_durum = "Takım 2 Kazandı (Ret.)"
-                                                    elif mevcut_durum == "Takım 2 (Ret.)": mevcut_durum = "Takım 1 Kazandı (Ret.)"
-                                                    d_idx = durum_opts.index(mevcut_durum) if mevcut_durum in durum_opts else 0
-                                                    
-                                                    c_stb, c_durum = st.columns([1, 2])
-                                                    with c_stb: secilen_stb = st.checkbox("Süper Tie-Break", value=bool(row.get('STB', False)), key=f"h_stb_{idx}_{idx_mp}", disabled=is_kilitli)
-                                                    with c_durum: secilen_durum = st.selectbox("Maç Durumu", options=durum_opts, index=d_idx, key=f"h_durum_{idx}_{idx_mp}", disabled=is_kilitli)
-                                                    
-                                                    is_wo = "W/O" in secilen_durum
-                                                    kutu_kilitli = is_wo or is_kilitli 
-                                                    
-                                                    st.markdown("<br><p style='font-size:13px; font-weight:bold; color:#0B3B24; margin-bottom:5px; text-align:center;'>🎾 SET SKORLARI (Mobil Giriş)</p>", unsafe_allow_html=True)
-                                                    
-                                                    c_s1, c_s2, c_s3 = st.columns(3)
-                                                    with c_s1:
-                                                        st.markdown(f"<div style='text-align:center; font-weight:bold; font-size:12px; border-bottom:2px solid #ccc; margin-bottom:10px; padding-bottom:5px;'>1. SET</div>", unsafe_allow_html=True)
-                                                        s1t1 = st.number_input(f"{t1}", min_value=0, value=0 if is_wo else int(row['1.Set T1']), step=1, key=f"h_s1t1_{idx}_{idx_mp}", disabled=kutu_kilitli)
-                                                        s1t2 = st.number_input(f"{t2}", min_value=0, value=0 if is_wo else int(row['1.Set T2']), step=1, key=f"h_s1t2_{idx}_{idx_mp}", disabled=kutu_kilitli)
-                                                    with c_s2:
-                                                        st.markdown(f"<div style='text-align:center; font-weight:bold; font-size:12px; border-bottom:2px solid #ccc; margin-bottom:10px; padding-bottom:5px;'>2. SET</div>", unsafe_allow_html=True)
-                                                        s2t1 = st.number_input(f"{t1} ", min_value=0, value=0 if is_wo else int(row['2.Set T1']), step=1, key=f"h_s2t1_{idx}_{idx_mp}", disabled=kutu_kilitli)
-                                                        s2t2 = st.number_input(f"{t2} ", min_value=0, value=0 if is_wo else int(row['2.Set T2']), step=1, key=f"h_s2t2_{idx}_{idx_mp}", disabled=kutu_kilitli)
-                                                    with c_s3:
-                                                        st.markdown(f"<div style='text-align:center; font-weight:bold; font-size:12px; border-bottom:2px solid #ccc; margin-bottom:10px; padding-bottom:5px;'>3. SET</div>", unsafe_allow_html=True)
-                                                        s3t1 = st.number_input(f"{t1}  ", min_value=0, value=0 if is_wo else int(row['3.Set T1']), step=1, key=f"h_s3t1_{idx}_{idx_mp}", disabled=kutu_kilitli)
-                                                        s3t2 = st.number_input(f"{t2}  ", min_value=0, value=0 if is_wo else int(row['3.Set T2']), step=1, key=f"h_s3t2_{idx}_{idx_mp}", disabled=kutu_kilitli)
-                                                    
-                                                    st.markdown("</div>", unsafe_allow_html=True)
+                                            durum_opts = ["Tamamlandı", "Takım 1 Kazandı (W/O)", "Takım 2 Kazandı (W/O)", "Takım 1 Kazandı (Ret.)", "Takım 2 Kazandı (Ret.)", "Çift Taraflı W/O"]
+                                            mevcut_durum = str(row.get('Durum', 'Tamamlandı'))
+                                            if mevcut_durum == "Takım 1 (W/O)": mevcut_durum = "Takım 2 Kazandı (W/O)"
+                                            elif mevcut_durum == "Takım 2 (W/O)": mevcut_durum = "Takım 1 Kazandı (W/O)"
+                                            elif mevcut_durum == "Takım 1 (Ret.)": mevcut_durum = "Takım 2 Kazandı (Ret.)"
+                                            elif mevcut_durum == "Takım 2 (Ret.)": mevcut_durum = "Takım 1 Kazandı (Ret.)"
+                                            d_idx = durum_opts.index(mevcut_durum) if mevcut_durum in durum_opts else 0
+                                            
+                                            c_stb, c_durum = st.columns([1, 2])
+                                            with c_stb: secilen_stb = st.checkbox("Süper Tie-Break", value=bool(row.get('STB', False)), key=f"h_stb_{idx}_{idx_mp}", disabled=is_kilitli)
+                                            with c_durum: secilen_durum = st.selectbox("Maç Durumu", options=durum_opts, index=d_idx, key=f"h_durum_{idx}_{idx_mp}", disabled=is_kilitli)
+                                            
+                                            is_wo = "W/O" in secilen_durum
+                                            kutu_kilitli = is_wo or is_kilitli 
+                                            
+                                            st.markdown("<br><p style='font-size:13px; font-weight:bold; color:#0B3B24; margin-bottom:5px; text-align:center;'>🎾 SET SKORLARI (Mobil Giriş)</p>", unsafe_allow_html=True)
+                                            
+                                            c_s1, c_s2, c_s3 = st.columns(3)
+                                            with c_s1:
+                                                st.markdown(f"<div style='text-align:center; font-weight:bold; font-size:12px; border-bottom:2px solid #ccc; margin-bottom:10px; padding-bottom:5px;'>1. SET</div>", unsafe_allow_html=True)
+                                                s1t1 = st.number_input(f"{t1}", min_value=0, value=0 if is_wo else int(row['1.Set T1']), step=1, key=f"h_s1t1_{idx}_{idx_mp}", disabled=kutu_kilitli)
+                                                s1t2 = st.number_input(f"{t2}", min_value=0, value=0 if is_wo else int(row['1.Set T2']), step=1, key=f"h_s1t2_{idx}_{idx_mp}", disabled=kutu_kilitli)
+                                            with c_s2:
+                                                st.markdown(f"<div style='text-align:center; font-weight:bold; font-size:12px; border-bottom:2px solid #ccc; margin-bottom:10px; padding-bottom:5px;'>2. SET</div>", unsafe_allow_html=True)
+                                                s2t1 = st.number_input(f"{t1} ", min_value=0, value=0 if is_wo else int(row['2.Set T1']), step=1, key=f"h_s2t1_{idx}_{idx_mp}", disabled=kutu_kilitli)
+                                                s2t2 = st.number_input(f"{t2} ", min_value=0, value=0 if is_wo else int(row['2.Set T2']), step=1, key=f"h_s2t2_{idx}_{idx_mp}", disabled=kutu_kilitli)
+                                            with c_s3:
+                                                st.markdown(f"<div style='text-align:center; font-weight:bold; font-size:12px; border-bottom:2px solid #ccc; margin-bottom:10px; padding-bottom:5px;'>3. SET</div>", unsafe_allow_html=True)
+                                                s3t1 = st.number_input(f"{t1}  ", min_value=0, value=0 if is_wo else int(row['3.Set T1']), step=1, key=f"h_s3t1_{idx}_{idx_mp}", disabled=kutu_kilitli)
+                                                s3t2 = st.number_input(f"{t2}  ", min_value=0, value=0 if is_wo else int(row['3.Set T2']), step=1, key=f"h_s3t2_{idx}_{idx_mp}", disabled=kutu_kilitli)
+                                            
+                                            st.markdown("</div>", unsafe_allow_html=True)
                                             
                                             form_verileri[idx] = {
                                                 "1.Set T1": s1t1, "1.Set T2": s1t2, "2.Set T1": s2t1, "2.Set T2": s2t2, "3.Set T1": s3t1, "3.Set T2": s3t2,
