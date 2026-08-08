@@ -1374,6 +1374,7 @@ else:
         </style>
         """, unsafe_allow_html=True)
         # ---------------------------------------------------------------
+        
         if st.session_state.get("sistem_kilitli", False) and not st.session_state.admin_mi:
             st.error("🚨 SİSTEM BAKIMDA: Başhakem şu an çevrimdışı (Uçak) modunda maç programı düzenliyor. Lütfen skor değişikliklerini kağıt üzerinde Başhakem masasına iletiniz.")
         elif not st.session_state.hakem_mi:
