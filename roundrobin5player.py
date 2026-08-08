@@ -414,8 +414,9 @@ def hesapla_tum_puan_durumu(df_girdi):
                     if t1_s3_win: t1_set += 1
                     elif t2_s3_win: t2_set += 1
                     else:
-                        t1_set += 1; t1_oyun += 1
-                        if s3_t2 > s3_t1: t2_oyun = max(0, t2_oyun - 1)
+                        t1_set += 1
+                        t1_oyun = s1_t1 + s2_t1 + 1
+                        t2_oyun = max(0, (s1_t2 + s2_t2) - 1)
                 else:
                     if t1_s3_win: t1_set += 1
                     elif t2_s3_win: t2_set += 1
@@ -445,8 +446,8 @@ def hesapla_tum_puan_durumu(df_girdi):
                         elif t2_s3_win: t2_set += 1
                         else:
                             t2_set += 1
-                            if not (s3_t2 > s3_t1): t2_oyun += 1
-                            if s3_t1 > s3_t2: t1_oyun = max(0, t1_oyun - 1)
+                            t2_oyun = s1_t2 + s2_t2 + 1
+                            t1_oyun = max(0, (s1_t1 + s2_t1) - 1)
                     else:
                         if t1_s3_win: t1_set += 1
                         elif t2_s3_win: t2_set += 1
@@ -806,7 +807,7 @@ with st.sidebar:
     if st.session_state.admin_mi:
         menu_items_side = ["🏠 Ana Sayfa", "👥 Grup Ayarları", "📝 Esame Kontrol Merkezi", "✍️ Skor Girişi", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular", "👮‍♂️ Hakem Yönetimi", "⚙️ Yönetim & Dosya", "📈 İstatistikler"]
     elif st.session_state.hakem_mi:
-        menu_items_side = ["🏠 Ana Sayfa", "✍️  Hakem Paneli", "📅 Maç Programı"]
+        menu_items_side = ["🏠 Ana Sayfa", "✍️ Gözlemci Hakem Paneli", "📅 Maç Programı"]
     else:
         menu_items_side = ["🏠 Ana Sayfa", "👨‍✈️ Kaptan Girişi", "👮‍♂️ Gözlemci Hakem Girişi", "🛡️ Takım Kadroları", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular"]
 
@@ -1325,30 +1326,50 @@ else:
     # ==============================================================================
     elif menu_secim == "✍️ Gözlemci Hakem Paneli":
         
-        # --- YENİ: MOBİL İÇİN DEVASA +/- BUTONLARI (UX DÜZELTMESİ) ---
+        # --- GÜNCELLENMİŞ: KESİLMEYEN VE ARALARI AÇILMIŞ DEVASA BUTONLAR ---
         st.markdown("""
         <style>
-        /* + ve - butonlarını birbirinden uzaklaştır ve devasa yap */
+        /* Kapsayıcının yüksekliğini artırarak butonların yarım kalmasını (kesilmesini) engelle */
+        div[data-testid="stNumberInput"] {
+            min-height: 75px !important;
+        }
+        div[data-testid="stNumberInput"] > div {
+            min-height: 55px !important;
+            align-items: center !important;
+        }
+        
+        /* + ve - butonlarını devasa ve estetik yap */
         button[data-testid="stNumberInputStepDown"], 
         button[data-testid="stNumberInputStepUp"] {
-            width: 55px !important;
-            height: 55px !important;
-            margin: 0px 5px !important; /* Butonların arasını açar */
+            width: 50px !important;
+            height: 50px !important;
             background-color: #e6ecef !important;
-            border-radius: 10px !important;
+            border-radius: 12px !important;
+            border: 1px solid #cbd5e1 !important;
         }
-        /* Buton içindeki ok işaretlerini kocaman yap */
+        
+        /* Butonlar ile ortadaki kutu arasına boşluk bırak */
+        button[data-testid="stNumberInputStepUp"] {
+            margin-left: 10px !important;
+        }
+        button[data-testid="stNumberInputStepDown"] {
+            margin-right: 10px !important;
+        }
+
+        /* Buton içindeki ok işaretlerini büyüt */
         button[data-testid="stNumberInputStepDown"] svg, 
         button[data-testid="stNumberInputStepUp"] svg {
-            width: 25px !important;
-            height: 25px !important;
+            width: 22px !important;
+            height: 22px !important;
             fill: #0B3B24 !important;
         }
-        /* Ortadaki skor rakamını büyüt */
+        
+        /* Ortadaki skor rakamını ve kutu yüksekliğini eşitle */
         input[type="number"] {
-            font-size: 24px !important;
+            font-size: 26px !important;
             font-weight: bold !important;
             text-align: center !important;
+            height: 50px !important;
         }
         </style>
         """, unsafe_allow_html=True)
