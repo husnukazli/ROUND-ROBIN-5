@@ -318,9 +318,6 @@ def draw_matrix_pdf(grup_adi, takimlar, matrix):
     pdf.ln(5)
     
     cols = ["Takımlar"] + takimlar
-    if not cols:
-        return get_pdf_bytes(pdf)
-        
     col_width = 190 / len(cols) 
     
     for col in cols:
@@ -331,21 +328,9 @@ def draw_matrix_pdf(grup_adi, takimlar, matrix):
         max_lines = 1
         for t2 in takimlar:
             val = ""
-            try:
-                if t1 in matrix.index and t2 in matrix.columns:
-                    val = str(matrix.at[t1, t2])
-                else:
-                    for m_idx in matrix.index:
-                        if str(m_idx).strip() == str(t1).strip():
-                            for m_col in matrix.columns:
-                                if str(m_col).strip() == str(t2).strip():
-                                    val = str(matrix.at[m_idx, m_col])
-                                    break
-                            if val: break
-            except Exception:
-                val = ""
-                
-            if val:
+            if t1 in matrix.index and t2 in matrix.columns:
+                val = str(matrix.at[t1, t2])
+            if val and val != "nan":
                 lines = len(val.split('\n'))
                 if lines > max_lines: max_lines = lines
         
@@ -367,19 +352,8 @@ def draw_matrix_pdf(grup_adi, takimlar, matrix):
         for t2 in takimlar:
             current_x += col_width
             val = ""
-            try:
-                if t1 in matrix.index and t2 in matrix.columns:
-                    val = str(matrix.at[t1, t2])
-                else:
-                    for m_idx in matrix.index:
-                        if str(m_idx).strip() == str(t1).strip():
-                            for m_col in matrix.columns:
-                                if str(m_col).strip() == str(t2).strip():
-                                    val = str(matrix.at[m_idx, m_col])
-                                    break
-                            if val: break
-            except Exception:
-                val = ""
+            if t1 in matrix.index and t2 in matrix.columns:
+                val = str(matrix.at[t1, t2])
             
             pdf.rect(current_x, y_start, col_width, row_height)
             pdf.set_xy(current_x, y_start + 2.5)
@@ -388,7 +362,7 @@ def draw_matrix_pdf(grup_adi, takimlar, matrix):
                 pdf.set_xy(current_x, y_start + (row_height/2) - 2)
                 apply_font(pdf, bold=True, size=11)
                 pdf.cell(col_width, 4, "X", align='C')
-            elif val != "":
+            elif val != "" and val != "nan":
                 lines = val.split('\n')
                 apply_font(pdf, bold=True, size=10.5)
                 pdf.cell(col_width, 4.5, to_pdf_text(lines[0]), align='C', ln=2)
