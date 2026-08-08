@@ -1324,6 +1324,35 @@ else:
     # --- SAYFA: GÖZLEMCİ HAKEM PANELİ ---
     # ==============================================================================
     elif menu_secim == "✍️ Gözlemci Hakem Paneli":
+        
+        # --- YENİ: MOBİL İÇİN DEVASA +/- BUTONLARI (UX DÜZELTMESİ) ---
+        st.markdown("""
+        <style>
+        /* + ve - butonlarını birbirinden uzaklaştır ve devasa yap */
+        button[data-testid="stNumberInputStepDown"], 
+        button[data-testid="stNumberInputStepUp"] {
+            width: 55px !important;
+            height: 55px !important;
+            margin: 0px 5px !important; /* Butonların arasını açar */
+            background-color: #e6ecef !important;
+            border-radius: 10px !important;
+        }
+        /* Buton içindeki ok işaretlerini kocaman yap */
+        button[data-testid="stNumberInputStepDown"] svg, 
+        button[data-testid="stNumberInputStepUp"] svg {
+            width: 25px !important;
+            height: 25px !important;
+            fill: #0B3B24 !important;
+        }
+        /* Ortadaki skor rakamını büyüt */
+        input[type="number"] {
+            font-size: 24px !important;
+            font-weight: bold !important;
+            text-align: center !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        # ---------------------------------------------------------------
         if st.session_state.get("sistem_kilitli", False) and not st.session_state.admin_mi:
             st.error("🚨 SİSTEM BAKIMDA: Başhakem şu an çevrimdışı (Uçak) modunda maç programı düzenliyor. Lütfen skor değişikliklerini kağıt üzerinde Başhakem masasına iletiniz.")
         elif not st.session_state.hakem_mi:
