@@ -1,19 +1,463 @@
 import pandas as pd
+import streamlit as st
+import re
+import uuid
 
-# =====================================================================
-# TENİS HESAPLAMA VE KURAL KONTROL MOTORU
-# =====================================================================
+def dogal_sirala(liste):
+    def _natural_keys(text):
+        return [int(c) if c.isdigit() else c.lower() for c in re.split(r'(\d+)', str(text))]
+    return sorted(liste, key=_natural_keys)
 
-# ANA DOSYADAN KESİLECEK 1. FONKSİYON BURAYA GELECEK:
-# def sort_maclar(df):
-# ...
+def sort_maclar(df):
+    if df.empty: return df
+    sort_map = {"3. Tekler": 1, "2. Tekler": 2, "1. Tekler": 3, "2. Çiftler": 4, "1. Çiftler": 5, "Çiftler": 6}
+    df_temp = df.copy()
+    df_temp['sira'] = df_temp['Branş'].map(sort_map).fillna(99)
+    if 'Maç Saati' in df_temp.columns and 'Kort' in df_temp.columns:
+        return df_temp.sort_values(['Maç Saati', 'Kort', 'Grup', 'Eşleşme', 'sira']).drop(columns=['sira'])
+    elif 'Eşleşme' in df_temp.columns:
+        return df_temp.sort_values(['Grup', 'Eşleşme', 'sira']).drop(columns=['sira'])
+    else:
+        return df_temp.sort_values('sira').drop(columns=['sira'])
 
+def set_gecerli_mi(t1, t2, is_set3=False, durum="Tamamlandı"):
+    if durum != "Tamamlandı": return True, ""
+    if t1 == 0 and t2 == 0: return True, ""
+    if t1 < 0 or t2 < 0: return False, "Skorlar negatif olamaz."
+    max_s, min_s = max(t1, t2), min(t1, t2)
+    diff = max_s - min_s
+    if is_set3:
+        if max_s >= 10:
+            if max_s == 10 and min_s <= 8: return True, ""
+            elif max_s > 10 and diff == 2: return True, ""
+            else: return False, "Süper Tie-Break kurallarına uymuyor."
+        else:
+            if max_s < 6: return False, "Set en az 6 oyun olmalıdır."
+            if max_s == 6 and diff >= 2: return True, ""
+            if max_s == 7 and (diff == 2 or diff == 1): return True, ""
+            return False, "Geçersiz normal set skoru."
+    else:
+        if max_s < 6: return False, "Set en az 6 oyun olmalıdır."
+        if max_s == 6 and diff >= 2: return True, ""
+        if max_s == 7 and (diff == 2 or diff == 1): return True, ""
+        return False, "Geçersiz set skoru."
 
-# ANA DOSYADAN KESİLECEK 2. FONKSİYON BURAYA GELECEK:
-# def set_gecerli_mi(s1, s2, is_set3=False, durum="Tamamlandı"):
-# ...
+def eslesmeleri_olustur(grup_adi, takimlar, grup_tipi, format_secimi):
+    if grup_tipi == "2'li Grup":
+        base_matches = [{"Gün": "1. Gün", "Eşleşme": "1 ve 2", "Takım 1": takimlar[0], "Takım 2": takimlar[1]}]
+    elif grup_tipi == "3'lü Grup":
+        base_matches = [
+            {"Gün": "1. Gün", "Eşleşme": "2 ve 3", "Takım 1": takimlar[1], "Takım 2": takimlar[2]},
+            {"Gün": "2. Gün", "Eşleşme": "1 ve 3", "Takım 1": takimlar[0], "Takım 2": takimlar[2]},
+            {"Gün": "3. Gün", "Eşleşme": "1 ve 2", "Takım 1": takimlar[0], "Takım 2": takimlar[1]},
+        ]
+    elif grup_tipi == "4'lü Grup":
+        base_matches = [
+            {"Gün": "1. Gün", "Eşleşme": "1 ve 4", "Takım 1": takimlar[0], "Takım 2": takimlar[3]},
+            {"Gün": "1. Gün", "Eşleşme": "2 ve 3", "Takım 1": takimlar[1], "Takım 2": takimlar[2]},
+            {"Gün": "2. Gün", "Eşleşme": "1 ve 3", "Takım 1": takimlar[0], "Takım 2": takimlar[2]},
+            {"Gün": "2. Gün", "Eşleşme": "2 ve 4", "Takım 1": takimlar[1], "Takım 2": takimlar[3]},
+            {"Gün": "3. Gün", "Eşleşme": "1 ve 2", "Takım 1": takimlar[0], "Takım 2": takimlar[1]},
+            {"Gün": "3. Gün", "Eşleşme": "3 ve 4", "Takım 1": takimlar[2], "Takım 2": takimlar[3]},
+        ]
+    elif grup_tipi == "5'li Grup":
+        base_matches = [
+            {"Gün": "1. Gün", "Eşleşme": "2 ve 5", "Takım 1": takimlar[1], "Takım 2": takimlar[4]},
+            {"Gün": "1. Gün", "Eşleşme": "3 ve 4", "Takım 1": takimlar[2], "Takım 2": takimlar[3]},
+            {"Gün": "2. Gün", "Eşleşme": "1 ve 5", "Takım 1": takimlar[0], "Takım 2": takimlar[4]},
+            {"Gün": "2. Gün", "Eşleşme": "2 ve 3", "Takım 1": takimlar[1], "Takım 2": takimlar[2]},
+            {"Gün": "3. Gün", "Eşleşme": "1 ve 4", "Takım 1": takimlar[0], "Takım 2": takimlar[3]},
+            {"Gün": "3. Gün", "Eşleşme": "3 ve 5", "Takım 1": takimlar[2], "Takım 2": takimlar[4]},
+            {"Gün": "4. Gün", "Eşleşme": "1 ve 3", "Takım 1": takimlar[0], "Takım 2": takimlar[2]},
+            {"Gün": "4. Gün", "Eşleşme": "2 ve 4", "Takım 1": takimlar[1], "Takım 2": takimlar[3]},
+            {"Gün": "5. Gün", "Eşleşme": "1 ve 2", "Takım 1": takimlar[0], "Takım 2": takimlar[1]},
+            {"Gün": "5. Gün", "Eşleşme": "4 ve 5", "Takım 1": takimlar[3], "Takım 2": takimlar[4]},
+        ]
+    else: 
+        base_matches = [
+            {"Gün": "1. Gün", "Eşleşme": "1 ve 6", "Takım 1": takimlar[0], "Takım 2": takimlar[5]},
+            {"Gün": "1. Gün", "Eşleşme": "2 ve 5", "Takım 1": takimlar[1], "Takım 2": takimlar[4]},
+            {"Gün": "1. Gün", "Eşleşme": "3 ve 4", "Takım 1": takimlar[2], "Takım 2": takimlar[3]},
+            {"Gün": "2. Gün", "Eşleşme": "1 ve 5", "Takım 1": takimlar[0], "Takım 2": takimlar[4]},
+            {"Gün": "2. Gün", "Eşleşme": "2 ve 3", "Takım 1": takimlar[1], "Takım 2": takimlar[2]},
+            {"Gün": "2. Gün", "Eşleşme": "4 ve 6", "Takım 1": takimlar[3], "Takım 2": takimlar[5]},
+            {"Gün": "3. Gün", "Eşleşme": "1 ve 4", "Takım 1": takimlar[0], "Takım 2": takimlar[3]},
+            {"Gün": "3. Gün", "Eşleşme": "5 ve 3", "Takım 1": takimlar[4], "Takım 2": takimlar[2]},
+            {"Gün": "3. Gün", "Eşleşme": "2 ve 6", "Takım 1": takimlar[1], "Takım 2": takimlar[5]},
+            {"Gün": "4. Gün", "Eşleşme": "1 ve 3", "Takım 1": takimlar[0], "Takım 2": takimlar[2]},
+            {"Gün": "4. Gün", "Eşleşme": "4 ve 2", "Takım 1": takimlar[3], "Takım 2": takimlar[1]},
+            {"Gün": "4. Gün", "Eşleşme": "5 ve 6", "Takım 1": takimlar[4], "Takım 2": takimlar[5]},
+            {"Gün": "5. Gün", "Eşleşme": "1 ve 2", "Takım 1": takimlar[0], "Takım 2": takimlar[1]},
+            {"Gün": "5. Gün", "Eşleşme": "4 ve 5", "Takım 1": takimlar[3], "Takım 2": takimlar[4]},
+            {"Gün": "5. Gün", "Eşleşme": "3 ve 6", "Takım 1": takimlar[2], "Takım 2": takimlar[5]},
+        ]
+    
+    if format_secimi == "5 Maçlık (3 Tek, 2 Çift)":
+        branslar = ["3. Tekler", "2. Tekler", "1. Tekler", "2. Çiftler", "1. Çiftler"]
+    else:
+        branslar = ["2. Tekler", "1. Tekler", "Çiftler"]
 
+    program = []
+    for m in base_matches:
+        for brans in branslar:
+            satir = m.copy()
+            satir["id"] = str(uuid.uuid4())
+            satir["Branş"] = brans
+            satir["Grup"] = grup_adi
+            satir.update({
+                "T1_Oyuncu": "", "T2_Oyuncu": "",
+                "1.Set T1": 0, "1.Set T2": 0, "2.Set T1": 0, "2.Set T2": 0, "3.Set T1": 0, "3.Set T2": 0, "Durum": "Tamamlandı", "STB": False
+            })
+            program.append(satir)
+    return program
 
-# ANA DOSYADAN KESİLECEK 3. FONKSİYON BURAYA GELECEK:
-# def hesapla_mac_kazanani(row):
-# ...
+def hesapla_mac_kazanani(row):
+    durum = str(row.get('Durum', 'Tamamlandı'))
+    if durum == "Takım 1 (W/O)": durum = "Takım 2 Kazandı (W/O)"
+    elif durum == "Takım 2 (W/O)": durum = "Takım 1 Kazandı (W/O)"
+    elif durum == "Takım 1 (Ret.)": durum = "Takım 2 Kazandı (Ret.)"
+    elif durum == "Takım 2 (Ret.)": durum = "Takım 1 Kazandı (Ret.)"
+
+    if durum == "Çift Taraflı W/O": return (0, 0)
+    if durum == "Takım 1 Kazandı (W/O)" or durum == "Takım 1 Kazandı (Ret.)": return (1, 0)
+    if durum == "Takım 2 Kazandı (W/O)" or durum == "Takım 2 Kazandı (Ret.)": return (0, 1)
+    
+    s1_t1, s1_t2 = int(row['1.Set T1']), int(row['1.Set T2'])
+    s2_t1, s2_t2 = int(row['2.Set T1']), int(row['2.Set T2'])
+    s3_t1, s3_t2 = int(row['3.Set T1']), int(row['3.Set T2'])
+    if s1_t1 == 0 and s1_t2 == 0 and s2_t1 == 0 and s2_t2 == 0: return 0, 0
+    
+    is_stb = bool(row.get('STB', False)) or (s3_t1 >= 10 or s3_t2 >= 10)
+    
+    t1_s1_win = s1_t1 >= 6 and (s1_t1 - s1_t2) >= 2 or s1_t1 == 7
+    t2_s1_win = s1_t2 >= 6 and (s1_t2 - s1_t1) >= 2 or s1_t2 == 7
+    t1_s2_win = s2_t1 >= 6 and (s2_t1 - s2_t2) >= 2 or s2_t1 == 7
+    t2_s2_win = s2_t2 >= 6 and (s2_t2 - s2_t1) >= 2 or s2_t2 == 7
+    t1_s3_win = (s3_t1 >= 10 and (s3_t1 - s3_t2) >= 2) if is_stb else (s3_t1 >= 6 and (s3_t1 - s3_t2) >= 2 or s3_t1 == 7)
+    t2_s3_win = (s3_t2 >= 10 and (s3_t2 - s3_t1) >= 2) if is_stb else (s3_t2 >= 6 and (s3_t2 - s3_t1) >= 2 or s3_t2 == 7)
+
+    t1_set = int(t1_s1_win) + int(t1_s2_win) + int(t1_s3_win)
+    t2_set = int(t2_s1_win) + int(t2_s2_win) + int(t2_s3_win)
+    return (1, 0) if t1_set > t2_set else ((0, 1) if t2_set > t1_set else (0, 0))
+
+def get_formatted_match_score(row, target_t1):
+    is_t1 = row['Takım 1'] == target_t1
+    durum = str(row.get('Durum', 'Tamamlandı'))
+    if durum == "Takım 1 (W/O)": durum = "Takım 2 Kazandı (W/O)"
+    elif durum == "Takım 2 (W/O)": durum = "Takım 1 Kazandı (W/O)"
+    elif durum == "Takım 1 (Ret.)": durum = "Takım 2 Kazandı (Ret.)"
+    elif durum == "Takım 2 (Ret.)": durum = "Takım 1 Kazandı (Ret.)"
+
+    brans = str(row['Branş']).replace("1. Tekler", "1.Tek").replace("2. Tekler", "2.Tek").replace("3. Tekler", "3.Tek").replace("1. Çiftler", "1.Çift").replace("2. Çiftler", "2.Çift").replace("Çiftler", "Çift")
+
+    if durum == "Çift Taraflı W/O": 
+        return f"<b>{brans}</b>: <span style='opacity: 0.8;'>Çift Taraflı W/O</span>"
+    if durum == "Takım 1 Kazandı (W/O)": 
+        score_str = "W/O (Galip)" if is_t1 else "W/O (Mağlup)"
+        return f"<b>{brans}</b>: {score_str}"
+    if durum == "Takım 2 Kazandı (W/O)": 
+        score_str = "W/O (Mağlup)" if is_t1 else "W/O (Galip)"
+        return f"<b>{brans}</b>: {score_str}"
+
+    s1_1, s1_2 = int(row['1.Set T1']), int(row['1.Set T2'])
+    s2_1, s2_2 = int(row['2.Set T1']), int(row['2.Set T2'])
+    s3_1, s3_2 = int(row['3.Set T1']), int(row['3.Set T2'])
+
+    if not is_t1:
+        s1_1, s1_2 = s1_2, s1_1
+        s2_1, s2_2 = s2_2, s2_1
+        s3_1, s3_2 = s3_2, s3_1
+
+    if s1_1 == 0 and s1_2 == 0 and s2_1 == 0 and s2_2 == 0 and "Ret." not in durum:
+        return ""
+
+    score_str = f"{s1_1}-{s1_2}"
+    if s2_1 != 0 or s2_2 != 0 or s1_1 != 0 or s1_2 != 0: score_str += f" | {s2_1}-{s2_2}"
+    if s3_1 != 0 or s3_2 != 0: score_str += f" | {s3_1}-{s3_2}"
+
+    if durum == "Takım 1 Kazandı (Ret.)": 
+        score_str += " Ret. (Galip)" if is_t1 else " Ret. (Mağlup)"
+    elif durum == "Takım 2 Kazandı (Ret.)": 
+        score_str += " Ret. (Mağlup)" if is_t1 else " Ret. (Galip)"
+
+    return f"<b>{brans}</b>: <span style='opacity: 0.8;'>{score_str}</span>"
+
+def render_html_matrix(takimlar, df_grup):
+    html = '<table style="width:100%; border-collapse: collapse; text-align:center; font-family: sans-serif; font-size: 14px;">'
+    html += '<tr style="background-color: rgba(128,128,128,0.1);">'
+    html += '<th style="border: 1px solid rgba(128,128,128,0.3); padding: 10px;">Takımlar</th>'
+    for t in takimlar:
+        html += f'<th style="border: 1px solid rgba(128,128,128,0.3); padding: 10px;">{t}</th>'
+    html += '</tr>'
+
+    on_hesap_sonuclari = {}
+    for (t_a, t_b), group_df in df_grup.groupby(['Takım 1', 'Takım 2']):
+        match_key = tuple(sorted([t_a, t_b]))
+        if match_key not in on_hesap_sonuclari:
+            aradaki_maclar = df_grup[((df_grup['Takım 1'] == match_key[0]) & (df_grup['Takım 2'] == match_key[1])) | 
+                                     ((df_grup['Takım 1'] == match_key[1]) & (df_grup['Takım 2'] == match_key[0]))]
+            stats = hesapla_tum_puan_durumu(aradaki_maclar)
+            on_hesap_sonuclari[match_key] = stats
+
+    for t1 in takimlar:
+        html += f'<tr><td style="border: 1px solid rgba(128,128,128,0.3); padding: 10px; font-weight: bold; background-color: rgba(128,128,128,0.1);">{t1}</td>'
+        for t2 in takimlar:
+            if t1 == t2:
+                html += '<td style="border: 1px solid rgba(128,128,128,0.3); padding: 10px; background-color: rgba(128,128,128,0.2);"><b>X</b></td>'
+            else:
+                match_key = tuple(sorted([t1, t2]))
+                matches = df_grup[((df_grup['Takım 1'] == t1) & (df_grup['Takım 2'] == t2)) | ((df_grup['Takım 1'] == t2) & (df_grup['Takım 2'] == t1))]
+                
+                if matches.empty:
+                    html += '<td style="border: 1px solid rgba(128,128,128,0.3); padding: 10px;"></td>'
+                else:
+                    temp_stats = on_hesap_sonuclari.get(match_key, pd.DataFrame())
+                    t1_wins = 0; t2_wins = 0
+                    t1_puan_info = 0.0; t2_puan_info = 0.0
+                    details = []
+                    
+                    for _, row in sort_maclar(matches).iterrows():
+                        w1, w2 = hesapla_mac_kazanani(row)
+                        brans = str(row.get('Branş', '')).lower()
+                        is_cift = "çift" in brans
+                        format_secimi = st.session_state.grup_formatlari.get(row['Grup'], "3 Maçlık (2 Tek, 1 Çift)")
+                        w_val = 1.5 if (format_secimi == "5 Maçlık (3 Tek, 2 Çift)" and is_cift) else (2.0 if is_cift else 1.0)
+
+                        if row['Takım 1'] == t1:
+                            t1_wins += w1; t2_wins += w2
+                            t1_puan_info += w1 * w_val; t2_puan_info += w2 * w_val
+                        else:
+                            t1_wins += w2; t2_wins += w1
+                            t1_puan_info += w2 * w_val; t2_puan_info += w1 * w_val
+                        
+                        fmt = get_formatted_match_score(row, t1)
+                        if fmt: details.append(fmt)
+
+                    if t1_wins == 0 and t2_wins == 0 and not details:
+                        html += '<td style="border: 1px solid rgba(128,128,128,0.3); padding: 10px;"></td>'
+                    else:
+                        t1_galibiyet = 0
+                        t2_galibiyet = 0
+                        if not temp_stats.empty:
+                            r1 = temp_stats[temp_stats['Takım'] == t1]
+                            r2 = temp_stats[temp_stats['Takım'] == t2]
+                            if not r1.empty: t1_galibiyet = r1.iloc[0]['Galibiyet']
+                            if not r2.empty: t2_galibiyet = r2.iloc[0]['Galibiyet']
+
+                        crown1 = "👑 " if t1_galibiyet > t2_galibiyet else ""
+                        crown2 = " 👑" if t2_galibiyet > t1_galibiyet else ""
+                        
+                        puan_str = f"Puan: {t1_puan_info:g} - {t2_puan_info:g}" if (t1_puan_info > 0 or t2_puan_info > 0) else ""
+                        if t1_puan_info == t2_puan_info and (t1_galibiyet > 0 or t2_galibiyet > 0):
+                            puan_str += " (Av.)"
+                        
+                        main_score = f"<div style='font-size: 18px; font-weight: bold; margin-bottom: 2px;'>{crown1}{t1_wins} - {t2_wins}{crown2}</div>"
+                        puan_div = f"<div style='font-size: 11px; opacity: 0.9; font-weight: bold; margin-bottom: 5px;'>{puan_str}</div>" if puan_str else ""
+                        details_html = "<br>".join(details)
+                        
+                        html += f'<td style="border: 1px solid rgba(128,128,128,0.3); padding: 10px; vertical-align: top;">{main_score}{puan_div}<div style="font-size: 11px; opacity: 0.8; line-height: 1.4;">{details_html}</div></td>'
+        html += '</tr>'
+    html += '</table>'
+    return html
+    
+def hesapla_tum_puan_durumu(df_girdi):
+    if df_girdi.empty: return pd.DataFrame()
+    df = df_girdi.copy()
+    
+    def satir_hesapla(row):
+        durum = str(row.get('Durum', 'Tamamlandı'))
+        if durum == "Takım 1 (W/O)": durum = "Takım 2 Kazandı (W/O)"
+        elif durum == "Takım 2 (W/O)": durum = "Takım 1 Kazandı (W/O)"
+        elif durum == "Takım 1 (Ret.)": durum = "Takım 2 Kazandı (Ret.)"
+        elif durum == "Takım 2 (Ret.)": durum = "Takım 1 Kazandı (Ret.)"
+
+        s1_t1, s1_t2 = int(row['1.Set T1']), int(row['1.Set T2'])
+        s2_t1, s2_t2 = int(row['2.Set T1']), int(row['2.Set T2'])
+        s3_t1, s3_t2 = int(row['3.Set T1']), int(row['3.Set T2'])
+        
+        is_stb = bool(row.get('STB', False)) or (s3_t1 >= 10 or s3_t2 >= 10)
+
+        if durum == "Çift Taraflı W/O": return pd.Series([0, 0, 0, 0])
+        if durum == "Takım 1 Kazandı (W/O)": return pd.Series([12, 0, 2, 0])
+        if durum == "Takım 2 Kazandı (W/O)": return pd.Series([0, 12, 0, 2])
+
+        if s1_t1 == 0 and s1_t2 == 0 and s2_t1 == 0 and s2_t2 == 0 and s3_t1 == 0 and s3_t2 == 0 and durum == "Tamamlandı":
+            return pd.Series([0, 0, 0, 0])
+
+        t1_s1_win = s1_t1 >= 6 and (s1_t1 - s1_t2) >= 2 or s1_t1 == 7
+        t2_s1_win = s1_t2 >= 6 and (s1_t2 - s1_t1) >= 2 or s1_t2 == 7
+        
+        t1_s2_win = s2_t1 >= 6 and (s2_t1 - s2_t2) >= 2 or s2_t1 == 7
+        t2_s2_win = s2_t2 >= 6 and (s2_t2 - s2_t1) >= 2 or s2_t2 == 7
+        
+        t1_s3_win = (s3_t1 >= 10 and (s3_t1 - s3_t2) >= 2) if is_stb else (s3_t1 >= 6 and (s3_t1 - s3_t2) >= 2 or s3_t1 == 7)
+        t2_s3_win = (s3_t2 >= 10 and (s3_t2 - s3_t1) >= 2) if is_stb else (s3_t2 >= 6 and (s3_t2 - s3_t1) >= 2 or s3_t2 == 7)
+
+        t1_oyun = s1_t1 + s2_t1
+        t2_oyun = s1_t2 + s2_t2
+        
+        if s3_t1 > 0 or s3_t2 > 0:
+            if is_stb:
+                if s3_t1 > s3_t2: t1_oyun += 1
+                elif s3_t2 > s3_t1: t2_oyun += 1
+            else:
+                t1_oyun += s3_t1
+                t2_oyun += s3_t2
+
+        t1_set, t2_set = 0, 0
+
+        if durum == "Takım 1 Kazandı (Ret.)":
+            if t1_s1_win: t1_set = 1
+            elif t2_s1_win: t2_set = 1
+            else:
+                t1_set += 1; t1_oyun += max(0, (6 if s1_t2 <= 4 else 7) - s1_t1)
+                t1_set += 1; t1_oyun += 6
+                return pd.Series([t1_oyun, t2_oyun, t1_set, t2_set])
+                
+            if t1_s2_win: t1_set += 1
+            elif t2_s2_win: t2_set += 1
+            else:
+                t1_set += 1; t1_oyun += max(0, (6 if s2_t2 <= 4 else 7) - s2_t1)
+                if t1_set == 1 and t2_set == 1:
+                    t1_set += 1; t1_oyun += 1 if is_stb else 6
+                return pd.Series([t1_oyun, t2_oyun, t1_set, t2_set])
+                
+            if t1_set == 1 and t2_set == 1:
+                if is_stb:
+                    if t1_s3_win: t1_set += 1
+                    elif t2_s3_win: t2_set += 1
+                    else:
+                        t1_set += 1
+                        t1_oyun = s1_t1 + s2_t1 + 1
+                        t2_oyun = max(0, (s1_t2 + s2_t2) - 1)
+                else:
+                    if t1_s3_win: t1_set += 1
+                    elif t2_s3_win: t2_set += 1
+                    else:
+                        t1_set += 1; t1_oyun += max(0, (6 if s3_t2 <= 4 else 7) - s3_t1)
+            return pd.Series([t1_oyun, t2_oyun, t1_set, t2_set])
+            
+        elif durum == "Takım 2 Kazandı (Ret.)":
+            if t1_s1_win: t1_set = 1
+            elif t2_s1_win: t2_set = 1
+            else:
+                t2_set += 1; t2_oyun += max(0, (6 if s1_t1 <= 4 else 7) - s1_t2)
+                t2_set += 1; t2_oyun += 6
+                return pd.Series([t1_oyun, t2_oyun, t1_set, t2_set])
+                
+            if t1_s2_win: t1_set += 1
+            elif t2_s2_win: t2_set += 1
+            else:
+                t2_set += 1; t2_oyun += max(0, (6 if s2_t1 <= 4 else 7) - s2_t2)
+                if t1_set == 1 and t2_set == 1:
+                    t2_set += 1; t2_oyun += 1 if is_stb else 6
+                return pd.Series([t1_oyun, t2_oyun, t1_set, t2_set])
+                
+            if t1_set == 1 and t2_set == 1:
+                    if is_stb:
+                        if t1_s3_win: t1_set += 1
+                        elif t2_s3_win: t2_set += 1
+                        else:
+                            t2_set += 1
+                            t2_oyun = s1_t2 + s2_t2 + 1
+                            t1_oyun = max(0, (s1_t1 + s2_t1) - 1)
+                    else:
+                        if t1_s3_win: t1_set += 1
+                        elif t2_s3_win: t2_set += 1
+                        else:
+                            t2_set += 1; t2_oyun += max(0, (6 if s3_t1 <= 4 else 7) - s3_t2)
+            return pd.Series([t1_oyun, t2_oyun, t1_set, t2_set])
+
+        else: 
+            t1_set = int(t1_s1_win) + int(t1_s2_win) + int(t1_s3_win)
+            t2_set = int(t2_s1_win) + int(t2_s2_win) + int(t2_s3_win)
+            return pd.Series([t1_oyun, t2_oyun, t1_set, t2_set])
+
+    df[['T1_Oyun', 'T2_Oyun', 'T1_Set_Skor', 'T2_Set_Skor']] = df.apply(satir_hesapla, axis=1)
+    df['T1_Match_Win'] = (df['T1_Set_Skor'] > df['T2_Set_Skor']).astype(int)
+    df['T2_Match_Win'] = (df['T2_Set_Skor'] > df['T1_Set_Skor']).astype(int)
+    
+    def get_match_point(row, team_idx):
+        grup = row.get('Grup', '')
+        brans = str(row.get('Branş', '')).lower()
+        is_cift = "çift" in brans
+        format_secimi = st.session_state.grup_formatlari.get(grup, "3 Maçlık (2 Tek, 1 Çift)")
+        
+        if format_secimi == "5 Maçlık (3 Tek, 2 Çift)":
+            weight = 1.5 if is_cift else 1.0
+        else:
+            weight = 2.0 if is_cift else 1.0
+            
+        if team_idx == 1: return weight if row['T1_Match_Win'] > row['T2_Match_Win'] else 0.0
+        else: return weight if row['T2_Match_Win'] > row['T1_Match_Win'] else 0.0
+
+    df['T1_Match_Point'] = df.apply(lambda r: get_match_point(r, 1), axis=1)
+    df['T2_Match_Point'] = df.apply(lambda r: get_match_point(r, 2), axis=1)
+
+    def get_singles_win(row, team_idx):
+        brans = str(row.get('Branş', '')).lower()
+        if "tek" in brans:
+            if team_idx == 1 and row['T1_Match_Win'] > row['T2_Match_Win']: return 1
+            if team_idx == 2 and row['T2_Match_Win'] > row['T1_Match_Win']: return 1
+        return 0
+
+    df['T1_Singles_Win'] = df.apply(lambda r: get_singles_win(r, 1), axis=1)
+    df['T2_Singles_Win'] = df.apply(lambda r: get_singles_win(r, 2), axis=1)
+
+    seriler = df.groupby(['Grup', 'Gün', 'Eşleşme', 'Takım 1', 'Takım 2']).agg({
+        'T1_Match_Win': 'sum', 'T2_Match_Win': 'sum', 
+        'T1_Set_Skor': 'sum', 'T2_Set_Skor': 'sum', 
+        'T1_Oyun': 'sum', 'T2_Oyun': 'sum',
+        'T1_Match_Point': 'sum', 'T2_Match_Point': 'sum',
+        'T1_Singles_Win': 'sum', 'T2_Singles_Win': 'sum'
+    }).reset_index()
+    
+    def determine_team_win(r):
+        if r['T1_Match_Win'] == 0 and r['T2_Match_Win'] == 0: return 0, 0
+        if r['T1_Match_Point'] > r['T2_Match_Point']: return 1, 0
+        elif r['T2_Match_Point'] > r['T1_Match_Point']: return 0, 1
+        else:
+            if r['T1_Match_Point'] == 0 and r['T2_Match_Point'] == 0: return 0, 0
+            
+            set_av_t1 = r['T1_Set_Skor'] - r['T2_Set_Skor']
+            set_av_t2 = r['T2_Set_Skor'] - r['T1_Set_Skor']
+            if set_av_t1 > set_av_t2: return 1, 0
+            elif set_av_t2 > set_av_t1: return 0, 1
+            else:
+                oyun_av_t1 = r['T1_Oyun'] - r['T2_Oyun']
+                oyun_av_t2 = r['T2_Oyun'] - r['T1_Oyun']
+                if oyun_av_t1 > oyun_av_t2: return 1, 0
+                elif oyun_av_t2 > oyun_av_t1: return 0, 1
+                else: 
+                    if r['T1_Singles_Win'] > r['T2_Singles_Win']: return 1, 0
+                    elif r['T2_Singles_Win'] > r['T1_Singles_Win']: return 0, 1
+                    else: return 0, 0 
+                
+    win_res = seriler.apply(lambda r: determine_team_win(r), axis=1)
+    seriler['T1_Win'] = [x[0] for x in win_res]
+    seriler['T2_Win'] = [x[1] for x in win_res]
+    
+    seriler['Oynanan'] = seriler.apply(lambda r: 1 if r['T1_Win'] + r['T2_Win'] > 0 or r['T1_Oyun'] + r['T2_Oyun'] > 0 else 0, axis=1)
+    
+    t1 = seriler[['Grup', 'Takım 1', 'Oynanan', 'T1_Win', 'T1_Match_Win', 'T2_Match_Win', 'T1_Set_Skor', 'T2_Set_Skor', 'T1_Oyun', 'T2_Oyun']].rename(columns={'Takım 1': 'Takım'})
+    t2 = seriler[['Grup', 'Takım 2', 'Oynanan', 'T2_Win', 'T2_Match_Win', 'T1_Match_Win', 'T2_Set_Skor', 'T1_Set_Skor', 'T2_Oyun', 'T1_Oyun']].rename(columns={'Takım 2': 'Takım'})
+    
+    t1.columns = ['Grup', 'Takım', 'Oynanan Maç', 'Galibiyet', 'Aldığı Maç', 'Verdiği Maç', 'Aldığı Set', 'Verdiği Set', 'Aldığı Oyun', 'Verdiği Oyun']
+    t2.columns = ['Grup', 'Takım', 'Oynanan Maç', 'Galibiyet', 'Aldığı Maç', 'Verdiği Maç', 'Aldığı Set', 'Verdiği Set', 'Aldığı Oyun', 'Verdiği Oyun']
+    
+    tum_stats = pd.concat([t1, t2]).groupby(['Grup', 'Takım']).sum().reset_index()
+    tum_stats['Maç Av.'] = tum_stats['Aldığı Maç'] - tum_stats['Verdiği Maç']
+    tum_stats['Set Av.'] = tum_stats['Aldığı Set'] - tum_stats['Verdiği Set']
+    tum_stats['Oyun Av.'] = tum_stats['Aldığı Oyun'] - tum_stats['Verdiği Oyun']
+    return tum_stats
+
+def sirala_grup_df(grup_df, gp):
+    if gp in st.session_state.grup_siralamalari and st.session_state.grup_siralamalari[gp]:
+        manuel_sira = st.session_state.grup_siralamalari[gp]
+        grup_df['Sıra_Degeri'] = grup_df['Takım'].apply(lambda x: manuel_sira.index(x) if x in manuel_sira else 999)
+        grup_df = grup_df.sort_values(by=['Sıra_Degeri', 'Galibiyet', 'Maç Av.', 'Set Av.', 'Oyun Av.'], ascending=[True, False, False, False, False]).drop(columns=['Sıra_Degeri'])
+    else:
+        grup_df = grup_df.sort_values(by=['Galibiyet', 'Maç Av.', 'Set Av.', 'Oyun Av.'], ascending=False)
+    
+    grup_df.index = range(1, len(grup_df) + 1)
+    return grup_df
