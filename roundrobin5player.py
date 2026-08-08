@@ -2736,22 +2736,22 @@ else:
                                         st.caption("Düşme hattında takım bulunamadı.")
                                         
                                 pdf_icin_hazir_veriler[secilen_kategori] = kat_verisi
-                                    
-                                    st.markdown("<br>", unsafe_allow_html=True)
-                                    tek_pdf_bytes = generate_klasman_pdf(
-                                        secilen_kategori, 
-                                        kat_verisi["birinciler"], 
-                                        kat_verisi["ikinciler"], 
-                                        kat_verisi["ligde_kalanlar"], 
-                                        kat_verisi["dusenler"]
-                                    )
-                                    st.download_button(
-                                        label=f"📥 SADECE {secilen_kategori} Klasmanını İndir", 
-                                        data=tek_pdf_bytes, 
-                                        file_name=f"Nihai_Klasman_{secilen_kategori.replace(' ', '_')}.pdf", 
-                                        mime="application/pdf", 
-                                        key=f"pdf_tek_{secilen_kategori}",
-                                    )
+                                
+                                st.markdown("<br>", unsafe_allow_html=True)
+                                tek_pdf_bytes = generate_klasman_pdf(
+                                    secilen_kategori, 
+                                    kat_verisi["birinciler"], 
+                                    kat_verisi["ikinciler"], 
+                                    kat_verisi["ligde_kalanlar"], 
+                                    kat_verisi["dusenler"]
+                                )
+                                st.download_button(
+                                    label=f"📥 SADECE {secilen_kategori} Klasmanını İndir", 
+                                    data=tek_pdf_bytes, 
+                                    file_name=f"Nihai_Klasman_{secilen_kategori.replace(' ', '_')}.pdf", 
+                                    mime="application/pdf", 
+                                    key=f"pdf_tek_{secilen_kategori}",
+                                )
                                 
                         if pdf_icin_hazir_veriler:
                             st.markdown("<br>", unsafe_allow_html=True)
