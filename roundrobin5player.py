@@ -2102,10 +2102,12 @@ else:
                         st.divider()
                         for (grup_adi, eslesme_adi), grup_df in df_gunluk_safe.groupby(['Grup', 'Eşleşme']):
                             takim_skoru_etiketi = ""
+                            team_winner = ""
                             if not df_team_summary.empty:
                                 ozet_satiri = df_team_summary[(df_team_summary['Grup'] == grup_adi) & (df_team_summary['Eşleşme'] == eslesme_adi)]
                                 if not ozet_satiri.empty:
                                     val = ozet_satiri.iloc[0]['Skor']
+                                    team_winner = ozet_satiri.iloc[0]['Kazanan']
                                     if val != "Oynanmadı": takim_skoru_etiketi = f"  🟢 SKOR: {val}"
     
                             kort = grup_df.iloc[0]['Kort']
@@ -2120,7 +2122,11 @@ else:
                             is_approved = st.session_state.esame_onayli.get(match_key, False)
                             
                             hakem_baslik_etiketi = f" (👮‍♂️ {mevcut_hakem})" if mevcut_hakem else ""
-                            expander_title = f"🎾 {saat} | {kort} | {grup_adi} | {takim1} - {takim2}{takim_skoru_etiketi}{hakem_baslik_etiketi}"
+                            
+                            t1_baslik = f"**{takim1}**" if team_winner == "T1" else takim1
+                            t2_baslik = f"**{takim2}**" if team_winner == "T2" else takim2
+                            
+                            expander_title = f"🎾 {saat} | {kort} | {grup_adi} | {t1_baslik} - {t2_baslik}{takim_skoru_etiketi}{hakem_baslik_etiketi}"
                             
                             with st.expander(expander_title, expanded=False):
                                 html_rows = ""
