@@ -32,9 +32,11 @@ def apply_font(pdf, bold=False, size=10):
     else:
         pdf.set_font("Arial", 'B' if bold else '', size)
 
+# 🚀 HIZLANDIRMA VE TASARIM: Otomatik font küçültme algoritması 
 def pdf_cell_fit(pdf, w, h, txt, border=1, align='C', is_bold=False, fill=False, base_size=9):
     size = base_size
     apply_font(pdf, bold=is_bold, size=size)
+    # Metin, ayrılan genişliği (w) aşıyorsa fontu adım adım ufaltır (en fazla 5 puntoya kadar)
     while pdf.get_string_width(to_pdf_text(txt)) > (w - 2) and size > 5:
         size -= 0.5
         apply_font(pdf, bold=is_bold, size=size)
@@ -175,57 +177,53 @@ def _klasman_sayfasi_ciz(pdf, kategori_adi, birinciler_liste, ikinciler_liste, l
     pdf.line(10, pdf.get_y()+2, 200, pdf.get_y()+2)
     pdf.ln(10)
 
-    apply_font(pdf, bold=True, size=14)
-    pdf.cell(0, 10, to_pdf_text(f"KATEGORİ: {kategori_adi.upper()} - NİHAİ KLASMAN"), ln=True, align='C')
-    pdf.ln(5)
+    # Kategori adı uzun olursa taşmaması için pdf_cell_fit kullanıldı
+    pdf_cell_fit(pdf, 190, 10, f"KATEGORİ: {kategori_adi.upper()} - NİHAİ KLASMAN", border=0, align='C', is_bold=True, base_size=14)
+    pdf.ln(12)
 
     current_rank = 1
 
     if birinciler_liste:
         pdf.set_fill_color(220, 220, 220)
-        apply_font(pdf, bold=True, size=11)
-        pdf.cell(0, 8, to_pdf_text("ŞAMPİYONLUK KÜRSÜSÜ"), border=1, ln=True, fill=True, align='L')
-        apply_font(pdf, bold=False, size=11)
-        pdf.ln(2)
+        pdf_cell_fit(pdf, 190, 8, "ŞAMPİYONLUK KÜRSÜSÜ", border=1, align='L', is_bold=True, fill=True, base_size=11)
+        pdf.ln(10)
         for takim in birinciler_liste:
             unvan = ""
             if current_rank == 1: unvan = " (Şampiyon)"
             elif current_rank == 2: unvan = " (İkinci)"
             elif current_rank == 3: unvan = " (Üçüncü)"
             elif current_rank == 4: unvan = " (Dördüncü)"
-            pdf.cell(0, 7, to_pdf_text(f"  {current_rank}. Sıra: {takim}{unvan}"), ln=True)
+            pdf_cell_fit(pdf, 190, 7, f"  {current_rank}. Sıra: {takim}{unvan}", border=0, align='L', is_bold=False, base_size=11)
+            pdf.ln(7)
             current_rank += 1
         pdf.ln(5)
 
     if ikinciler_liste:
         pdf.set_fill_color(235, 235, 235)
-        apply_font(pdf, bold=True, size=11)
-        pdf.cell(0, 8, to_pdf_text("İKİNCİLER GRUBU (Klasman)"), border=1, ln=True, fill=True, align='L')
-        apply_font(pdf, bold=False, size=11)
-        pdf.ln(2)
+        pdf_cell_fit(pdf, 190, 8, "İKİNCİLER GRUBU (Klasman)", border=1, align='L', is_bold=True, fill=True, base_size=11)
+        pdf.ln(10)
         for takim in ikinciler_liste:
-            pdf.cell(0, 7, to_pdf_text(f"  {current_rank}. Sıra: {takim}"), ln=True)
+            pdf_cell_fit(pdf, 190, 7, f"  {current_rank}. Sıra: {takim}", border=0, align='L', is_bold=False, base_size=11)
+            pdf.ln(7)
             current_rank += 1
         pdf.ln(5)
 
     if ligde_kalanlar:
         pdf.set_fill_color(245, 245, 245)
-        apply_font(pdf, bold=True, size=11)
-        pdf.cell(0, 8, to_pdf_text("LİGDE KALANLAR (Play-Out Üst Sıralar)"), border=1, ln=True, fill=True, align='L')
-        apply_font(pdf, bold=False, size=11)
-        pdf.ln(2)
+        pdf_cell_fit(pdf, 190, 8, "LİGDE KALANLAR (Play-Out Üst Sıralar)", border=1, align='L', is_bold=True, fill=True, base_size=11)
+        pdf.ln(10)
         for takim in dogal_sirala(ligde_kalanlar):
-            pdf.cell(0, 7, to_pdf_text(f"  - {takim}"), ln=True)
+            pdf_cell_fit(pdf, 190, 7, f"  - {takim}", border=0, align='L', is_bold=False, base_size=11)
+            pdf.ln(7)
         pdf.ln(5)
 
     if dusenler:
         pdf.set_fill_color(245, 245, 245)
-        apply_font(pdf, bold=True, size=11)
-        pdf.cell(0, 8, to_pdf_text("LİGDEN DÜŞENLER (Play-Out Alt Sıralar)"), border=1, ln=True, fill=True, align='L')
-        apply_font(pdf, bold=False, size=11)
-        pdf.ln(2)
+        pdf_cell_fit(pdf, 190, 8, "LİGDEN DÜŞENLER (Play-Out Alt Sıralar)", border=1, align='L', is_bold=True, fill=True, base_size=11)
+        pdf.ln(10)
         for takim in dogal_sirala(dusenler):
-            pdf.cell(0, 7, to_pdf_text(f"  - {takim}"), ln=True)
+            pdf_cell_fit(pdf, 190, 7, f"  - {takim}", border=0, align='L', is_bold=False, base_size=11)
+            pdf.ln(7)
 
 
 def generate_klasman_pdf(kategori_adi, birinciler_liste, ikinciler_liste, ligde_kalanlar, dusenler):
@@ -347,9 +345,9 @@ def generate_mac_sonuc_belgesi(eslesmeler_listesi):
         saat_metni = f"Saat: {saat}" if saat else "Saat: ...."
         pdf.cell(60, 8, to_pdf_text(saat_metni), ln=0, align='L')
         
-        # Orta: Grup Adı
-        pdf.set_xy(10, y_header)
-        pdf.cell(190, 8, to_pdf_text(grup_adi), ln=0, align='C')
+        # Orta: Grup Adı (Taşmayı önlemek için pdf_cell_fit kullanıldı)
+        pdf.set_xy(70, y_header)
+        pdf_cell_fit(pdf, 70, 8, grup_adi, border=0, align='C', is_bold=True, base_size=14)
         
         # Sağ: Kort
         pdf.set_xy(140, y_header)
@@ -358,25 +356,23 @@ def generate_mac_sonuc_belgesi(eslesmeler_listesi):
         
         # Alt Satır (Tarih Orta, Hakem Sağ)
         y_subheader = pdf.get_y()
-        apply_font(pdf, bold=True, size=12) 
         
         # Orta: Tarih
-        pdf.set_xy(10, y_subheader)
+        pdf.set_xy(70, y_subheader)
         if tarih:
-            pdf.cell(190, 6, to_pdf_text(tarih), ln=0, align='C')
+            pdf_cell_fit(pdf, 70, 6, tarih, border=0, align='C', is_bold=True, base_size=12)
         
-        # Sağ Alt: Hakem
+        # Sağ Alt: Hakem (Taşmayı önlemek için pdf_cell_fit kullanıldı)
         pdf.set_xy(140, y_subheader)
         hakem_isim = hakem if hakem and hakem != "Atanmadı" else ".................."
-        pdf.cell(60, 6, to_pdf_text(f"Hakem: {hakem_isim}"), ln=1, align='R')
+        pdf_cell_fit(pdf, 60, 6, f"Hakem: {hakem_isim}", border=0, align='R', is_bold=True, base_size=12)
             
         pdf.ln(6)
         
         # --- 2. TAKIMLAR VE BÜYÜTÜLMÜŞ SKOR KUTUSU ---
-        apply_font(pdf, bold=True, size=12)
-        pdf.cell(65, 8, to_pdf_text(f"[  ]   {takim1}"), ln=0, align='L')
-        pdf.cell(65, 8, to_pdf_text(f"[  ]   {takim2}"), ln=0, align='L')
-        # Skor kutuları büyütüldü
+        # Takım isimleri uzun olabileceği için pdf_cell_fit ile güvene alındı
+        pdf_cell_fit(pdf, 65, 8, f"[  ]   {takim1}", border=0, align='L', is_bold=True, base_size=12)
+        pdf_cell_fit(pdf, 65, 8, f"[  ]   {takim2}", border=0, align='L', is_bold=True, base_size=12)
         pdf.cell(60, 8, to_pdf_text("SKOR: [        ] - [        ]"), ln=1, align='R')
         
         pdf.ln(3)
@@ -394,9 +390,6 @@ def generate_mac_sonuc_belgesi(eslesmeler_listesi):
         
         apply_font(pdf, bold=False, size=10)
         
-        # ==============================================================================
-        # === BAŞLANGIÇ: MAÇ TÜRÜ MANTIK DEĞİŞİKLİĞİ ===
-        # ==============================================================================
         if not alt_maclar:
             alt_maclar = [{"Branş": "2. Tekler"}, {"Branş": "1. Tekler"}, {"Branş": "Çiftler"}]
             
@@ -424,9 +417,6 @@ def generate_mac_sonuc_belgesi(eslesmeler_listesi):
             
             x = pdf.get_x()
             y = pdf.get_y()
-        # ==============================================================================
-        # === BİTİŞ: MAÇ TÜRÜ MANTIK DEĞİŞİKLİĞİ ===
-        # ==============================================================================
             
             pdf.rect(x, y, 30, satir_h)
             pdf.set_xy(x, y + (satir_h/2) - 4)
@@ -471,9 +461,9 @@ def generate_mac_sonuc_belgesi(eslesmeler_listesi):
         pdf.ln(6) 
         
         # --- 4. OYUNCU LİSTELERİ ---
-        apply_font(pdf, bold=True, size=9)
-        pdf.cell(95, 5, to_pdf_text(f"{takim1} Oyuncu Listesi:"), align='L')
-        pdf.cell(95, 5, to_pdf_text(f"{takim2} Oyuncu Listesi:"), align='L')
+        # Oyuncu listelerindeki takım başlıkları taştığında font ufalsın
+        pdf_cell_fit(pdf, 95, 5, f"{takim1} Oyuncu Listesi:", border=0, align='L', is_bold=True, base_size=9)
+        pdf_cell_fit(pdf, 95, 5, f"{takim2} Oyuncu Listesi:", border=0, align='L', is_bold=True, base_size=9)
         pdf.ln(5)
         
         apply_font(pdf, bold=False, size=8.5)
@@ -494,19 +484,19 @@ def generate_mac_sonuc_belgesi(eslesmeler_listesi):
         
         pdf.ln(10) 
         
-        apply_font(pdf, bold=True, size=10)
-        pdf.cell(63, 5, to_pdf_text(f"{takim1} Kaptanı"), align='C')
-        pdf.cell(64, 5, to_pdf_text("Müsabaka Hakemi"), align='C')
-        pdf.cell(63, 5, to_pdf_text(f"{takim2} Kaptanı"), align='C')
+        # --- 6. İMZALAR (Kaptan takım isimleri uzun olabilir) ---
+        pdf_cell_fit(pdf, 63, 5, f"{takim1} Kaptanı", border=0, align='C', is_bold=True, base_size=10)
+        pdf_cell_fit(pdf, 64, 5, "Müsabaka Hakemi", border=0, align='C', is_bold=True, base_size=10)
+        pdf_cell_fit(pdf, 63, 5, f"{takim2} Kaptanı", border=0, align='C', is_bold=True, base_size=10)
         pdf.ln(5)
         
         apply_font(pdf, bold=False, size=9)
         pdf.cell(63, 5, to_pdf_text("İmza"), align='C')
         hakem_isim = hakem if hakem and hakem != "Atanmadı" else "İmza"
-        pdf.cell(64, 5, to_pdf_text(hakem_isim), align='C')
-        pdf.cell(63, 5, to_pdf_text("İmza"), align='C')
+        pdf_cell_fit(pdf, 64, 5, hakem_isim, border=0, align='C', is_bold=False, base_size=9)
+        pdf.cell(63, 5, to_pdf_text("İmza"), align='C', ln=1)
         
-        # --- 6. İMZALAR İLE NOTLAR ARASINDAKİ BOŞLUĞU AÇMA ---
+        # --- 7. NOTLAR ---
         pdf.ln(30) # İmza atmak için rahatça 3 cm boşluk bırakıldı
         
         apply_font(pdf, bold=True, size=10)
@@ -516,6 +506,3 @@ def generate_mac_sonuc_belgesi(eslesmeler_listesi):
             pdf.cell(0, 6, to_pdf_text("........................................................................................................................................................................................................"), ln=True)
 
     return get_pdf_bytes(pdf)
-# ==============================================================================
-# === BİTİŞ: MAÇ SONUÇ BELGESİ (PDF) GÜNCELLEMESİ ===
-# ==============================================================================
