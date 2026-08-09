@@ -1284,10 +1284,7 @@ else:
                             else:
                                 st.write("Oyuncu yok")
                             st.markdown("---")
-        else:
-            st.info("Kayıtlı takım bulunmamaktadır.")
-
-    elif menu_secim == "📅 Maç Programı":
+        elif menu_secim == "📅 Maç Programı":
         tab_gunluk, tab_genel = st.tabs(["🗓️ Günlük Akış (Tarihe Göre)", "📋 Tüm Maçların Genel Durumu"])
         
         with tab_genel:
@@ -1296,8 +1293,14 @@ else:
             gecerli_gruplar_genel = [g for g in st.session_state.grup_asamalari.keys() if st.session_state.grup_asamalari[g] == aktif_asama]
             df_hepsi = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'].isin(gecerli_gruplar_genel)]
             
+            # YAYINLAMA FİLTRESİ: Eğer Başhakem değilse sadece "Yayında" olan günleri ve grupları görebilir.
+            if not st.session_state.admin_mi:
+                yayinli_tarihler = [t for t, stat in st.session_state.yayinlanan_gunler.items() if stat == True]
+                izinli_gruplar_gunler = st.session_state.mac_programi[st.session_state.mac_programi['Tarih'].isin(yayinli_tarihler)][['Grup', 'Gün']].drop_duplicates()
+                df_hepsi = df_hepsi.merge(izinli_gruplar_gunler, on=['Grup', 'Gün'], how='inner')
+            
             if df_hepsi.empty:
-                st.info(f"{aktif_asama} için henüz oluşturulmuş bir fikstür/maç bulunmuyor.")
+                st.info(f"{aktif_asama} için henüz oluşturulmuş/yayınlanmış bir fikstür/maç bulunmuyor.")
             else:
                 mevcut_gunler = dogal_sirala(list(df_hepsi['Gün'].unique()))
                 
@@ -1353,7 +1356,6 @@ else:
                                 
                             if tablo_verisi:
                                 gosterim_df = pd.DataFrame(tablo_verisi)
-                                
                                 gosterim_df['Sıra_Yardimci'] = gosterim_df['Grup'].apply(lambda x: tuple([int(c) if c.isdigit() else c.lower() for c in re.split(r'(\d+)', str(x))]))
                                 gosterim_df = gosterim_df.sort_values(by=['Sıra_Yardimci', 'Eşleşme']).drop(columns=['Sıra_Yardimci'])
                                 st.dataframe(gosterim_df, use_container_width=True, hide_index=True)
@@ -1364,6 +1366,11 @@ else:
             st.markdown("### 📅 Maç Olan Günler")
             gecerli_gruplar_t4 = [g for g in st.session_state.grup_asamalari.keys() if st.session_state.grup_asamalari[g] == aktif_asama]
             mac_programi_asama = st.session_state.mac_programi[st.session_state.mac_programi['Grup'].isin(gecerli_gruplar_t4)].copy()
+            
+            # YAYINLAMA FİLTRESİ (TAKVM)
+            if not st.session_state.admin_mi:
+                yayinli_tarihler = [t for t, stat in st.session_state.yayinlanan_gunler.items() if stat == True]
+                mac_programi_asama = mac_programi_asama[mac_programi_asama['Tarih'].isin(yayinli_tarihler)]
     
             if not mac_programi_asama.empty:
                 unique_dates = sorted(mac_programi_asama['Tarih'].unique())
@@ -1376,7 +1383,7 @@ else:
                             st.session_state.selected_date_filter = d_obj
                             st.rerun()
             else:
-                st.info("Bu aşama için henüz maç planlanmadı.")
+                st.info("Bu aşama için henüz programlanmış/yayınlanmış maç bulunmuyor.")
             st.markdown("---")
     
             if not st.session_state.skor_tablosu.empty:
@@ -1662,6 +1669,24 @@ else:
                                     st.rerun()
                                 else:
                                     st.error("Sistem meşgul, lütfen tekrar deneyin.")
+
+                        # --- YENİ EKLENEN: YAYINLAMA / GİZLEME KONTROLÜ ---
+                        st.markdown("<br>", unsafe_allow_html=True)
+                        is_published = st.session_state.yayinlanan_gunler.get(formatted_tarih, False)
+                        
+                        if not is_published:
+                            st.error("🔴 BU GÜNÜN PROGRAMI ŞU AN YAYINDA DEĞİL (Gizli)")
+                            st.info("Değişikliklerinizi kaydedip programın hatasız olduğundan emin olduktan sonra İzleyicilere, Kaptanlara ve Hakemlere görünür hale getirebilirsiniz.")
+                            if st.button("📢 Günün Programını Yayınla", type="primary", use_container_width=True):
+                                st.session_state.yayinlanan_gunler[formatted_tarih] = True
+                                ortak_veriyi_kaydet()
+                                st.rerun()
+                        else:
+                            st.success("🟢 BU GÜNÜN PROGRAMI ŞU AN YAYINDA (Herkes Görebilir)")
+                            if st.button("🛑 Programı Yayından Kaldır (Sadece Başhakem Görebilir)", use_container_width=True):
+                                st.session_state.yayinlanan_gunler[formatted_tarih] = False
+                                ortak_veriyi_kaydet()
+                                st.rerun()
     
                     st.markdown("---")
                     st.markdown("### ⚙️ Görünüm ve Çıktı Ayarları")
@@ -1858,8 +1883,6 @@ else:
                                     {html_rows}
                                 </table>
                                 """, unsafe_allow_html=True)
-            else:
-                st.info("Gruplar oluşturulmadan maç programı aktif edilemez.")                     
 
     elif menu_secim == "📢 Duyurular":
         st.subheader("📢 Turnuva Duyuruları ve Belgeler")
