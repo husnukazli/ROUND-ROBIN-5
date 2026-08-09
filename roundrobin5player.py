@@ -1284,7 +1284,7 @@ else:
                             else:
                                 st.write("Oyuncu yok")
                             st.markdown("---")
-        elif menu_secim == "📅 Maç Programı":
+elif menu_secim == "📅 Maç Programı":
         tab_gunluk, tab_genel = st.tabs(["🗓️ Günlük Akış (Tarihe Göre)", "📋 Tüm Maçların Genel Durumu"])
         
         with tab_genel:
