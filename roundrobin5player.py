@@ -628,6 +628,9 @@ else:
         else:
             st.success(f"Zaten {st.session_state.aktif_hakem} olarak giriş yaptınız. Lütfen menüden Hakem Paneli'ne geçiş yapın.")
 
+    # ==============================================================================
+    # --- YENİLENEN SKOR GİRİŞİ (TARİH VE EXPANDER MANTIĞI) ---
+    # ==============================================================================
     elif menu_secim == "✍️ Skor Girişi":
         if st.session_state.admin_mi:
             st.info("💡 **Not:** Kaptanların girdiği isimler onaylandıktan sonra buraya otomatik düşer. Kaydedilen skorlar anında puan durumuna yansır.")
@@ -637,264 +640,320 @@ else:
                 if not gecerli_gruplar_t2:
                     st.info(f"{aktif_asama} için kayıtlı grup bulunmamaktadır.")
                 else:
-                    gruplar = dogal_sirala(gecerli_gruplar_t2)
-                    secilen_grup = st.selectbox("Grup Seç:", gruplar, key="skor_grup_sec")
+                    df_skor = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'].isin(gecerli_gruplar_t2)].copy()
+                    df_prog = st.session_state.mac_programi.copy()
                     
-                    df_grup = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] == secilen_grup].copy()
-                    aktif_gunler = sorted(df_grup['Gün'].unique(), key=lambda x: int(x.split('.')[0]) if '.' in x else 99)
+                    # Tarih, saat ve kort haritasını (map) oluştur (Mac_Programi'ndan cekecegiz)
+                    tarih_map = {}
+                    saat_map = {}
+                    kort_map = {}
+                    for _, r in df_prog.iterrows():
+                        k = f"{r['Grup']}_{r['Gün']}_{r['Eşleşme']}"
+                        tarih_map[k] = str(r.get('Tarih', ''))
+                        saat_map[k] = str(r.get('Maç Saati', ''))
+                        kort_map[k] = str(r.get('Kort', ''))
+                        
+                    def get_tarih(row):
+                        k = f"{row['Grup']}_{row['Gün']}_{row['Eşleşme']}"
+                        val = tarih_map.get(k, "")
+                        return val if val else "Atanmadı"
+                        
+                    df_skor['Tarih_Filtre'] = df_skor.apply(get_tarih, axis=1)
                     
-                    secilen_gun = st.selectbox("Müsabaka Günü:", aktif_gunler)
-                    df_gun = df_grup[df_grup['Gün'] == secilen_gun]
-                    format_secimi = st.session_state.grup_formatlari.get(secilen_grup, "3 Maçlık (2 Tek, 1 Çift)")
+                    # Tarih listesini bul ve sırala
+                    tarihler = [t for t in df_skor['Tarih_Filtre'].unique() if t != "Atanmadı"]
+                    tarihler_sirali = sorted(tarihler, key=lambda x: datetime.datetime.strptime(x, "%d.%m.%Y").date() if x else datetime.date.min)
                     
-                    form_verileri = {}
-                    current_eslesme = None 
+                    secenekler = tarihler_sirali + ["📌 Henüz Tarihi Atanmamış Maçlar"]
                     
-                    for idx, row in sort_maclar(df_gun).iterrows():
-                        if row['Eşleşme'] != current_eslesme:
-                            current_eslesme = row['Eşleşme']
-                            st.markdown(f"""
-                            <div style='background: linear-gradient(90deg, #0B3B24 0%, #1a6b44 100%); color: white; padding: 8px 15px; border-radius: 6px; margin-top: 25px; margin-bottom: 15px; font-size: 15px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.15);'>
-                                🎾 TAKIM EŞLEŞMESİ: {row['Takım 1']} vs {row['Takım 2']} <span style='font-size:12px; font-weight:normal; opacity:0.8; margin-left:10px;'>(Kayıt: {current_eslesme})</span>
-                            </div>
-                            """, unsafe_allow_html=True)
-
-                        s1t1_k = int(row['1.Set T1'])
-                        s1t2_k = int(row['1.Set T2'])
-                        durum_k = str(row.get('Durum', 'Tamamlandı'))
-                        skor_girilmis = s1t1_k > 0 or s1t2_k > 0 or durum_k != "Tamamlandı"
-                        
-                        if skor_girilmis:
-                            st.markdown(f"<div style='padding: 6px 10px; border-radius: 6px; background-color: rgba(232, 108, 67, 0.15); border-left: 4px solid #E86C43; margin-bottom: 5px;'><b style='color: #E86C43;'>✅ {row['Branş']} - Skor Kayıtlı</b></div>", unsafe_allow_html=True)
-                        else:
-                            st.markdown(f"<div style='padding: 6px 10px; margin-bottom: 5px; opacity: 0.8;'><b>🔹 {row['Branş']}</b></div>", unsafe_allow_html=True)
-                        
-                        h_cols = st.columns([2.8, 2.8, 2.6, 1.4, 0.2, 1.4, 0.2, 1.4])
-                        
-                        t1_isim, t2_isim = row['Takım 1'], row['Takım 2']
-                        h_cols[0].markdown(f"<div style='font-size:14px; font-weight:bold; padding-bottom:5px;'>🛡️ {t1_isim}</div>", unsafe_allow_html=True)
-                        h_cols[1].markdown(f"<div style='font-size:14px; font-weight:bold; padding-bottom:5px;'>🛡️ {t2_isim}</div>", unsafe_allow_html=True)
-                        h_cols[3].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; border-bottom: 2px solid rgba(128,128,128,0.5); padding-bottom: 2px;'>1. SET</div>", unsafe_allow_html=True)
-                        h_cols[5].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; border-bottom: 2px solid rgba(128,128,128,0.5); padding-bottom: 2px;'>2. SET</div>", unsafe_allow_html=True)
-                        h_cols[7].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; border-bottom: 2px solid rgba(128,128,128,0.5); padding-bottom: 2px;'>3. SET</div>", unsafe_allow_html=True)
-
-                        r_cols = st.columns([2.8, 2.8, 2.1, 0.5, 0.7, 0.7, 0.2, 0.7, 0.7, 0.2, 0.7, 0.7])
-                        
-                        grup_kadro_dict = st.session_state.takim_kadrolari.get(secilen_grup, {})
-                        t1_havuz = grup_kadro_dict.get(t1_isim, ["Belirtilmedi"])
-                        t2_havuz = grup_kadro_dict.get(t2_isim, ["Belirtilmedi"])
-                        
-                        with r_cols[0]:
-                            if "Çiftler" in str(row['Branş']):
-                                eski_kayit1 = str(row['T1_Oyuncu'])
-                                for char in ["[", "]", "'", '"']: eski_kayit1 = eski_kayit1.replace(char, "")
-                                eski_oyuncular1 = [o.strip() for o in eski_kayit1.split(",") if o.strip() and o.strip() in t1_havuz and o.strip() != "Seçiniz"]
-                                t1_oyuncu = st.multiselect("T1 Oyuncular", options=t1_havuz, default=eski_oyuncular1, max_selections=2, key=f"t1_o_{idx}", label_visibility="collapsed")
-                                t1_oyuncu_str = ", ".join(t1_oyuncu)
-                            else:
-                                opts1 = ["Seçiniz"] + [o for o in t1_havuz if o != "Belirtilmedi"]
-                                eski_veri1 = str(row['T1_Oyuncu']).strip()
-                                for char in ["[", "]", "'", '"']: eski_veri1 = eski_veri1.replace(char, "")
-                                eski_o1 = eski_veri1 if eski_veri1 and eski_veri1 not in ["nan", "None", ""] else "Seçiniz"
-                                idx1 = opts1.index(eski_o1) if eski_o1 in opts1 else 0
-                                t1_secim_raw = st.selectbox("T1 Oyuncu", options=opts1, index=idx1, key=f"t1_o_{idx}", label_visibility="collapsed")
-                                t1_oyuncu_str = t1_secim_raw if t1_secim_raw != "Seçiniz" else ""
-
-                        with r_cols[1]:
-                            if "Çiftler" in str(row['Branş']):
-                                eski_kayit2 = str(row['T2_Oyuncu'])
-                                for char in ["[", "]", "'", '"']: eski_kayit2 = eski_kayit2.replace(char, "")
-                                eski_oyuncular2 = [o.strip() for o in eski_kayit2.split(",") if o.strip() and o.strip() in t2_havuz and o.strip() != "Seçiniz"]
-                                t2_oyuncu = st.multiselect("T2 Oyuncular", options=t2_havuz, default=eski_oyuncular2, max_selections=2, key=f"t2_o_{idx}", label_visibility="collapsed")
-                                t2_oyuncu_str = ", ".join(t2_oyuncu)
-                            else:
-                                opts2 = ["Seçiniz"] + [o for o in t2_havuz if o != "Belirtilmedi"]
-                                eski_veri2 = str(row['T2_Oyuncu']).strip()
-                                for char in ["[", "]", "'", '"']: eski_veri2 = eski_veri2.replace(char, "")
-                                eski_o2 = eski_veri2 if eski_veri2 and eski_veri2 not in ["nan", "None", ""] else "Seçiniz"
-                                idx2 = opts2.index(eski_o2) if eski_o2 in opts2 else 0
-                                t2_secim_raw = st.selectbox("T2 Oyuncu", options=opts2, index=idx2, key=f"t2_o_{idx}", label_visibility="collapsed")
-                                t2_oyuncu_str = t2_secim_raw if t2_secim_raw != "Seçiniz" else ""
-                        
-                        with r_cols[2]:
-                            durum_opts = ["Tamamlandı", "Takım 1 Kazandı (W/O)", "Takım 2 Kazandı (W/O)", "Takım 1 Kazandı (Ret.)", "Takım 2 Kazandı (Ret.)", "Çift Taraflı W/O"]
-                            mevcut_durum = str(row.get('Durum', 'Tamamlandı'))
-                            if mevcut_durum == "Takım 1 (W/O)": mevcut_durum = "Takım 2 Kazandı (W/O)"
-                            elif mevcut_durum == "Takım 2 (W/O)": mevcut_durum = "Takım 1 Kazandı (W/O)"
-                            elif mevcut_durum == "Takım 1 (Ret.)": mevcut_durum = "Takım 2 Kazandı (Ret.)"
-                            elif mevcut_durum == "Takım 2 (Ret.)": mevcut_durum = "Takım 1 Kazandı (Ret.)"
-                            d_idx = durum_opts.index(mevcut_durum) if mevcut_durum in durum_opts else 0
-                            secilen_durum = st.selectbox("Durum", options=durum_opts, index=d_idx, key=f"durum_{idx}", label_visibility="collapsed")
-
-                        with r_cols[3]:
-                            mevcut_stb = bool(row.get('STB', False))
-                            secilen_stb = st.checkbox("STB", value=mevcut_stb, key=f"stb_{idx}")
-
-                        is_wo = "W/O" in secilen_durum
-                        
-                        s1t1 = r_cols[4].number_input("S1T1", min_value=0, value=0 if is_wo else int(row['1.Set T1']), step=1, key=f"s1t1_{idx}", label_visibility="collapsed", disabled=is_wo)
-                        s1t2 = r_cols[5].number_input("S1T2", min_value=0, value=0 if is_wo else int(row['1.Set T2']), step=1, key=f"s1t2_{idx}", label_visibility="collapsed", disabled=is_wo)
-                        
-                        r_cols[6].markdown("<div style='text-align:center; opacity:0.5; margin-top:5px; font-weight:bold;'>|</div>", unsafe_allow_html=True)
-                        
-                        s2t1 = r_cols[7].number_input("S2T1", min_value=0, value=0 if is_wo else int(row['2.Set T1']), step=1, key=f"s2t1_{idx}", label_visibility="collapsed", disabled=is_wo)
-                        s2t2 = r_cols[8].number_input("S2T2", min_value=0, value=0 if is_wo else int(row['2.Set T2']), step=1, key=f"s2t2_{idx}", label_visibility="collapsed", disabled=is_wo)
-                        
-                        r_cols[9].markdown("<div style='text-align:center; opacity:0.5; margin-top:5px; font-weight:bold;'>|</div>", unsafe_allow_html=True)
-                        
-                        s3t1 = r_cols[10].number_input("S3T1", min_value=0, value=0 if is_wo else int(row['3.Set T1']), step=1, key=f"s3t1_{idx}", label_visibility="collapsed", disabled=is_wo)
-                        s3t2 = r_cols[11].number_input("S3T2", min_value=0, value=0 if is_wo else int(row['3.Set T2']), step=1, key=f"s3t2_{idx}", label_visibility="collapsed", disabled=is_wo)
-                        
-                        form_verileri[idx] = {
-                            "T1_Oyuncu": t1_oyuncu_str, "T2_Oyuncu": t2_oyuncu_str,
-                            "1.Set T1": s1t1, "1.Set T2": s1t2, "2.Set T1": s2t1, "2.Set T2": s2t2, "3.Set T1": s3t1, "3.Set T2": s3t2,
-                            "Durum": secilen_durum, "STB": secilen_stb, "Eşleşme": str(row['Eşleşme'])
-                        }
-                        st.divider()
-                        st.divider()
-
-                    eslesme_dict = {}
-                    for idx, g_row in form_verileri.items():
-                        row_data = df_gun.loc[idx]
-                        eslesme = row_data["Eşleşme"]
-                        brans = row_data["Branş"]
-                        if eslesme not in eslesme_dict:
-                            eslesme_dict[eslesme] = {"T1": {"isim": row_data["Takım 1"], "secimler": {}}, "T2": {"isim": row_data["Takım 2"], "secimler": {}}}
-                        eslesme_dict[eslesme]["T1"]["secimler"][brans] = g_row["T1_Oyuncu"]
-                        eslesme_dict[eslesme]["T2"]["secimler"][brans] = g_row["T2_Oyuncu"]
-                
-                    grup_kadro_dict = st.session_state.takim_kadrolari.get(secilen_grup, {})
+                    # Varsayılan olarak bugünü bul, yoksa ilk sıradakini seç
+                    bugun_str = datetime.date.today().strftime("%d.%m.%Y")
+                    def_idx = secenekler.index(bugun_str) if bugun_str in secenekler else 0
                     
-                    for eslesme, data in eslesme_dict.items():
-                        for team_key in ["T1", "T2"]:
-                            takim_ismi = data[team_key]["isim"]
-                            havuz = grup_kadro_dict.get(takim_ismi, [])
-                            secimler = data[team_key]["secimler"]
-                            o1 = secimler.get("1. Tekler")
-                            o2 = secimler.get("2. Tekler")
-                            o3 = secimler.get("3. Tekler")
-                            r1 = havuz.index(o1) if o1 in havuz else -1
-                            r2 = havuz.index(o2) if o2 in havuz else -1
-                            r3 = havuz.index(o3) if o3 in havuz else -1
+                    secilen_tarih = st.selectbox("📅 Tarih Seçin:", secenekler, index=def_idx)
+                    hedef_tarih = "Atanmadı" if secilen_tarih == "📌 Henüz Tarihi Atanmamış Maçlar" else secilen_tarih
+                    
+                    df_tarih = df_skor[df_skor['Tarih_Filtre'] == hedef_tarih]
+                    
+                    if df_tarih.empty:
+                        st.success("Seçilen tarihte oynanacak maç bulunmuyor.")
+                    else:
+                        gruplar = dogal_sirala(df_tarih['Grup'].unique().tolist())
+                        secilen_grup = st.selectbox("🛡️ Grup Seçin:", gruplar, key="skor_grup_sec")
+                        
+                        df_gun = df_tarih[df_tarih['Grup'] == secilen_grup]
+                        format_secimi = st.session_state.grup_formatlari.get(secilen_grup, "3 Maçlık (2 Tek, 1 Çift)")
+                        
+                        st.markdown("---")
+                        
+                        # Eşleşmeleri kapalı Expander'lar halinde diz
+                        eslesmeler_listesi = dogal_sirala(df_gun['Eşleşme'].unique().tolist())
+                        
+                        for eslesme_adi in eslesmeler_listesi:
+                            df_eslesme = df_gun[df_gun['Eşleşme'] == eslesme_adi]
+                            t1 = df_eslesme.iloc[0]['Takım 1']
+                            t2 = df_eslesme.iloc[0]['Takım 2']
+                            gun_val = df_eslesme.iloc[0]['Gün']
                             
-                            uyarilar = []
-                            for b in ["1. Çiftler", "2. Çiftler", "Çiftler"]:
-                                c_str = secimler.get(b, "")
-                                if c_str:
-                                    c_list = [o.strip() for o in c_str.split(",") if o.strip()]
-                                    if len(c_list) == 1:
-                                        uyarilar.append(f"**{b}** maçına tek bir oyuncu seçilmiş. Çiftler maçı için 2 kişi seçilmeli veya boş bırakılmalıdır.")
+                            k_key = f"{secilen_grup}_{gun_val}_{eslesme_adi}"
+                            m_saat = saat_map.get(k_key, "??:??")
+                            m_kort = kort_map.get(k_key, "Kort Belirsiz")
+                            if hedef_tarih == "Atanmadı":
+                                m_saat = "Tarihsiz"
+                                m_kort = "Kortsuz"
+                            
+                            # Durum hesaplama
+                            biten_mac = 0
+                            toplam_mac = len(df_eslesme)
+                            for _, r in df_eslesme.iterrows():
+                                d = str(r.get('Durum', 'Tamamlandı'))
+                                s1_1, s1_2 = int(r.get('1.Set T1', 0)), int(r.get('1.Set T2', 0))
+                                if "W/O" in d or "Ret." in d or s1_1 > 0 or s1_2 > 0 or d == "Çift Taraflı W/O":
+                                    biten_mac += 1
+                                    
+                            if biten_mac == 0: durum_str = "⏳ Bekliyor"
+                            elif biten_mac == toplam_mac: durum_str = "✅ Tamamlandı"
+                            else: durum_str = f"🔄 Devam Ediyor ({biten_mac}/{toplam_mac})"
+                            
+                            baslik = f"▶ {m_saat} | {m_kort} | {secilen_grup} | {t1} vs {t2} [{durum_str}]"
+                            
+                            with st.expander(baslik, expanded=False):
+                                form_verileri = {}
+                                
+                                for idx_mp, row_mp in sort_maclar(df_eslesme).iterrows():
+                                    idx = idx_mp
+                                    row = row_mp
+
+                                    s1t1_k = int(row['1.Set T1'])
+                                    s1t2_k = int(row['1.Set T2'])
+                                    durum_k = str(row.get('Durum', 'Tamamlandı'))
+                                    skor_girilmis = s1t1_k > 0 or s1t2_k > 0 or durum_k != "Tamamlandı"
+                                    
+                                    if skor_girilmis:
+                                        st.markdown(f"<div style='padding: 6px 10px; border-radius: 6px; background-color: rgba(232, 108, 67, 0.15); border-left: 4px solid #E86C43; margin-bottom: 5px;'><b style='color: #E86C43;'>✅ {row['Branş']} - Skor Kayıtlı</b></div>", unsafe_allow_html=True)
+                                    else:
+                                        st.markdown(f"<div style='padding: 6px 10px; margin-bottom: 5px; opacity: 0.8;'><b>🔹 {row['Branş']}</b></div>", unsafe_allow_html=True)
+                                    
+                                    h_cols = st.columns([2.8, 2.8, 2.6, 1.4, 0.2, 1.4, 0.2, 1.4])
+                                    
+                                    t1_isim, t2_isim = row['Takım 1'], row['Takım 2']
+                                    h_cols[0].markdown(f"<div style='font-size:14px; font-weight:bold; padding-bottom:5px;'>🛡️ {t1_isim}</div>", unsafe_allow_html=True)
+                                    h_cols[1].markdown(f"<div style='font-size:14px; font-weight:bold; padding-bottom:5px;'>🛡️ {t2_isim}</div>", unsafe_allow_html=True)
+                                    h_cols[3].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; border-bottom: 2px solid rgba(128,128,128,0.5); padding-bottom: 2px;'>1. SET</div>", unsafe_allow_html=True)
+                                    h_cols[5].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; border-bottom: 2px solid rgba(128,128,128,0.5); padding-bottom: 2px;'>2. SET</div>", unsafe_allow_html=True)
+                                    h_cols[7].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; border-bottom: 2px solid rgba(128,128,128,0.5); padding-bottom: 2px;'>3. SET</div>", unsafe_allow_html=True)
+
+                                    r_cols = st.columns([2.8, 2.8, 2.1, 0.5, 0.7, 0.7, 0.2, 0.7, 0.7, 0.2, 0.7, 0.7])
+                                    
+                                    grup_kadro_dict = st.session_state.takim_kadrolari.get(secilen_grup, {})
+                                    t1_havuz = grup_kadro_dict.get(t1_isim, ["Belirtilmedi"])
+                                    t2_havuz = grup_kadro_dict.get(t2_isim, ["Belirtilmedi"])
+                                    
+                                    with r_cols[0]:
+                                        if "Çiftler" in str(row['Branş']):
+                                            eski_kayit1 = str(row['T1_Oyuncu'])
+                                            for char in ["[", "]", "'", '"']: eski_kayit1 = eski_kayit1.replace(char, "")
+                                            eski_oyuncular1 = [o.strip() for o in eski_kayit1.split(",") if o.strip() and o.strip() in t1_havuz and o.strip() != "Seçiniz"]
+                                            t1_oyuncu = st.multiselect("T1 Oyuncular", options=t1_havuz, default=eski_oyuncular1, max_selections=2, key=f"t1_o_{idx}", label_visibility="collapsed")
+                                            t1_oyuncu_str = ", ".join(t1_oyuncu)
+                                        else:
+                                            opts1 = ["Seçiniz"] + [o for o in t1_havuz if o != "Belirtilmedi"]
+                                            eski_veri1 = str(row['T1_Oyuncu']).strip()
+                                            for char in ["[", "]", "'", '"']: eski_veri1 = eski_veri1.replace(char, "")
+                                            eski_o1 = eski_veri1 if eski_veri1 and eski_veri1 not in ["nan", "None", ""] else "Seçiniz"
+                                            idx1 = opts1.index(eski_o1) if eski_o1 in opts1 else 0
+                                            t1_secim_raw = st.selectbox("T1 Oyuncu", options=opts1, index=idx1, key=f"t1_o_{idx}", label_visibility="collapsed")
+                                            t1_oyuncu_str = t1_secim_raw if t1_secim_raw != "Seçiniz" else ""
+
+                                    with r_cols[1]:
+                                        if "Çiftler" in str(row['Branş']):
+                                            eski_kayit2 = str(row['T2_Oyuncu'])
+                                            for char in ["[", "]", "'", '"']: eski_kayit2 = eski_kayit2.replace(char, "")
+                                            eski_oyuncular2 = [o.strip() for o in eski_kayit2.split(",") if o.strip() and o.strip() in t2_havuz and o.strip() != "Seçiniz"]
+                                            t2_oyuncu = st.multiselect("T2 Oyuncular", options=t2_havuz, default=eski_oyuncular2, max_selections=2, key=f"t2_o_{idx}", label_visibility="collapsed")
+                                            t2_oyuncu_str = ", ".join(t2_oyuncu)
+                                        else:
+                                            opts2 = ["Seçiniz"] + [o for o in t2_havuz if o != "Belirtilmedi"]
+                                            eski_veri2 = str(row['T2_Oyuncu']).strip()
+                                            for char in ["[", "]", "'", '"']: eski_veri2 = eski_veri2.replace(char, "")
+                                            eski_o2 = eski_veri2 if eski_veri2 and eski_veri2 not in ["nan", "None", ""] else "Seçiniz"
+                                            idx2 = opts2.index(eski_o2) if eski_o2 in opts2 else 0
+                                            t2_secim_raw = st.selectbox("T2 Oyuncu", options=opts2, index=idx2, key=f"t2_o_{idx}", label_visibility="collapsed")
+                                            t2_oyuncu_str = t2_secim_raw if t2_secim_raw != "Seçiniz" else ""
+                                    
+                                    with r_cols[2]:
+                                        durum_opts = ["Tamamlandı", "Takım 1 Kazandı (W/O)", "Takım 2 Kazandı (W/O)", "Takım 1 Kazandı (Ret.)", "Takım 2 Kazandı (Ret.)", "Çift Taraflı W/O"]
+                                        mevcut_durum = str(row.get('Durum', 'Tamamlandı'))
+                                        if mevcut_durum == "Takım 1 (W/O)": mevcut_durum = "Takım 2 Kazandı (W/O)"
+                                        elif mevcut_durum == "Takım 2 (W/O)": mevcut_durum = "Takım 1 Kazandı (W/O)"
+                                        elif mevcut_durum == "Takım 1 (Ret.)": mevcut_durum = "Takım 2 Kazandı (Ret.)"
+                                        elif mevcut_durum == "Takım 2 (Ret.)": mevcut_durum = "Takım 1 Kazandı (Ret.)"
+                                        d_idx = durum_opts.index(mevcut_durum) if mevcut_durum in durum_opts else 0
+                                        secilen_durum = st.selectbox("Durum", options=durum_opts, index=d_idx, key=f"durum_{idx}", label_visibility="collapsed")
+
+                                    with r_cols[3]:
+                                        mevcut_stb = bool(row.get('STB', False))
+                                        secilen_stb = st.checkbox("STB", value=mevcut_stb, key=f"stb_{idx}")
+
+                                    is_wo = "W/O" in secilen_durum
+                                    
+                                    s1t1 = r_cols[4].number_input("S1T1", min_value=0, value=0 if is_wo else int(row['1.Set T1']), step=1, key=f"s1t1_{idx}", label_visibility="collapsed", disabled=is_wo)
+                                    s1t2 = r_cols[5].number_input("S1T2", min_value=0, value=0 if is_wo else int(row['1.Set T2']), step=1, key=f"s1t2_{idx}", label_visibility="collapsed", disabled=is_wo)
+                                    
+                                    r_cols[6].markdown("<div style='text-align:center; opacity:0.5; margin-top:5px; font-weight:bold;'>|</div>", unsafe_allow_html=True)
+                                    
+                                    s2t1 = r_cols[7].number_input("S2T1", min_value=0, value=0 if is_wo else int(row['2.Set T1']), step=1, key=f"s2t1_{idx}", label_visibility="collapsed", disabled=is_wo)
+                                    s2t2 = r_cols[8].number_input("S2T2", min_value=0, value=0 if is_wo else int(row['2.Set T2']), step=1, key=f"s2t2_{idx}", label_visibility="collapsed", disabled=is_wo)
+                                    
+                                    r_cols[9].markdown("<div style='text-align:center; opacity:0.5; margin-top:5px; font-weight:bold;'>|</div>", unsafe_allow_html=True)
+                                    
+                                    s3t1 = r_cols[10].number_input("S3T1", min_value=0, value=0 if is_wo else int(row['3.Set T1']), step=1, key=f"s3t1_{idx}", label_visibility="collapsed", disabled=is_wo)
+                                    s3t2 = r_cols[11].number_input("S3T2", min_value=0, value=0 if is_wo else int(row['3.Set T2']), step=1, key=f"s3t2_{idx}", label_visibility="collapsed", disabled=is_wo)
+                                    
+                                    form_verileri[idx] = {
+                                        "T1_Oyuncu": t1_oyuncu_str, "T2_Oyuncu": t2_oyuncu_str,
+                                        "1.Set T1": s1t1, "1.Set T2": s1t2, "2.Set T1": s2t1, "2.Set T2": s2t2, "3.Set T1": s3t1, "3.Set T2": s3t2,
+                                        "Durum": secilen_durum, "STB": secilen_stb, "Eşleşme": str(row['Eşleşme'])
+                                    }
+                                    st.divider()
+                                    
+                                # UYARI ve KAYDET KISMI (Expander içinde)
+                                eslesme_dict = {}
+                                for idx, g_row in form_verileri.items():
+                                    row_data = df_gun.loc[idx]
+                                    brans = row_data["Branş"]
+                                    if eslesme_adi not in eslesme_dict:
+                                        eslesme_dict[eslesme_adi] = {"T1": {"isim": row_data["Takım 1"], "secimler": {}}, "T2": {"isim": row_data["Takım 2"], "secimler": {}}}
+                                    eslesme_dict[eslesme_adi]["T1"]["secimler"][brans] = g_row["T1_Oyuncu"]
+                                    eslesme_dict[eslesme_adi]["T2"]["secimler"][brans] = g_row["T2_Oyuncu"]
+                            
+                                for team_key in ["T1", "T2"]:
+                                    takim_ismi = eslesme_dict[eslesme_adi][team_key]["isim"]
+                                    havuz = grup_kadro_dict.get(takim_ismi, [])
+                                    secimler = eslesme_dict[eslesme_adi][team_key]["secimler"]
+                                    o1 = secimler.get("1. Tekler")
+                                    o2 = secimler.get("2. Tekler")
+                                    o3 = secimler.get("3. Tekler")
+                                    r1 = havuz.index(o1) if o1 in havuz else -1
+                                    r2 = havuz.index(o2) if o2 in havuz else -1
+                                    r3 = havuz.index(o3) if o3 in havuz else -1
+                                    
+                                    uyarilar = []
+                                    for b in ["1. Çiftler", "2. Çiftler", "Çiftler"]:
+                                        c_str = secimler.get(b, "")
+                                        if c_str:
+                                            c_list = [o.strip() for o in c_str.split(",") if o.strip()]
+                                            if len(c_list) == 1:
+                                                uyarilar.append(f"**{b}** maçına tek bir oyuncu seçilmiş. Çiftler maçı için 2 kişi seçilmeli veya boş bırakılmalıdır.")
+                                                
+                                    if r1 != -1 and r2 != -1 and r1 >= r2: uyarilar.append(f"**1. Tekler** oyuncusu ({o1}), **2. Tekler** oyuncusundan ({o2}) takım listesinde daha üst sırada olmalıdır.")
+                                    if r2 != -1 and r3 != -1 and r2 >= r3: uyarilar.append(f"**2. Tekler** oyuncusu ({o2}), **3. Tekler** oyuncusundan ({o3}) takım listesinde daha üst sırada olmalıdır.")
+                                    if r1 != -1 and r3 != -1 and r2 == -1 and r1 >= r3: uyarilar.append(f"**1. Tekler** oyuncusu ({o1}), **3. Tekler** oyuncusundan ({o3}) takım listesinde daha üst sırada olmalıdır.")
+                                    
+                                    if o1 and o1 == o2: uyarilar.append(f"Aynı oyuncuyu ({o1}) birden fazla tekler maçına yazamazsınız.")
+                                    if o2 and o2 == o3: uyarilar.append(f"Aynı oyuncuyu ({o2}) birden fazla tekler maçına yazamazsınız.")
+                                    if o1 and o1 == o3: uyarilar.append(f"Aynı oyuncuyu ({o1}) birden fazla tekler maçına yazamazsınız.")
+                                    
+                                    if "5 Maçlık" in format_secimi:
+                                        c1_oyuncular = secimler.get("1. Çiftler", "")
+                                        c2_oyuncular = secimler.get("2. Çiftler", "")
+                                        c1_list = [o.strip() for o in c1_oyuncular.split(",") if o.strip()]
+                                        c2_list = [o.strip() for o in c2_oyuncular.split(",") if o.strip()]
                                         
-                            if r1 != -1 and r2 != -1 and r1 >= r2: uyarilar.append(f"**1. Tekler** oyuncusu ({o1}), **2. Tekler** oyuncusundan ({o2}) takım listesinde daha üst sırada olmalıdır.")
-                            if r2 != -1 and r3 != -1 and r2 >= r3: uyarilar.append(f"**2. Tekler** oyuncusu ({o2}), **3. Tekler** oyuncusundan ({o3}) takım listesinde daha üst sırada olmalıdır.")
-                            if r1 != -1 and r3 != -1 and r2 == -1 and r1 >= r3: uyarilar.append(f"**1. Tekler** oyuncusu ({o1}), **3. Tekler** oyuncusundan ({o3}) takım listesinde daha üst sırada olmalıdır.")
-                            
-                            if o1 and o1 == o2: uyarilar.append(f"Aynı oyuncuyu ({o1}) birden fazla tekler maçına yazamazsınız.")
-                            if o2 and o2 == o3: uyarilar.append(f"Aynı oyuncuyu ({o2}) birden fazla tekler maçına yazamazsınız.")
-                            if o1 and o1 == o3: uyarilar.append(f"Aynı oyuncuyu ({o1}) birden fazla tekler maçına yazamazsınız.")
-                            
-                            if "5 Maçlık" in format_secimi:
-                                c1_oyuncular = secimler.get("1. Çiftler", "")
-                                c2_oyuncular = secimler.get("2. Çiftler", "")
-                                c1_list = [o.strip() for o in c1_oyuncular.split(",") if o.strip()]
-                                c2_list = [o.strip() for o in c2_oyuncular.split(",") if o.strip()]
+                                        ortak_oyuncular = set(c1_list).intersection(set(c2_list))
+                                        if ortak_oyuncular:
+                                            uyarilar.append(f"Aynı oyuncuyu ({', '.join(ortak_oyuncular)}) hem 1. Çiftler hem 2. Çiftler maçına yazamazsınız.")
+                                        
+                                        if len(c1_list) == 2 and len(c2_list) == 2 and not ortak_oyuncular:
+                                            dortlu_havuz = []
+                                            for p in c1_list + c2_list:
+                                                if p in havuz:
+                                                    dortlu_havuz.append((p, havuz.index(p)))
+                                            
+                                            dortlu_sirali = sorted(dortlu_havuz, key=lambda x: x[1])
+                                            yeni_ranking = {oyuncu: (i + 1) for i, (oyuncu, idx) in enumerate(dortlu_sirali)}
+                                            
+                                            toplam_c1 = yeni_ranking.get(c1_list[0],99) + yeni_ranking.get(c1_list[1],99)
+                                            toplam_c2 = yeni_ranking.get(c2_list[0],99) + yeni_ranking.get(c2_list[1],99)
+                                            
+                                            if toplam_c1 > toplam_c2:
+                                                uyarilar.append(f"Çiftler Sıralama Hatası: Seçilen 4 oyuncu arasındaki güç dengesine göre, 1. Çiftler daha güçlü veya eşit (Toplam: {toplam_c1}) olmalıdır. Mevcut durumda 2. Çiftler (Toplam: {toplam_c2}) daha güçlü görünüyor.")
+                                    
+                                    if uyarilar: st.warning(f"⚠️ **Sıralama Uyarısı ({takim_ismi}):**\n\n" + "\n".join([f"- {u}" for u in uyarilar]) + "\n\n*(Başhakem olarak bu uyarıya rağmen kaydetme yetkiniz bulunmaktadır.)*")
                                 
-                                ortak_oyuncular = set(c1_list).intersection(set(c2_list))
-                                if ortak_oyuncular:
-                                    uyarilar.append(f"Aynı oyuncuyu ({', '.join(ortak_oyuncular)}) hem 1. Çiftler hem 2. Çiftler maçına yazamazsınız.")
-                                
-                                if len(c1_list) == 2 and len(c2_list) == 2 and not ortak_oyuncular:
-                                    dortlu_havuz = []
-                                    for p in c1_list + c2_list:
-                                        if p in havuz:
-                                            dortlu_havuz.append((p, havuz.index(p)))
+                                if st.button(f"💾 {t1} - {t2} Skorlarını Kaydet", key=f"btn_save_{gun_val}_{eslesme_adi}", type="primary", use_container_width=True):
+                                    hata_mesajlari = []
+                                    for idx_save, guncel_row in form_verileri.items():
+                                        mac_tanimi = f"{st.session_state.skor_tablosu.loc[idx_save]['Branş']}"
+                                        
+                                        s1t1_s, s1t2_s = guncel_row["1.Set T1"], guncel_row["1.Set T2"]
+                                        s2t1_s, s2t2_s = guncel_row["2.Set T1"], guncel_row["2.Set T2"]
+                                        s3t1_s, s3t2_s = guncel_row["3.Set T1"], guncel_row["3.Set T2"]
+                                        durum_s = guncel_row["Durum"]
+                                        
+                                        ok1, msg1 = set_gecerli_mi(s1t1_s, s1t2_s, durum=durum_s)
+                                        ok2, msg2 = set_gecerli_mi(s2t1_s, s2t2_s, durum=durum_s)
+                                        ok3, msg3 = set_gecerli_mi(s3t1_s, s3t2_s, is_set3=True, durum=durum_s)
+                                        
+                                        if not ok1: hata_mesajlari.append(f"{mac_tanimi} Set 1: {msg1}")
+                                        if not ok2: hata_mesajlari.append(f"{mac_tanimi} Set 2: {msg2}")
+                                        if not ok3: hata_mesajlari.append(f"{mac_tanimi} Set 3: {msg3}")
+                                        
+                                        if durum_s == "Tamamlandı":
+                                            if s1t1_s == 0 and s1t2_s == 0 and s2t1_s == 0 and s2t2_s == 0 and s3t1_s == 0 and s3t2_s == 0:
+                                                hata_mesajlari.append(f"❌ {mac_tanimi}: Durum 'Tamamlandı' seçilmiş ama tüm skorlar 0-0! Maç oynanmadıysa durumunu 'Çift Taraflı W/O' veya benzeri bir seçenekle değiştirin.")
+                                            else:
+                                                t1_s1_kazandi = s1t1_s > s1t2_s
+                                                t2_s1_kazandi = s1t2_s > s1t1_s
+                                                t1_s2_kazandi = s2t1_s > s2t2_s
+                                                t2_s2_kazandi = s2t2_s > s2t1_s
+                                                
+                                                if (t1_s1_kazandi and t1_s2_kazandi) or (t2_s1_kazandi and t2_s2_kazandi): 
+                                                    if s3t1_s != 0 or s3t2_s != 0:
+                                                        hata_mesajlari.append(f"❌ {mac_tanimi}: Maç 2-0 bittiği için 3. sete skor girilemez.")
+                                                
+                                                elif (t1_s1_kazandi and t2_s2_kazandi) or (t2_s1_kazandi and t1_s2_kazandi):
+                                                    if s3t1_s == 0 and s3t2_s == 0:
+                                                        hata_mesajlari.append(f"❌ {mac_tanimi}: Setlerde 1-1 eşitlik var, 3. set skoru girilmelidir.")
                                     
-                                    dortlu_sirali = sorted(dortlu_havuz, key=lambda x: x[1])
-                                    yeni_ranking = {oyuncu: (i + 1) for i, (oyuncu, idx) in enumerate(dortlu_sirali)}
-                                    
-                                    toplam_c1 = yeni_ranking[c1_list[0]] + yeni_ranking[c1_list[1]]
-                                    toplam_c2 = yeni_ranking[c2_list[0]] + yeni_ranking[c2_list[1]]
-                                    
-                                    if toplam_c1 > toplam_c2:
-                                        uyarilar.append(f"Çiftler Sıralama Hatası: Seçilen 4 oyuncu arasındaki güç dengesine göre, 1. Çiftler daha güçlü veya eşit (Toplam: {toplam_c1}) olmalıdır. Mevcut durumda 2. Çiftler (Toplam: {toplam_c2}) daha güçlü görünüyor.")
-                            
-                            if uyarilar: st.warning(f"⚠️ **Sıralama Uyarısı ({takim_ismi} | Eşleşme: {eslesme}):**\n\n" + "\n".join([f"- {u}" for u in uyarilar]) + "\n\n*(Başhakem olarak bu uyarıya rağmen kaydetme yetkiniz bulunmaktadır.)*")
-                    
-                    if st.button("✅ Tüm Skorları ve Esameleri Kaydet (Maç Programına Yansıt)"):
-                        hata_mesajlari = []
-                        for idx, guncel_row in form_verileri.items():
-                            mac_tanimi = f"{secilen_gun} - {st.session_state.skor_tablosu.loc[idx]['Branş']}"
-                            
-                            s1t1, s1t2 = guncel_row["1.Set T1"], guncel_row["1.Set T2"]
-                            s2t1, s2t2 = guncel_row["2.Set T1"], guncel_row["2.Set T2"]
-                            s3t1, s3t2 = guncel_row["3.Set T1"], guncel_row["3.Set T2"]
-                            durum = guncel_row["Durum"]
-                            
-                            ok1, msg1 = set_gecerli_mi(s1t1, s1t2, durum=durum)
-                            ok2, msg2 = set_gecerli_mi(s2t1, s2t2, durum=durum)
-                            ok3, msg3 = set_gecerli_mi(s3t1, s3t2, is_set3=True, durum=durum)
-                            
-                            if not ok1: hata_mesajlari.append(f"{mac_tanimi} Set 1: {msg1}")
-                            if not ok2: hata_mesajlari.append(f"{mac_tanimi} Set 2: {msg2}")
-                            if not ok3: hata_mesajlari.append(f"{mac_tanimi} Set 3: {msg3}")
-                            
-                            if durum == "Tamamlandı":
-                                if s1t1 == 0 and s1t2 == 0 and s2t1 == 0 and s2t2 == 0 and s3t1 == 0 and s3t2 == 0:
-                                    hata_mesajlari.append(f"❌ {mac_tanimi}: Durum 'Tamamlandı' seçilmiş ama tüm skorlar 0-0! Maç oynanmadıysa durumunu 'Çift Taraflı W/O' veya benzeri bir seçenekle değiştirin.")
-                                else:
-                                    t1_s1_kazandi = s1t1 > s1t2
-                                    t2_s1_kazandi = s1t2 > s1t1
-                                    t1_s2_kazandi = s2t1 > s2t2
-                                    t2_s2_kazandi = s2t2 > s2t1
-                                    
-                                    if (t1_s1_kazandi and t1_s2_kazandi) or (t2_s1_kazandi and t2_s2_kazandi): 
-                                        if s3t1 != 0 or s3t2 != 0:
-                                            hata_mesajlari.append(f"❌ {mac_tanimi}: Maç 2-0 bittiği için 3. sete skor girilemez.")
-                                    
-                                    elif (t1_s1_kazandi and t2_s2_kazandi) or (t2_s1_kazandi and t1_s2_kazandi):
-                                        if s3t1 == 0 and s3t2 == 0:
-                                            hata_mesajlari.append(f"❌ {mac_tanimi}: Setlerde 1-1 eşitlik var, 3. set skoru girilmelidir.")
+                                    if hata_mesajlari:
+                                        for h in hata_mesajlari: st.error(h)
+                                    else:
+                                        for idx_save, guncel_row in form_verileri.items():
+                                            match_key = f"{secilen_grup}_{gun_val}_{guncel_row['Eşleşme']}"
+                                            
+                                            st.session_state.skor_tablosu.at[idx_save, "T1_Oyuncu"] = guncel_row["T1_Oyuncu"]
+                                            st.session_state.skor_tablosu.at[idx_save, "T2_Oyuncu"] = guncel_row["T2_Oyuncu"]
+                                            st.session_state.skor_tablosu.at[idx_save, "1.Set T1"] = guncel_row["1.Set T1"]
+                                            st.session_state.skor_tablosu.at[idx_save, "1.Set T2"] = guncel_row["1.Set T2"]
+                                            st.session_state.skor_tablosu.at[idx_save, "2.Set T1"] = guncel_row["2.Set T1"]
+                                            st.session_state.skor_tablosu.at[idx_save, "2.Set T2"] = guncel_row["2.Set T2"]
+                                            st.session_state.skor_tablosu.at[idx_save, "3.Set T1"] = guncel_row["3.Set T1"]
+                                            st.session_state.skor_tablosu.at[idx_save, "3.Set T2"] = guncel_row["3.Set T2"]
+                                            st.session_state.skor_tablosu.at[idx_save, "Durum"] = guncel_row["Durum"]
+                                            st.session_state.skor_tablosu.at[idx_save, "STB"] = guncel_row["STB"]
+                                            
+                                            if guncel_row["T1_Oyuncu"] or guncel_row["T2_Oyuncu"]:
+                                                st.session_state.esame_onayli[match_key] = True
+
+                                        if ortak_veriyi_kaydet():
+                                            st.success("Tebrikler! Bu maçın skorları kaydedildi ve Maç Programı'na aktarıldı.")
+                                            time.sleep(1)
+                                            st.rerun()
+                                        else:
+                                            st.error("Sistem meşgul, lütfen tekrar deneyin.")
                         
-                        if hata_mesajlari:
-                            for h in hata_mesajlari: st.error(h)
-                        else:
-                            for idx, guncel_row in form_verileri.items():
-                                eslesme_val = guncel_row["Eşleşme"]
-                                match_key = f"{secilen_grup}_{secilen_gun}_{eslesme_val}"
-                                
-                                st.session_state.skor_tablosu.at[idx, "T1_Oyuncu"] = guncel_row["T1_Oyuncu"]
-                                st.session_state.skor_tablosu.at[idx, "T2_Oyuncu"] = guncel_row["T2_Oyuncu"]
-                                st.session_state.skor_tablosu.at[idx, "1.Set T1"] = guncel_row["1.Set T1"]
-                                st.session_state.skor_tablosu.at[idx, "1.Set T2"] = guncel_row["1.Set T2"]
-                                st.session_state.skor_tablosu.at[idx, "2.Set T1"] = guncel_row["2.Set T1"]
-                                st.session_state.skor_tablosu.at[idx, "2.Set T2"] = guncel_row["2.Set T2"]
-                                st.session_state.skor_tablosu.at[idx, "3.Set T1"] = guncel_row["3.Set T1"]
-                                st.session_state.skor_tablosu.at[idx, "3.Set T2"] = guncel_row["3.Set T2"]
-                                st.session_state.skor_tablosu.at[idx, "Durum"] = guncel_row["Durum"]
-                                st.session_state.skor_tablosu.at[idx, "STB"] = guncel_row["STB"]
-                                
-                                if guncel_row["T1_Oyuncu"] or guncel_row["T2_Oyuncu"]:
-                                    st.session_state.esame_onayli[match_key] = True
-
-                            if ortak_veriyi_kaydet():
-                                st.success("Veriler ve Manuel Esameler başarıyla kaydedilip Maç Programına yansıtıldı!")
-                                st.rerun()
-                            else:
-                                st.error("⚠️ Sistem şu an meşgul. Çakışma önlendi, lütfen tekrar deneyin.")
-
-                    st.markdown("---")
-                    with st.expander(f"📊 {secilen_grup} Anlık Puan Durumu (Görüntülemek için tıklayın)"):
-                        df_guncel = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] == secilen_grup].copy()
-                        if not df_guncel.empty:
-                            grup_stats = hesapla_tum_puan_durumu(df_guncel)
-                            if not grup_stats.empty:
-                                grup_df_display = grup_stats.drop(columns=['Grup'])
-                                grup_df_display = sirala_grup_df(grup_df_display, secilen_grup)
-                                st.dataframe(grup_df_display, use_container_width=True)
-                            else:
-                                st.info("Bu grup için henüz puan durumu oluşmadı.")
-            else:
-                st.info("Aktif grup bulunamadı.")
+                        st.markdown("---")
+                        with st.expander(f"📊 {secilen_grup} Anlık Puan Durumu (Görüntülemek için tıklayın)"):
+                            df_guncel = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] == secilen_grup].copy()
+                            if not df_guncel.empty:
+                                grup_stats = hesapla_tum_puan_durumu(df_guncel)
+                                if not grup_stats.empty:
+                                    grup_df_display = grup_stats.drop(columns=['Grup'])
+                                    grup_df_display = sirala_grup_df(grup_df_display, secilen_grup)
+                                    st.dataframe(grup_df_display, use_container_width=True)
+                                else:
+                                    st.info("Bu grup için henüz puan durumu oluşmadı.")
         else:
             st.warning("🔒 Skor ve esame giriş paneli dışarıya kapalıdır. Lütfen giriş yapınız.")
 
@@ -1280,7 +1339,7 @@ else:
             gecerli_gruplar_genel = [g for g in st.session_state.grup_asamalari.keys() if st.session_state.grup_asamalari[g] == aktif_asama]
             df_hepsi = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'].isin(gecerli_gruplar_genel)]
             
-            # YAYINLAMA FİLTRESİ: Eğer Başhakem değilse sadece "Yayında" olan günleri ve grupları görebilir.[cite: 2]
+            # YAYINLAMA FİLTRESİ: Eğer Başhakem değilse sadece "Yayında" olan günleri ve grupları görebilir.
             if not st.session_state.admin_mi:
                 yayinli_tarihler = [t for t, stat in st.session_state.yayinlanan_gunler.items() if stat == True]
                 izinli_gruplar_gunler = st.session_state.mac_programi[st.session_state.mac_programi['Tarih'].isin(yayinli_tarihler)][['Grup', 'Gün']].drop_duplicates()
@@ -1354,7 +1413,7 @@ else:
             gecerli_gruplar_t4 = [g for g in st.session_state.grup_asamalari.keys() if st.session_state.grup_asamalari[g] == aktif_asama]
             mac_programi_asama = st.session_state.mac_programi[st.session_state.mac_programi['Grup'].isin(gecerli_gruplar_t4)].copy()
             
-            # YAYINLAMA FİLTRESİ (TAKVM)[cite: 2]
+            # YAYINLAMA FİLTRESİ (TAKVM)
             if not st.session_state.admin_mi:
                 yayinli_tarihler = [t for t, stat in st.session_state.yayinlanan_gunler.items() if stat == True]
                 mac_programi_asama = mac_programi_asama[mac_programi_asama['Tarih'].isin(yayinli_tarihler)]
