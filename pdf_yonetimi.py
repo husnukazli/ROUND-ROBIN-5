@@ -168,10 +168,6 @@ def generate_combined_standings_pdf(gruplar_dict, manuel_gruplar=None):
     return get_pdf_bytes(pdf)
 
 def _klasman_sayfasi_ciz(pdf, kategori_adi, birinciler_liste, ikinciler_liste, ligde_kalanlar, dusenler):
-    """Tek bir kategorinin klasman sayfasını, çağıranın açtığı pdf sayfasının üzerine çizer.
-    generate_klasman_pdf (tek kategori) ve generate_toplu_klasman_pdf (çoklu kategori, her biri
-    kendi sayfasında) tarafından ortak kullanılır; önceden bu iki fonksiyon aynı çizim mantığını
-    neredeyse birebir tekrar ediyordu."""
     apply_font(pdf, bold=True, size=16)
     pdf.cell(0, 8, to_pdf_text("TÜRKİYE TENİS FEDERASYONU"), ln=True, align='C')
     apply_font(pdf, bold=False, size=12)
@@ -339,6 +335,8 @@ def generate_mac_sonuc_belgesi(eslesmeler_listesi):
         takim2 = eslesme.get("Takım 2", "")
         hakem = eslesme.get("Hakem", "")
         alt_maclar = eslesme.get("Alt Maclar", [])
+        t1_kadro = eslesme.get("T1_Kadro", [])
+        t2_kadro = eslesme.get("T2_Kadro", [])
         
         apply_font(pdf, bold=True, size=14)
         pdf.cell(0, 8, to_pdf_text(grup_adi), ln=True, align='C')
@@ -353,14 +351,14 @@ def generate_mac_sonuc_belgesi(eslesmeler_listesi):
         if saat_kort_metni:
             pdf.cell(0, 6, to_pdf_text(" - ".join(saat_kort_metni)), ln=True, align='C')
             
-        pdf.ln(8)
+        pdf.ln(6)
         
         apply_font(pdf, bold=True, size=12)
-        pdf.cell(65, 8, to_pdf_text(f"[  ]  {takim1}"), ln=0, align='L')
-        pdf.cell(65, 8, to_pdf_text(f"[  ]  {takim2}"), ln=0, align='L')
+        pdf.cell(65, 8, to_pdf_text(f"[  ]   {takim1}"), ln=0, align='L')
+        pdf.cell(65, 8, to_pdf_text(f"[  ]   {takim2}"), ln=0, align='L')
         pdf.cell(60, 8, to_pdf_text("SKOR: [    ] - [    ]"), ln=1, align='R')
         
-        pdf.ln(4)
+        pdf.ln(3)
         
         apply_font(pdf, bold=True, size=10)
         pdf.set_fill_color(220, 220, 220)
@@ -421,12 +419,29 @@ def generate_mac_sonuc_belgesi(eslesmeler_listesi):
             
             pdf.set_y(y + satir_h)
             
-        pdf.ln(18) 
+        pdf.ln(6) 
+        
+        # --- OYUNCU LİSTELERİ (İKİ KANARA YAKIN İKİ SÜTUN HALİNDE) ---
+        apply_font(pdf, bold=True, size=9)
+        pdf.cell(95, 5, to_pdf_text(f"{takim1} Oyuncu Listesi:"), align='L')
+        pdf.cell(95, 5, to_pdf_text(f"{takim2} Oyuncu Listesi:"), align='L')
+        pdf.ln(5)
+        
+        apply_font(pdf, bold=False, size=8.5)
+        max_kadro_len = max(len(t1_kadro), len(t2_kadro)) if (t1_kadro or t2_kadro) else 1
+        for i in range(max_kadro_len):
+            p1 = f"{i+1}. {t1_kadro[i]}" if i < len(t1_kadro) else ""
+            p2 = f"{i+1}. {t2_kadro[i]}" if i < len(t2_kadro) else ""
+            pdf.cell(95, 5, to_pdf_text(p1), align='L')
+            pdf.cell(95, 5, to_pdf_text(p2), align='L')
+            pdf.ln(5)
+            
+        pdf.ln(8) 
         apply_font(pdf, bold=True, size=11)
         pdf.cell(130, 8, to_pdf_text("KAZANAN TAKIM: ..........................................................................."), ln=0)
         pdf.cell(60, 8, to_pdf_text("GENEL SKOR: [    ] - [    ]"), ln=1, align='R')
         
-        pdf.ln(20) 
+        pdf.ln(10) 
         
         apply_font(pdf, bold=True, size=10)
         pdf.cell(63, 5, to_pdf_text(f"{takim1} Kaptanı"), align='C')
@@ -440,12 +455,12 @@ def generate_mac_sonuc_belgesi(eslesmeler_listesi):
         pdf.cell(64, 5, to_pdf_text(hakem_isim), align='C')
         pdf.cell(63, 5, to_pdf_text("İmza"), align='C')
         
-        pdf.ln(25) 
+        pdf.ln(12) 
         
         apply_font(pdf, bold=True, size=10)
         pdf.cell(0, 6, to_pdf_text("NOTLAR:"), ln=True)
         pdf.set_font(style="")
-        for _ in range(4):
-            pdf.cell(0, 8, to_pdf_text("........................................................................................................................................................................................................"), ln=True)
+        for _ in range(3):
+            pdf.cell(0, 6, to_pdf_text("........................................................................................................................................................................................................"), ln=True)
 
     return get_pdf_bytes(pdf)
