@@ -309,7 +309,7 @@ def grup_ayarlari_ciz(aktif_asama):
                     takimlar.append(t_isim)
                     grup_kadrolari[t_isim] = oyuncu_listesi if oyuncu_listesi else ["Belirtilmedi"]
 
-        if st.button("🚀 Grubu ve Maç Programını Oluştur / Güncelle"):
+        if st.button("🚀 Grubu Oluştur ve Kadroları Kaydet"):
             cakisan_takimlar = [t for t in takimlar if t in baska_gruplardaki_takimlar]
             if cakisan_takimlar:
                 hata_detay = ", ".join([f"'{t}' ({baska_gruplardaki_takimlar[t]})" for t in cakisan_takimlar])
@@ -332,7 +332,7 @@ def grup_ayarlari_ciz(aktif_asama):
                 
                 if not st.session_state.skor_tablosu.empty and grup_adi_temiz in st.session_state.skor_tablosu['Grup'].unique():
                     if ortak_veriyi_kaydet():
-                        st.success("Mevcut grup bulundu! Kadrolar başarıyla güncellendi, eski maç programı korundu.")
+                        st.success("Mevcut grup bulundu! Kadrolar başarıyla güncellendi, eski fikstür korundu.")
                     else:
                         st.error("Sistem meşgul, lütfen tekrar deneyin.")
                 else:
@@ -340,29 +340,116 @@ def grup_ayarlari_ciz(aktif_asama):
                     if st.session_state.skor_tablosu.empty: st.session_state.skor_tablosu = yeni_df
                     else: st.session_state.skor_tablosu = pd.concat([st.session_state.skor_tablosu, yeni_df], ignore_index=True)
                     if ortak_veriyi_kaydet():
-                        st.success(f"{aktif_asama} grubu başarıyla oluşturuldu!")
+                        st.success(f"{aktif_asama} grubu başarıyla oluşturuldu! Şimdi aşağıdan tarih atamasını yapabilirsiniz.")
                     else:
                         st.error("Sistem meşgul, lütfen tekrar deneyin.")
                 
+        # --- YENİ: GÜN/TARİH EŞLEŞTİRİCİ MOTORU ---
+        st.markdown("---")
+        st.markdown("### 🗓️ Grup Gün-Tarih Eşleştirmesi (Fikstür Takvimi)")
+        st.info("Grupların fikstüründeki '1. Gün', '2. Gün' gibi aşamaları gerçek takvim günleriyle eşleştirip, maçları gizli olarak Maç Programı sayfasına fırlatabilirsiniz.")
+        
+        if not st.session_state.skor_tablosu.empty:
+            t_gruplar_takvim = dogal_sirala([g for g in st.session_state.skor_tablosu['Grup'].unique() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama])
+            if t_gruplar_takvim:
+                sec_grup_takvim = st.selectbox("Tarih Atanacak Grubu Seçin:", ["Seçiniz"] + t_gruplar_takvim, key="takvim_grup_sec")
+                if sec_grup_takvim != "Seçiniz":
+                    df_grup_takvim = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] == sec_grup_takvim]
+                    gunler = dogal_sirala(df_grup_takvim['Gün'].unique().tolist())
+                    
+                    mevcut_takvim = st.session_state.grup_gun_takvimi.get(sec_grup_takvim, {})
+                    yeni_takvim = {}
+                    
+                    st.write(f"**{sec_grup_takvim} Takvimi:**")
+                    c1, c2 = st.columns(2)
+                    for i, gun in enumerate(gunler):
+                        eski_tarih_str = mevcut_takvim.get(gun, "")
+                        if eski_tarih_str:
+                            try: default_date = datetime.datetime.strptime(eski_tarih_str, "%d.%m.%Y").date()
+                            except: default_date = datetime.date.today()
+                        else:
+                            default_date = datetime.date.today()
+                            
+                        with c1 if i % 2 == 0 else c2:
+                            sec_tarih = st.date_input(f"📅 {gun} Tarihi:", value=default_date, key=f"dt_{sec_grup_takvim}_{gun}")
+                            yeni_takvim[gun] = sec_tarih.strftime("%d.%m.%Y")
+                            
+                    st.write("")
+                    c_btn1, c_btn2 = st.columns(2)
+                    if c_btn1.button("💾 Tarihleri Kaydet ve Maç Programına Fırlat", type="primary", use_container_width=True):
+                        st.session_state.grup_gun_takvimi[sec_grup_takvim] = yeni_takvim
+                        turkce_gunler = {0: "Pazartesi", 1: "Salı", 2: "Çarşamba", 3: "Perşembe", 4: "Cuma", 5: "Cumartesi", 6: "Pazar"}
+                        
+                        yeni_kayitlar = []
+                        for _, row in df_grup_takvim.iterrows():
+                            gun_val = row['Gün']
+                            tarih_str = yeni_takvim[gun_val]
+                            tarih_obj = datetime.datetime.strptime(tarih_str, "%d.%m.%Y").date()
+                            gun_adi = turkce_gunler[tarih_obj.weekday()]
+                            
+                            mask = (st.session_state.mac_programi['Grup'] == sec_grup_takvim) & \
+                                   (st.session_state.mac_programi['Gün'] == gun_val) & \
+                                   (st.session_state.mac_programi['Branş'] == row['Branş']) & \
+                                   (st.session_state.mac_programi['Eşleşme'] == row['Eşleşme'])
+                            
+                            if not st.session_state.mac_programi[mask].empty:
+                                idx = st.session_state.mac_programi[mask].index[0]
+                                st.session_state.mac_programi.at[idx, 'Tarih'] = tarih_str
+                                st.session_state.mac_programi.at[idx, 'Gün Adı'] = gun_adi
+                            else:
+                                yeni_kayitlar.append({
+                                    "Maç Saati": "10:00", "Tarih": tarih_str, "Gün Adı": gun_adi, "Kort": "Kort 1",
+                                    "Grup": row['Grup'], "Gün": row['Gün'], "Branş": row['Branş'], "Eşleşme": row['Eşleşme'],
+                                    "Takım 1": row['Takım 1'], "Takım 2": row['Takım 2'], "T1 Oyuncu": "", "T2 Oyuncu": "", "Skor": "Oynanmadı", "Kazanan": "", "Hakem": "Atanmadı"
+                                })
+                        
+                        if yeni_kayitlar:
+                            st.session_state.mac_programi = pd.concat([st.session_state.mac_programi, pd.DataFrame(yeni_kayitlar)], ignore_index=True)
+                            
+                        if ortak_veriyi_kaydet():
+                            st.success("✅ Tarihler başarıyla atandı ve gizli olarak maç programına aktarıldı!")
+                            time.sleep(1.5)
+                            st.rerun()
+                            
+                    if c_btn2.button("🗑️ Eşleşmeleri Sil (Grubu Programdan Çıkar)", use_container_width=True):
+                        if sec_grup_takvim in st.session_state.grup_gun_takvimi:
+                            del st.session_state.grup_gun_takvimi[sec_grup_takvim]
+                        st.session_state.mac_programi = st.session_state.mac_programi[st.session_state.mac_programi['Grup'] != sec_grup_takvim].reset_index(drop=True)
+                        if ortak_veriyi_kaydet():
+                            st.success("✅ Gruba ait tüm fikstür takvimden silindi!")
+                            time.sleep(1.5)
+                            st.rerun()
+                
+        # --- YENİ: 2 KADEMELİ KLASÖR MİMARİSİ ---
         if st.session_state.takim_kadrolari:
             st.markdown("---")
             st.markdown(f"### 📁 Mevcut Kayıtlı Gruplar ve Kadrolar ({aktif_asama})")
             gosterilecek_gruplar_klasor = dogal_sirala([g for g in st.session_state.takim_kadrolari.keys() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama])
+            
+            kategori_dict = {}
             for g_isim in gosterilecek_gruplar_klasor:
-                f_turu = st.session_state.grup_formatlari.get(g_isim, "3 Maçlık (2 Tek, 1 Çift)")
                 f_kat = st.session_state.grup_kategorileri.get(g_isim, "Erkekler")
                 f_yas = st.session_state.grup_yas_gruplari.get(g_isim, "Yaş Belirtme")
+                kategori_anahtari = f"{f_yas} {f_kat}" if f_yas != "Yaş Belirtme" else f_kat
                 
-                with st.expander(f"📁 {g_isim} ({f_yas} | {f_kat} | {f_turu})"):
-                    g_kadro = st.session_state.takim_kadrolari[g_isim]
-                    for t_isim in dogal_sirala(list(g_kadro.keys())):
-                        st.markdown(f"**🛡️ {t_isim}**")
-                        if g_kadro[t_isim] and g_kadro[t_isim] != ["Belirtilmedi"]:
-                            liste_metni = "<br>".join([f"**{i+1}.** {oyuncu}" for i, oyuncu in enumerate(g_kadro[t_isim])])
-                            st.markdown(liste_metni, unsafe_allow_html=True)
-                        else:
-                            st.write("Oyuncu yok")
-                        st.markdown("---")
+                if kategori_anahtari not in kategori_dict:
+                    kategori_dict[kategori_anahtari] = []
+                kategori_dict[kategori_anahtari].append(g_isim)
+                
+            for kat_adi in dogal_sirala(list(kategori_dict.keys())):
+                with st.expander(f"📂 {kat_adi} Kategorisi ({len(kategori_dict[kat_adi])} Grup)"):
+                    for g_isim in dogal_sirala(kategori_dict[kat_adi]):
+                        f_turu = st.session_state.grup_formatlari.get(g_isim, "3 Maçlık (2 Tek, 1 Çift)")
+                        with st.expander(f"📁 {g_isim} ({f_turu})"):
+                            g_kadro = st.session_state.takim_kadrolari[g_isim]
+                            for t_isim in dogal_sirala(list(g_kadro.keys())):
+                                st.markdown(f"**🛡️ {t_isim}**")
+                                if g_kadro[t_isim] and g_kadro[t_isim] != ["Belirtilmedi"]:
+                                    liste_metni = "<br>".join([f"**{i+1}.** {oyuncu}" for i, oyuncu in enumerate(g_kadro[t_isim])])
+                                    st.markdown(liste_metni, unsafe_allow_html=True)
+                                else:
+                                    st.write("Oyuncu yok")
+                                st.markdown("---")
     else:
         st.warning("🔒 Bu panel dışarıya kapalıdır. Lütfen giriş yapınız.")
 
@@ -650,6 +737,7 @@ def yonetim_ve_dosya_ciz(aktif_asama):
                     if secilen_sil_grup in st.session_state.grup_tamamlandi: del st.session_state.grup_tamamlandi[secilen_sil_grup]
                     if secilen_sil_grup in st.session_state.grup_yas_gruplari: del st.session_state.grup_yas_gruplari[secilen_sil_grup]
                     if secilen_sil_grup in st.session_state.grup_statuleri: del st.session_state.grup_statuleri[secilen_sil_grup] 
+                    if secilen_sil_grup in st.session_state.grup_gun_takvimi: del st.session_state.grup_gun_takvimi[secilen_sil_grup]
                     
                     keys_to_delete = [k for k in st.session_state.esame_kasasi.keys() if k.startswith(secilen_sil_grup + "_")]
                     for k in keys_to_delete:
@@ -689,7 +777,9 @@ def yonetim_ve_dosya_ciz(aktif_asama):
                 "esame_kasasi": st.session_state.get("esame_kasasi", {}),
                 "esame_onayli": st.session_state.get("esame_onayli", {}),
                 "hakem_listesi": st.session_state.get("hakem_listesi", []),
-                "hakem_pinleri": st.session_state.get("hakem_pinleri", {})
+                "hakem_pinleri": st.session_state.get("hakem_pinleri", {}),
+                "grup_gun_takvimi": st.session_state.get("grup_gun_takvimi", {}),
+                "yayinlanan_gunler": st.session_state.get("yayinlanan_gunler", {})
             }
             zaman_damgasi = datetime.datetime.now().strftime("%d_%m_%Y_%H%M")
             yedek_adi = f"turnuva_yedek_{zaman_damgasi}.json"
@@ -718,6 +808,8 @@ def yonetim_ve_dosya_ciz(aktif_asama):
                     st.session_state.esame_onayli = d.get("esame_onayli", {})
                     st.session_state.hakem_listesi = d.get("hakem_listesi", [])
                     st.session_state.hakem_pinleri = d.get("hakem_pinleri", {})
+                    st.session_state.grup_gun_takvimi = d.get("grup_gun_takvimi", {})
+                    st.session_state.yayinlanan_gunler = d.get("yayinlanan_gunler", {})
                     
                     if ortak_veriyi_kaydet():
                         st.success("Yedek başarıyla yüklendi!")
@@ -752,7 +844,8 @@ def yonetim_ve_dosya_ciz(aktif_asama):
                             "takim_kadrolari": {}, "grup_formatlari": {}, "grup_kategorileri": {}, "grup_asamalari": {},
                             "duyuru_metni": "", "gunluk_notlar": {}, "takim_havuzu": {}, "havuz_kategorileri": {},
                             "havuz_yas_gruplari": {}, "grup_siralamalari": {}, "grup_tamamlandi": {}, "grup_yas_gruplari": {},
-                            "takim_pinleri": {}, "esame_kasasi": {}, "esame_onayli": {}, "mac_programi": [], "hakem_listesi": [], "hakem_pinleri": {}
+                            "takim_pinleri": {}, "esame_kasasi": {}, "esame_onayli": {}, "mac_programi": [], "hakem_listesi": [], "hakem_pinleri": {},
+                            "grup_gun_takvimi": {}, "yayinlanan_gunler": {}
                         }
                         supabase.table("turnuva_ayarlari").update(bos_ayarlar).eq("id", 1).execute()
                     except Exception as e:
