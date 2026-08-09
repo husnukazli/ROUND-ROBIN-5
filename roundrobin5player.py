@@ -116,9 +116,9 @@ with st.sidebar:
     st.markdown("**Sayfalar:**")
     
     if st.session_state.admin_mi:
-        menu_items_side = ["🏠 Ana Sayfa", "👥 Grup Ayarları", "📝 Esame Kontrol Merkezi", "✍️ Skor Girişi", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular", "👮‍♂️ Hakem Yönetimi", "⚙️ Yönetim & Dosya", "📈 İstatistikler"]
+        menu_items_side = ["🏠 Ana Sayfa", "👥 Grup Ayarları", "📝 Esame Kontrol Merkezi", "✍️ Skor Girişi", "🏆 Puan Durumu", "📅 Maç Programı", "🛡️ Takım Kadroları", "📢 Duyurular", "👮‍♂️ Hakem Yönetimi", "⚙️ Yönetim & Dosya", "📈 İstatistikler"]
     elif st.session_state.hakem_mi:
-        menu_items_side = ["🏠 Ana Sayfa", "✍️ Gözlemci Hakem Paneli", "📅 Maç Programı"]
+        menu_items_side = ["🏠 Ana Sayfa", "✍️ Gözlemci Hakem Paneli", "📅 Maç Programı", "🛡️ Takım Kadroları"]
     else:
         menu_items_side = ["🏠 Ana Sayfa", "👨‍✈️ Kaptan Girişi", "👮‍♂️ Gözlemci Hakem Girişi", "🛡️ Takım Kadroları", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular"]
 
@@ -221,7 +221,7 @@ if st.session_state.current_page == "Home":
         st.write("")
         c5, c6, c7, c8 = st.columns(4)
         with c5: render_big_button("📅", "Maç Programı", "📅 Maç Programı")
-        with c6: render_big_button("📢", "Duyurular", "📢 Duyurular")
+        with c6: render_big_button("🛡️", "Takım Kadroları", "🛡️ Takım Kadroları")
         with c7: render_big_button("👮‍♂️", "Hakem Yönetimi", "👮‍♂️ Hakem Yönetimi")
         with c8: render_big_button("⚙️", "Yönetim & Dosya", "⚙️ Yönetim & Dosya")
     
@@ -235,9 +235,10 @@ if st.session_state.current_page == "Home":
         
     elif st.session_state.hakem_mi:
         st.markdown(f"<h4 style='text-align:center;'>👮‍♂️ Gözlemci Hakem Paneli ({st.session_state.aktif_hakem})</h4><br>", unsafe_allow_html=True)
-        c1, c2 = st.columns(2)
+        c1, c2, c3 = st.columns(3)
         with c1: render_big_button("✍️", "Görevli Olduğum Maçlar", "✍️ Gözlemci Hakem Paneli")
         with c2: render_big_button("📅", "Tüm Maç Programı", "📅 Maç Programı")
+        with c3: render_big_button("🛡️", "Takım Kadroları", "🛡️ Takım Kadroları")
 
     else:
         st.markdown(f"<h4 style='text-align:center;'>İzleyici Paneli ({st.session_state.aktif_asama})</h4><br>", unsafe_allow_html=True)
@@ -388,11 +389,11 @@ else:
     menu_secim = st.session_state.current_page
     
     if st.session_state.admin_mi:
-        menu_items_top = ["🏠 Ana Sayfa", "👥 Grup Ayarları", "📝 Esame Kontrol Merkezi", "✍️ Skor Girişi", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular", "👮‍♂️ Hakem Yönetimi", "⚙️ Yönetim"]
+        menu_items_top = ["🏠 Ana Sayfa", "👥 Grup Ayarları", "📝 Esame Kontrol Merkezi", "✍️ Skor Girişi", "🏆 Puan Durumu", "📅 Maç Programı", "🛡️ Takım Kadroları", "📢 Duyurular", "👮‍♂️ Hakem Yönetimi", "⚙️ Yönetim"]
     elif st.session_state.kaptan_mi:
         menu_items_top = ["🏠 Ana Sayfa", "👨‍✈️ Kaptan Esame Girişi", "🛡️ Takım Kadroları", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular"]
     elif st.session_state.hakem_mi:
-        menu_items_top = ["🏠 Ana Sayfa", "✍️ Gözlemci Hakem Paneli", "📅 Maç Programı"]
+        menu_items_top = ["🏠 Ana Sayfa", "✍️ Gözlemci Hakem Paneli", "📅 Maç Programı", "🛡️ Takım Kadroları"]
     else:
         menu_items_top = ["🏠 Ana Sayfa", "👨‍✈️ Kaptan Girişi", "👮‍♂️ Gözlemci Hakem Girişi", "🛡️ Takım Kadroları", "🏆 Puan Durumu", "📅 Maç Programı", "📢 Duyurular"]
 
@@ -723,7 +724,7 @@ else:
                                     baslamamis += 1
                                     eslesme_durumlari[k_key] = "🔴 Başlamadı"
                                     
-                            # --- YENİ PROFESYONEL VE KOMPAKT DASHBOARD ---
+                            # --- KOMPAKT DASHBOARD ---
                             tamamlanma_orani = int((bitmis / toplam_eslesme) * 100) if toplam_eslesme > 0 else 0
                             
                             st.markdown(f"""
@@ -997,9 +998,9 @@ else:
         else:
             st.warning("🔒 Skor ve esame giriş paneli dışarıya kapalıdır. Lütfen giriş yapınız.")
 
-    # ==============================================================================
-    # 11. PUAN DURUMU (ŞAMPİYONLUK VE KLASMAN VİTRİNİ)
-    # ==============================================================================
+# ==============================================================================
+# 11. PUAN DURUMU (ŞAMPİYONLUK VE KLASMAN VİTRİNİ)
+# ==============================================================================
     elif menu_secim == "🏆 Puan Durumu":
         if not st.session_state.skor_tablosu.empty:
             tab_puan, tab_klasman = st.tabs(["📊 Grup Puan Durumları", "Nihai Klasman"])
@@ -1801,10 +1802,17 @@ else:
                             
                             alt_maclar = [{"Branş": r['Branş']} for _, r in sort_maclar(g_df).iterrows()]
                             
+                            # --- PDF İÇİN TAKIM KADROLARINI EKLEME ---
+                            grup_kadro_sozlugu = st.session_state.takim_kadrolari.get(grup_adi, {})
+                            t1_kadro = grup_kadro_sozlugu.get(t1, ["Kayıt yok"])
+                            t2_kadro = grup_kadro_sozlugu.get(t2, ["Kayıt yok"])
+
                             mac_dict = {
                                 "Grup": grup_adi, "Tarih": tarih_str, "Maç Saati": saat, 
                                 "Kort": kort, "Takım 1": t1, "Takım 2": t2, "Hakem": hakem, 
-                                "Alt Maclar": alt_maclar, "Eşleşme": eslesme_adi
+                                "Alt Maclar": alt_maclar, "Eşleşme": eslesme_adi,
+                                "T1_Kadro": t1_kadro,
+                                "T2_Kadro": t2_kadro
                             }
                             gunluk_eslesmeler_listesi.append(mac_dict)
                             eslesme_secenekleri.append(f"{saat} | {kort} | {grup_adi} | {t1} vs {t2}")
@@ -1974,8 +1982,10 @@ else:
                                     <tr><th style="border:1px solid rgba(128,128,128,0.3); padding:5px; background-color: rgba(128, 128, 128, 0.1);">Branş</th><th style="border:1px solid rgba(128,128,128,0.3); padding:5px; background-color: rgba(128, 128, 128, 0.1);">Oyuncular</th><th style="border:1px solid rgba(128,128,128,0.3); padding:5px; background-color: rgba(128, 128, 128, 0.1);">Skor</th></tr>
                                     {html_rows}
                                 </table>
-     # ==============================================================================
-    # === BAŞLANGIÇ: 🛡️ Takım Kadroları Sekme Yerine Selectbox ===
+                                """, unsafe_allow_html=True)
+
+    # ==============================================================================
+    # 13. TAKIM KADROLARI (İZLEYİCİ VE GENEL GÖRÜNÜM)
     # ==============================================================================
     elif menu_secim == "🛡️ Takım Kadroları":
         st.subheader(f"🛡️ Takım Kadroları ({aktif_asama})")
@@ -1989,7 +1999,11 @@ else:
             for g_isim in gosterilecek_gruplar:
                 f_kat = st.session_state.grup_kategorileri.get(g_isim, "Erkekler")
                 f_yas = st.session_state.grup_yas_gruplari.get(g_isim, "Yaş Belirtme")
-                kategori_anahtari = f"{f_yas} {f_kat}" if f_yas != "Yaş Belirtme" else f_kat
+                
+                if f_yas != "Yaş Belirtme":
+                    kategori_anahtari = f_yas + " " + f_kat
+                else:
+                    kategori_anahtari = f_kat
                 
                 if kategori_anahtari not in kategori_dict:
                     kategori_dict[kategori_anahtari] = []
@@ -1997,7 +2011,6 @@ else:
                 
             kategori_isimleri = dogal_sirala(list(kategori_dict.keys()))
             
-            # 20 kategori için tab yerine temiz bir Selectbox
             secilen_kat = st.selectbox("📂 Görüntülenecek Kategoriyi Seçin:", kategori_isimleri, key="kadro_kat_sec")
             st.markdown("<br>", unsafe_allow_html=True)
             
@@ -2015,56 +2028,13 @@ else:
                             else:
                                 html_liste = "<ul style='list-style-type: none; padding-left: 0; margin-top: 5px;'>"
                                 for idx_o, oyuncu in enumerate(oyuncular):
-                                    html_liste += f"<li style='padding: 6px 0; border-bottom: 1px solid #eee; font-size: 15px;'><b>{idx_o+1}.</b> {oyuncu}</li>"
-                                html_liste += "</ul>"
-                                st.markdown(html_liste, unsafe_allow_html=True)
-    # ==============================================================================
-    # === BAŞLANGIÇ: 🛡️ Takım Kadroları Sekme Yerine Selectbox ===
-    # ==============================================================================
-    elif menu_secim == "🛡️ Takım Kadroları":
-        st.subheader(f"🛡️ Takım Kadroları ({aktif_asama})")
-        
-        gosterilecek_gruplar = dogal_sirala([g for g in st.session_state.takim_kadrolari.keys() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama])
-        
-        if not gosterilecek_gruplar:
-            st.info(f"{aktif_asama} için kayıtlı takım veya kadro bulunmuyor.")
-        else:
-            kategori_dict = {}
-            for g_isim in gosterilecek_gruplar:
-                f_kat = st.session_state.grup_kategorileri.get(g_isim, "Erkekler")
-                f_yas = st.session_state.grup_yas_gruplari.get(g_isim, "Yaş Belirtme")
-                kategori_anahtari = f"{f_yas} {f_kat}" if f_yas != "Yaş Belirtme" else f_kat
-                
-                if kategori_anahtari not in kategori_dict:
-                    kategori_dict[kategori_anahtari] = []
-                kategori_dict[kategori_anahtari].append(g_isim)
-                
-            kategori_isimleri = dogal_sirala(list(kategori_dict.keys()))
-            
-            # 20 kategori için tab yerine temiz bir Selectbox
-            secilen_kat = st.selectbox("📂 Görüntülenecek Kategoriyi Seçin:", kategori_isimleri, key="kadro_kat_sec")
-            st.markdown("<br>", unsafe_allow_html=True)
-            
-            for g_isim in dogal_sirala(kategori_dict[secilen_kat]):
-                f_turu = st.session_state.grup_formatlari.get(g_isim, "")
-                g_kadro = st.session_state.takim_kadrolari[g_isim]
-                takim_sayisi = len(g_kadro.keys())
-                
-                with st.expander(f"📁 {g_isim} ({takim_sayisi} Takım | {f_turu})", expanded=True):
-                    for t_isim in dogal_sirala(list(g_kadro.keys())):
-                        with st.expander(f"🛡️ {t_isim}", expanded=False):
-                            oyuncular = g_kadro[t_isim]
-                            if not oyuncular or oyuncular == ["Belirtilmedi"]:
-                                st.warning("Bu takım için henüz oyuncu kadrosu girilmemiş.")
-                            else:
-                                html_liste = "<ul style='list-style-type: none; padding-left: 0; margin-top: 5px;'>"
-                                for idx_o, oyuncu in enumerate(oyuncular):
-                                    html_liste += f"<li style='padding: 6px 0; border-bottom: 1px solid #eee; font-size: 15px;'><b>{idx_o+1}.</b> {oyuncu}</li>"
+                                    sira_no = idx_o + 1
+                                    html_liste += f"<li style='padding: 6px 0; border-bottom: 1px solid #eee; font-size: 15px;'><b>{sira_no}.</b> {oyuncu}</li>"
                                 html_liste += "</ul>"
                                 st.markdown(html_liste, unsafe_allow_html=True)
 
     # ==============================================================================
-    # 13. DUYURULAR
+    # 14. DUYURULAR
     # ==============================================================================
     elif menu_secim == "📢 Duyurular":
         st.subheader("📢 Turnuva Duyuruları ve Belgeler")
