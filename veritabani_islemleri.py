@@ -90,7 +90,10 @@ def ortak_veriyi_kaydet():
         "esame_onayli": st.session_state.get("esame_onayli", {}),
         "mac_programi": mp_records,
         "hakem_listesi": st.session_state.get("hakem_listesi", []),
-        "hakem_pinleri": st.session_state.get("hakem_pinleri", {})
+        "hakem_pinleri": st.session_state.get("hakem_pinleri", {}),
+        # --- YENİ EKLENEN HAFIZA ALANLARI ---
+        "grup_gun_takvimi": st.session_state.get("grup_gun_takvimi", {}),
+        "yayinlanan_gunler": st.session_state.get("yayinlanan_gunler", {})
     }
     
     ayarlar["sistem_kilitli"] = st.session_state.get("sistem_kilitli", False)
@@ -173,6 +176,9 @@ def ortak_veriyi_yukle():
         st.session_state.esame_onayli = data.get("esame_onayli", {})
         st.session_state.hakem_listesi = data.get("hakem_listesi", [])
         st.session_state.hakem_pinleri = data.get("hakem_pinleri", {})
+        # --- YENİ EKLENEN HAFIZA ALANLARI ---
+        st.session_state.grup_gun_takvimi = data.get("grup_gun_takvimi", {})
+        st.session_state.yayinlanan_gunler = data.get("yayinlanan_gunler", {})
     
     if maclar_data is not None:
         mac_listesi = []
