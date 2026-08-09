@@ -374,11 +374,25 @@ def generate_mac_sonuc_belgesi(eslesmeler_listesi):
         apply_font(pdf, bold=False, size=10)
         
         if not alt_maclar:
-            alt_maclar = [{"Branş": "1. Tekler"}, {"Branş": "2. Tekler"}, {"Branş": "Çiftler"}]
+            alt_maclar = [{"Branş": "2. Tekler"}, {"Branş": "1. Tekler"}, {"Branş": "Çiftler"}]
+            
+        is_beslik_format = len(alt_maclar) > 3
             
         for mac in alt_maclar:
             brans = mac.get("Branş", "")
-            alt_etiket = "(1 Nolu)" if "1. Tekler" in brans else ("(2 Nolu)" if "2. Tekler" in brans else ("(3 Nolu)" if "3. Tekler" in brans else ""))
+            
+            alt_etiket = ""
+            if is_beslik_format:
+                if "3. Tekler" in brans: alt_etiket = "(1 Nolu)"
+                elif "2. Tekler" in brans: alt_etiket = "(2 Nolu)"
+                elif "1. Tekler" in brans: alt_etiket = "(3 Nolu)"
+                elif "2. Çiftler" in brans: alt_etiket = "(Sıra Top. Yüksek)"
+                elif "1. Çiftler" in brans: alt_etiket = "(Sıra Top. Düşük)"
+            else:
+                if "2. Tekler" in brans: alt_etiket = "(1 Nolu)"
+                elif "1. Tekler" in brans: alt_etiket = "(2 Nolu)"
+                # Çiftler için alt etiket boş kalacak
+                
             brans_metni = f"{brans}\n{alt_etiket}" if alt_etiket else brans
             
             is_ciftler = "Çiftler" in brans
