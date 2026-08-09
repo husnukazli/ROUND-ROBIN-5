@@ -694,7 +694,7 @@ else:
                             bitmis = 0
                             toplam_eslesme = 0
                             
-                            eslesme_durumlari = {} # Kutu başlıkları için önceden hesapla
+                            eslesme_durumlari = {} 
                             
                             for (g_ad, es_ad), d_es in df_aktif.groupby(['Grup', 'Eşleşme']):
                                 toplam_eslesme += 1
@@ -704,7 +704,7 @@ else:
                                 
                                 k_key = f"{g_ad}_{d_es.iloc[0]['Gün']}_{es_ad}"
                                 m_kort = kort_map.get(k_key, "")
-                                kort_var_mi = m_kort != "" and m_kort != "Kort 1" and m_kort != "Kort Belirsiz" # Varsayilan atamayi eliyoruz
+                                kort_var_mi = m_kort != "" and m_kort != "Kort 1" and m_kort != "Kort Belirsiz" 
                                 
                                 for _, r in d_es.iterrows():
                                     d = str(r.get('Durum', 'Tamamlandı'))
@@ -723,13 +723,18 @@ else:
                                     baslamamis += 1
                                     eslesme_durumlari[k_key] = "🔴 Başlamadı"
                                     
-                            st.markdown("---")
-                            c1, c2, c3, c4 = st.columns(4)
-                            c1.metric("📋 Toplam Eşleşme", toplam_eslesme)
-                            c2.metric("🔴 Başlamadı (Kort/Skor Yok)", baslamamis)
-                            c3.metric("🟡 Devam Ediyor", devam_eden)
-                            c4.metric("🟢 Tamamlandı", bitmis)
-                            st.markdown("---")
+                            # --- YENİ PROFESYONEL VE KOMPAKT DASHBOARD ---
+                            tamamlanma_orani = int((bitmis / toplam_eslesme) * 100) if toplam_eslesme > 0 else 0
+                            
+                            st.markdown(f"""
+                            <div style='display: flex; justify-content: space-between; align-items: center; background-color: #f8f9fa; padding: 12px 20px; border-radius: 6px; border-left: 4px solid #0B3B24; border: 1px solid #e0e0e0; margin-bottom: 20px; font-family: sans-serif;'>
+                                <div style='font-size: 14px; color: #333;'><b>📋 Toplam:</b> {toplam_eslesme}</div>
+                                <div style='font-size: 14px; color: #d9534f;'><b>🔴 Başlamadı:</b> {baslamamis}</div>
+                                <div style='font-size: 14px; color: #f0ad4e;'><b>🟡 Devam Ediyor:</b> {devam_eden}</div>
+                                <div style='font-size: 14px; color: #28a745;'><b>🟢 Bitti:</b> {bitmis}</div>
+                                <div style='font-size: 15px; font-weight: bold; color: #0B3B24;'>🎯 Tamamlanma: %{tamamlanma_orani}</div>
+                            </div>
+                            """, unsafe_allow_html=True)
                             
                             # --- EXPANDER LİSTELEME ---
                             gosterilecek_gruplar = gruplar if secilen_grup == "Tümü (Tüm Grupları Göster)" else [secilen_grup]
