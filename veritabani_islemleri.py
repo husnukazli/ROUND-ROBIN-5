@@ -33,20 +33,26 @@ def safe_int(val, default=0):
     try: return int(val)
     except: return default
 
-def ortak_veriyi_kaydet():
+# 🚀 HIZLANDIRMA: Opsiyonel 'guncellenen_mac_idleri' parametresi eklendi
+def ortak_veriyi_kaydet(guncellenen_mac_idleri=None):
     mac_kayitlari = []
+    
     if not st.session_state.skor_tablosu.empty:
-        if 'id' not in st.session_state.skor_tablosu.columns:
-            st.session_state.skor_tablosu['id'] = [str(uuid.uuid4()) for _ in range(len(st.session_state.skor_tablosu))]
-            
-        for idx, row in st.session_state.skor_tablosu.iterrows():
-            mac_id = row.get("id")
-            if pd.isna(mac_id) or not mac_id:
-                mac_id = str(uuid.uuid4())
-                st.session_state.skor_tablosu.at[idx, 'id'] = mac_id
+        # 1. Önce ID'si olmayan yeni maçlar varsa (ilk kurulum) onlara UUID ata
+        missing_id_mask = st.session_state.skor_tablosu['id'].isna() | (st.session_state.skor_tablosu['id'] == "")
+        if missing_id_mask.any():
+            for idx in st.session_state.skor_tablosu[missing_id_mask].index:
+                st.session_state.skor_tablosu.at[idx, 'id'] = str(uuid.uuid4())
                 
+        # 2. Eğer özel olarak güncellenen ID'ler verildiyse, sadece onları filtrele (Kurye Mantığı)
+        df_islem = st.session_state.skor_tablosu
+        if guncellenen_mac_idleri:
+            df_islem = df_islem[df_islem['id'].isin(guncellenen_mac_idleri)]
+            
+        # Sadece filtrelenmiş (veya tüm) satırları Supabase formatına çevir
+        for idx, row in df_islem.iterrows():
             mac_kayitlari.append({
-                "id": str(mac_id),
+                "id": str(row.get("id")),
                 "grup_adi": str(safe_val(row.get("Grup"), "")),
                 "musabaka_gunu": str(safe_val(row.get("Gün"), "")),
                 "eslesme": str(safe_val(row.get("Eşleşme"), "")),
@@ -91,7 +97,6 @@ def ortak_veriyi_kaydet():
         "mac_programi": mp_records,
         "hakem_listesi": st.session_state.get("hakem_listesi", []),
         "hakem_pinleri": st.session_state.get("hakem_pinleri", {}),
-        # --- YENİ EKLENEN HAFIZA ALANLARI ---
         "grup_gun_takvimi": st.session_state.get("grup_gun_takvimi", {}),
         "yayinlanan_gunler": st.session_state.get("yayinlanan_gunler", {})
     }
@@ -100,7 +105,7 @@ def ortak_veriyi_kaydet():
     cevrimdisi = st.session_state.get("cevrimdisi_mod", False)
     
     if cevrimdisi:
-        cevrimdisi_veri = {"maclar": mac_kayitlari, "ayarlar": ayarlar}
+        cevrimdisi_veri = {"maclar": st.session_state.skor_tablosu.to_dict('records'), "ayarlar": ayarlar}
         try:
             yerel_dosya = os.path.join(SISTEM_KLASORU, "cevrimdisi_veritabani.json")
             with open(yerel_dosya, "w", encoding="utf-8") as f:
@@ -112,6 +117,7 @@ def ortak_veriyi_kaydet():
     else:
         if not supabase: return False
         try:
+            # 🚀 Sadece guncellenen (veya ilk yüklemedeki) maçları yolla
             if mac_kayitlari:
                 supabase.table("maclar").upsert(mac_kayitlari).execute()
             supabase.table("turnuva_ayarlari").update(ayarlar).eq("id", 1).execute()
@@ -176,7 +182,6 @@ def ortak_veriyi_yukle():
         st.session_state.esame_onayli = data.get("esame_onayli", {})
         st.session_state.hakem_listesi = data.get("hakem_listesi", [])
         st.session_state.hakem_pinleri = data.get("hakem_pinleri", {})
-        # --- YENİ EKLENEN HAFIZA ALANLARI ---
         st.session_state.grup_gun_takvimi = data.get("grup_gun_takvimi", {})
         st.session_state.yayinlanan_gunler = data.get("yayinlanan_gunler", {})
     
