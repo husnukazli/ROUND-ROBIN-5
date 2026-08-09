@@ -1868,13 +1868,18 @@ else:
                                     st.error("Sistem meşgul, lütfen tekrar deneyin.")
                         st.divider()
                         
+                        # ==============================================================================
+                        # === BAŞLANGIÇ: BAŞHAKEM MAÇ PROGRAMI KAZANAN KALIN (BOLD) EKRANI ===
+                        # ==============================================================================
                         edited_dfs = []
                         for (grup_adi, eslesme_adi), grup_df in df_gunluk_safe.groupby(['Grup', 'Eşleşme']):
                             takim_skoru_etiketi = ""
+                            team_winner = ""
                             if not df_team_summary.empty:
                                 ozet_satiri = df_team_summary[(df_team_summary['Grup'] == grup_adi) & (df_team_summary['Eşleşme'] == eslesme_adi)]
                                 if not ozet_satiri.empty:
                                     val = ozet_satiri.iloc[0]['Skor']
+                                    team_winner = ozet_satiri.iloc[0]['Kazanan']
                                     if val != "Oynanmadı": takim_skoru_etiketi = f"  🟢 SKOR: {val}"
                             
                             kort = grup_df.iloc[0]['Kort']
@@ -1885,7 +1890,11 @@ else:
                             mevcut_hakem = grup_df.iloc[0]['Hakem']
                             if pd.isna(mevcut_hakem) or mevcut_hakem == "": mevcut_hakem = "Atanmadı"
                             
-                            expander_title = f"{saat} | {kort} | {grup_adi} | {takim1} - {takim2}{takim_skoru_etiketi} (👮‍♂️ {mevcut_hakem})"
+                            # --- TAKIM İSMİNİ BAŞLIKTA KALINLAŞTIRMA ---
+                            t1_baslik = f"**{takim1}**" if team_winner == "T1" else takim1
+                            t2_baslik = f"**{takim2}**" if team_winner == "T2" else takim2
+                            
+                            expander_title = f"{saat} | {kort} | {grup_adi} | {t1_baslik} - {t2_baslik}{takim_skoru_etiketi} (👮‍♂️ {mevcut_hakem})"
                             
                             with st.expander(expander_title, expanded=st.session_state.expand_all):
                                 c_k, c_s, c_h = st.columns(3)
@@ -1896,6 +1905,15 @@ else:
                                 secilen_hakem = c_h.selectbox("👮‍♂️ Hakem (Tüm maçlara uygulanır):", options=opts, index=idx_h, key=f"hakem_{grup_adi}_{eslesme_adi}_{formatted_tarih}")
                                 
                                 grup_df_ordered = sort_maclar(grup_df)[["Branş", "T1 Oyuncu", "T2 Oyuncu", "Skor", "Grup", "Gün", "Eşleşme", "Takım 1", "Takım 2", "Tarih", "Gün Adı", "Kazanan", "Kort", "Maç Saati", "Hakem"]]
+                                
+                                # --- OYUNCU İSİMLERİNİ KALINLAŞTIRMA (SADECE GÖRÜNTÜ İÇİN) ---
+                                for idx_m, row_m in grup_df_ordered.iterrows():
+                                    win = row_m.get('Kazanan', '')
+                                    if win == 'T1' and row_m['T1 Oyuncu']:
+                                        grup_df_ordered.at[idx_m, 'T1 Oyuncu'] = f"**{row_m['T1 Oyuncu']}**"
+                                    elif win == 'T2' and row_m['T2 Oyuncu']:
+                                        grup_df_ordered.at[idx_m, 'T2 Oyuncu'] = f"**{row_m['T2 Oyuncu']}**"
+                                
                                 disabled_cols = grup_df_ordered.columns.tolist()
                                 
                                 e_df = st.data_editor(
@@ -1909,10 +1927,16 @@ else:
                                     key=f"editor_{grup_adi}_{eslesme_adi}_{formatted_tarih}"
                                 )
                                 
+                                # --- GÜVENLİK: KAYIT ÖNCESİ ORİJİNAL İSİMLERİ GERİ YÜKLEME ---
+                                e_df['T1 Oyuncu'] = grup_df['T1 Oyuncu']
+                                e_df['T2 Oyuncu'] = grup_df['T2 Oyuncu']
+                                
                                 e_df['Kort'] = secilen_kort
                                 e_df['Maç Saati'] = secilen_saat
                                 e_df['Hakem'] = secilen_hakem
                                 edited_dfs.append(e_df)
+                        # ==============================================================================
+                        # === BİTİŞ: BAŞHAKEM MAÇ PROGRAMI KAZANAN KALIN (BOLD) EKRANI ===
     
                         if st.button("💾 Değişiklikleri ve Atamaları Kaydet"):
                             if edited_dfs:
