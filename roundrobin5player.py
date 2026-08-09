@@ -1408,7 +1408,16 @@ else:
                         st.warning("Henüz tüm grupları 'Tamamlandı' olarak kilitlenmiş bir kategori bulunmuyor.")
                     else:
                         sec_klasmanlar = st.multiselect("Sonuçlarını Görmek ve Yazdırmak İstediğiniz Kategorileri Seçin:", options=sorted(tamamlanan_kategoriler), default=sorted(tamamlanan_kategoriler))
-                        dusme_hatti = st.number_input("Play-out Gruplarında İlk Kaç Takım Ligde Kalacak? (Kırmızı Çizgi)", min_value=1, value=2, step=1, key="klasman_dusme_hatti")
+                        
+                        # Düşme hattını sadece Başhakem görebilir ve değiştirebilir
+                        if st.session_state.admin_mi:
+                            dusme_hatti = st.number_input("Play-out Gruplarında İlk Kaç Takım Ligde Kalacak? (Kırmızı Çizgi)", min_value=1, value=st.session_state.get("kayitli_dusme_hatti", 2), step=1)
+                            if dusme_hatti != st.session_state.get("kayitli_dusme_hatti", 2):
+                                st.session_state["kayitli_dusme_hatti"] = dusme_hatti
+                                ortak_veriyi_kaydet() # Başhakemin seçimi sisteme kaydedilir
+                        else:
+                            # İzleyiciler sadece sistemdeki kayıtlı değeri kullanır (varsayılan 2)
+                            dusme_hatti = st.session_state.get("kayitli_dusme_hatti", 2)
                         
                         pdf_icin_hazir_veriler = {}
                         
