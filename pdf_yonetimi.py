@@ -394,24 +394,28 @@ def generate_mac_sonuc_belgesi(eslesmeler_listesi):
         
         apply_font(pdf, bold=False, size=10)
         
+        # ==============================================================================
+        # === BAŞLANGIÇ: MAÇ TÜRÜ MANTIK DEĞİŞİKLİĞİ ===
+        # ==============================================================================
         if not alt_maclar:
-            alt_maclar = [{"Branş": "1. Tekler"}, {"Branş": "2. Tekler"}, {"Branş": "Çiftler"}]
+            alt_maclar = [{"Branş": "2. Tekler"}, {"Branş": "1. Tekler"}, {"Branş": "Çiftler"}]
+            
+        is_beslik_format = len(alt_maclar) > 3
             
         for mac in alt_maclar:
             brans = mac.get("Branş", "")
             
-            # --- 3. MAÇ TÜRÜ MANTIK DEĞİŞİKLİĞİ ---
             alt_etiket = ""
-            if "3. Tekler" in brans:
-                alt_etiket = "(1 Nolu)"
-            elif "2. Tekler" in brans:
-                alt_etiket = "(2 Nolu)"
-            elif "1. Tekler" in brans:
-                alt_etiket = "(3 Nolu)"
-            elif "2. Çiftler" in brans:
-                alt_etiket = "(Sıra Top. Yüksek)"
-            elif "1. Çiftler" in brans:
-                alt_etiket = "(Sıra Top. Düşük)"
+            if is_beslik_format:
+                if "3. Tekler" in brans: alt_etiket = "(1 Nolu)"
+                elif "2. Tekler" in brans: alt_etiket = "(2 Nolu)"
+                elif "1. Tekler" in brans: alt_etiket = "(3 Nolu)"
+                elif "2. Çiftler" in brans: alt_etiket = "(Sıra Top. Yüksek)"
+                elif "1. Çiftler" in brans: alt_etiket = "(Sıra Top. Düşük)"
+            else:
+                if "2. Tekler" in brans: alt_etiket = "(1 Nolu)"
+                elif "1. Tekler" in brans: alt_etiket = "(2 Nolu)"
+                # Çiftler için alt etiket boş kalacak
                 
             brans_metni = f"{brans}\n{alt_etiket}" if alt_etiket else brans
             
@@ -420,6 +424,9 @@ def generate_mac_sonuc_belgesi(eslesmeler_listesi):
             
             x = pdf.get_x()
             y = pdf.get_y()
+        # ==============================================================================
+        # === BİTİŞ: MAÇ TÜRÜ MANTIK DEĞİŞİKLİĞİ ===
+        # ==============================================================================
             
             pdf.rect(x, y, 30, satir_h)
             pdf.set_xy(x, y + (satir_h/2) - 4)
