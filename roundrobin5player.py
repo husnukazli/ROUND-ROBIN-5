@@ -1974,8 +1974,95 @@ else:
                                     <tr><th style="border:1px solid rgba(128,128,128,0.3); padding:5px; background-color: rgba(128, 128, 128, 0.1);">Branş</th><th style="border:1px solid rgba(128,128,128,0.3); padding:5px; background-color: rgba(128, 128, 128, 0.1);">Oyuncular</th><th style="border:1px solid rgba(128,128,128,0.3); padding:5px; background-color: rgba(128, 128, 128, 0.1);">Skor</th></tr>
                                     {html_rows}
                                 </table>
-                                """, unsafe_allow_html=True)
-                                
+     # ==============================================================================
+    # === BAŞLANGIÇ: 🛡️ Takım Kadroları Sekme Yerine Selectbox ===
+    # ==============================================================================
+    elif menu_secim == "🛡️ Takım Kadroları":
+        st.subheader(f"🛡️ Takım Kadroları ({aktif_asama})")
+        
+        gosterilecek_gruplar = dogal_sirala([g for g in st.session_state.takim_kadrolari.keys() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama])
+        
+        if not gosterilecek_gruplar:
+            st.info(f"{aktif_asama} için kayıtlı takım veya kadro bulunmuyor.")
+        else:
+            kategori_dict = {}
+            for g_isim in gosterilecek_gruplar:
+                f_kat = st.session_state.grup_kategorileri.get(g_isim, "Erkekler")
+                f_yas = st.session_state.grup_yas_gruplari.get(g_isim, "Yaş Belirtme")
+                kategori_anahtari = f"{f_yas} {f_kat}" if f_yas != "Yaş Belirtme" else f_kat
+                
+                if kategori_anahtari not in kategori_dict:
+                    kategori_dict[kategori_anahtari] = []
+                kategori_dict[kategori_anahtari].append(g_isim)
+                
+            kategori_isimleri = dogal_sirala(list(kategori_dict.keys()))
+            
+            # 20 kategori için tab yerine temiz bir Selectbox
+            secilen_kat = st.selectbox("📂 Görüntülenecek Kategoriyi Seçin:", kategori_isimleri, key="kadro_kat_sec")
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            for g_isim in dogal_sirala(kategori_dict[secilen_kat]):
+                f_turu = st.session_state.grup_formatlari.get(g_isim, "")
+                g_kadro = st.session_state.takim_kadrolari[g_isim]
+                takim_sayisi = len(g_kadro.keys())
+                
+                with st.expander(f"📁 {g_isim} ({takim_sayisi} Takım | {f_turu})", expanded=True):
+                    for t_isim in dogal_sirala(list(g_kadro.keys())):
+                        with st.expander(f"🛡️ {t_isim}", expanded=False):
+                            oyuncular = g_kadro[t_isim]
+                            if not oyuncular or oyuncular == ["Belirtilmedi"]:
+                                st.warning("Bu takım için henüz oyuncu kadrosu girilmemiş.")
+                            else:
+                                html_liste = "<ul style='list-style-type: none; padding-left: 0; margin-top: 5px;'>"
+                                for idx_o, oyuncu in enumerate(oyuncular):
+                                    html_liste += f"<li style='padding: 6px 0; border-bottom: 1px solid #eee; font-size: 15px;'><b>{idx_o+1}.</b> {oyuncu}</li>"
+                                html_liste += "</ul>"
+                                st.markdown(html_liste, unsafe_allow_html=True)
+    # ==============================================================================
+    # === BAŞLANGIÇ: 🛡️ Takım Kadroları Sekme Yerine Selectbox ===
+    # ==============================================================================
+    elif menu_secim == "🛡️ Takım Kadroları":
+        st.subheader(f"🛡️ Takım Kadroları ({aktif_asama})")
+        
+        gosterilecek_gruplar = dogal_sirala([g for g in st.session_state.takim_kadrolari.keys() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama])
+        
+        if not gosterilecek_gruplar:
+            st.info(f"{aktif_asama} için kayıtlı takım veya kadro bulunmuyor.")
+        else:
+            kategori_dict = {}
+            for g_isim in gosterilecek_gruplar:
+                f_kat = st.session_state.grup_kategorileri.get(g_isim, "Erkekler")
+                f_yas = st.session_state.grup_yas_gruplari.get(g_isim, "Yaş Belirtme")
+                kategori_anahtari = f"{f_yas} {f_kat}" if f_yas != "Yaş Belirtme" else f_kat
+                
+                if kategori_anahtari not in kategori_dict:
+                    kategori_dict[kategori_anahtari] = []
+                kategori_dict[kategori_anahtari].append(g_isim)
+                
+            kategori_isimleri = dogal_sirala(list(kategori_dict.keys()))
+            
+            # 20 kategori için tab yerine temiz bir Selectbox
+            secilen_kat = st.selectbox("📂 Görüntülenecek Kategoriyi Seçin:", kategori_isimleri, key="kadro_kat_sec")
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            for g_isim in dogal_sirala(kategori_dict[secilen_kat]):
+                f_turu = st.session_state.grup_formatlari.get(g_isim, "")
+                g_kadro = st.session_state.takim_kadrolari[g_isim]
+                takim_sayisi = len(g_kadro.keys())
+                
+                with st.expander(f"📁 {g_isim} ({takim_sayisi} Takım | {f_turu})", expanded=True):
+                    for t_isim in dogal_sirala(list(g_kadro.keys())):
+                        with st.expander(f"🛡️ {t_isim}", expanded=False):
+                            oyuncular = g_kadro[t_isim]
+                            if not oyuncular or oyuncular == ["Belirtilmedi"]:
+                                st.warning("Bu takım için henüz oyuncu kadrosu girilmemiş.")
+                            else:
+                                html_liste = "<ul style='list-style-type: none; padding-left: 0; margin-top: 5px;'>"
+                                for idx_o, oyuncu in enumerate(oyuncular):
+                                    html_liste += f"<li style='padding: 6px 0; border-bottom: 1px solid #eee; font-size: 15px;'><b>{idx_o+1}.</b> {oyuncu}</li>"
+                                html_liste += "</ul>"
+                                st.markdown(html_liste, unsafe_allow_html=True)
+
     # ==============================================================================
     # 13. DUYURULAR
     # ==============================================================================
