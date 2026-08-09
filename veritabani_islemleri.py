@@ -18,7 +18,8 @@ def init_supabase() -> Client:
         url = st.secrets["SUPABASE_URL"]
         key = st.secrets["SUPABASE_KEY"]
         return create_client(url, key)
-    except:
+    except Exception as e:
+        st.warning(f"⚠️ Supabase bağlantısı kurulamadı ({e}). Çevrimdışı moda geçmeniz gerekebilir.")
         return None
 
 supabase = init_supabase()
@@ -102,7 +103,8 @@ def ortak_veriyi_kaydet():
             with open(yerel_dosya, "w", encoding="utf-8") as f:
                 json.dump(cevrimdisi_veri, f, ensure_ascii=False, indent=4)
             return True
-        except:
+        except Exception as e:
+            st.error(f"Yerel (çevrimdışı) kayıt hatası: {e}")
             return False
     else:
         if not supabase: return False
@@ -128,8 +130,8 @@ def ortak_veriyi_yukle():
                     cevrimdisi_veri = json.load(f)
                 data = cevrimdisi_veri.get("ayarlar", {})
                 maclar_data = cevrimdisi_veri.get("maclar", [])
-            except:
-                pass
+            except Exception as e:
+                st.error(f"⚠️ Yerel (çevrimdışı) veritabanı okunamadı: {e}. Turnuva verileri boş görünüyor olabilir!")
     else:
         if supabase:
             try:
@@ -137,8 +139,8 @@ def ortak_veriyi_yukle():
                 if res.data: data = res.data[0]
                 maclar_res = supabase.table("maclar").select("*").execute()
                 if maclar_res.data: maclar_data = maclar_res.data
-            except:
-                pass 
+            except Exception as e:
+                st.error(f"⚠️ Supabase'ten veri okunamadı: {e}. Turnuva verileri boş görünüyor olabilir!")
 
     if data:
         st.session_state.sistem_kilitli = data.get("sistem_kilitli", False)
