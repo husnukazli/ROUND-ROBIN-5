@@ -167,11 +167,11 @@ def generate_combined_standings_pdf(gruplar_dict, manuel_gruplar=None):
         pdf.ln(5)
     return get_pdf_bytes(pdf)
 
-def generate_klasman_pdf(kategori_adi, birinciler_liste, ikinciler_liste, ligde_kalanlar, dusenler):
-    pdf = FPDF(orientation='P', unit='mm', format='A4')
-    pdf.add_page()
-    setup_pdf_fonts(pdf)
-
+def _klasman_sayfasi_ciz(pdf, kategori_adi, birinciler_liste, ikinciler_liste, ligde_kalanlar, dusenler):
+    """Tek bir kategorinin klasman sayfasını, çağıranın açtığı pdf sayfasının üzerine çizer.
+    generate_klasman_pdf (tek kategori) ve generate_toplu_klasman_pdf (çoklu kategori, her biri
+    kendi sayfasında) tarafından ortak kullanılır; önceden bu iki fonksiyon aynı çizim mantığını
+    neredeyse birebir tekrar ediyordu."""
     apply_font(pdf, bold=True, size=16)
     pdf.cell(0, 8, to_pdf_text("TÜRKİYE TENİS FEDERASYONU"), ln=True, align='C')
     apply_font(pdf, bold=False, size=12)
@@ -231,6 +231,12 @@ def generate_klasman_pdf(kategori_adi, birinciler_liste, ikinciler_liste, ligde_
         for takim in dogal_sirala(dusenler):
             pdf.cell(0, 7, to_pdf_text(f"  - {takim}"), ln=True)
 
+
+def generate_klasman_pdf(kategori_adi, birinciler_liste, ikinciler_liste, ligde_kalanlar, dusenler):
+    pdf = FPDF(orientation='P', unit='mm', format='A4')
+    pdf.add_page()
+    setup_pdf_fonts(pdf)
+    _klasman_sayfasi_ciz(pdf, kategori_adi, birinciler_liste, ikinciler_liste, ligde_kalanlar, dusenler)
     return get_pdf_bytes(pdf)
 
 def generate_toplu_klasman_pdf(kategoriler_verisi):
@@ -239,69 +245,13 @@ def generate_toplu_klasman_pdf(kategoriler_verisi):
 
     for kat_adi, veriler in kategoriler_verisi.items():
         pdf.add_page()
-        
-        apply_font(pdf, bold=True, size=16)
-        pdf.cell(0, 8, to_pdf_text("TÜRKİYE TENİS FEDERASYONU"), ln=True, align='C')
-        apply_font(pdf, bold=False, size=12)
-        pdf.cell(0, 6, to_pdf_text("Takım Şampiyonası Resmi Sonuç Bildirgesi"), ln=True, align='C')
-        pdf.line(10, pdf.get_y()+2, 200, pdf.get_y()+2)
-        pdf.ln(10)
-        
-        apply_font(pdf, bold=True, size=14)
-        pdf.cell(0, 10, to_pdf_text(f"KATEGORİ: {kat_adi.upper()} - NİHAİ KLASMAN"), ln=True, align='C')
-        pdf.ln(5)
-
-        current_rank = 1
-        birinciler = veriler.get("birinciler", [])
-        ikinciler = veriler.get("ikinciler", [])
-        ligde_kalanlar = veriler.get("ligde_kalanlar", [])
-        dusenler = veriler.get("dusenler", [])
-
-        if birinciler:
-            pdf.set_fill_color(220, 220, 220)
-            apply_font(pdf, bold=True, size=11)
-            pdf.cell(0, 8, to_pdf_text("ŞAMPİYONLUK KÜRSÜSÜ"), border=1, ln=True, fill=True, align='L')
-            apply_font(pdf, bold=False, size=11)
-            pdf.ln(2)
-            for takim in birinciler:
-                unvan = ""
-                if current_rank == 1: unvan = " (Şampiyon)"
-                elif current_rank == 2: unvan = " (İkinci)"
-                elif current_rank == 3: unvan = " (Üçüncü)"
-                elif current_rank == 4: unvan = " (Dördüncü)"
-                pdf.cell(0, 7, to_pdf_text(f"  {current_rank}. Sıra: {takim}{unvan}"), ln=True)
-                current_rank += 1
-            pdf.ln(5)
-
-        if ikinciler:
-            pdf.set_fill_color(235, 235, 235)
-            apply_font(pdf, bold=True, size=11)
-            pdf.cell(0, 8, to_pdf_text("İKİNCİLER GRUBU (Klasman)"), border=1, ln=True, fill=True, align='L')
-            apply_font(pdf, bold=False, size=11)
-            pdf.ln(2)
-            for takim in ikinciler:
-                pdf.cell(0, 7, to_pdf_text(f"  {current_rank}. Sıra: {takim}"), ln=True)
-                current_rank += 1
-            pdf.ln(5)
-
-        if ligde_kalanlar:
-            pdf.set_fill_color(245, 245, 245)
-            apply_font(pdf, bold=True, size=11)
-            pdf.cell(0, 8, to_pdf_text("LİGDE KALANLAR (Play-Out Üst Sıralar)"), border=1, ln=True, fill=True, align='L')
-            apply_font(pdf, bold=False, size=11)
-            pdf.ln(2)
-            for takim in dogal_sirala(ligde_kalanlar):
-                pdf.cell(0, 7, to_pdf_text(f"  - {takim}"), ln=True)
-            pdf.ln(5)
-
-        if dusenler:
-            pdf.set_fill_color(245, 245, 245)
-            apply_font(pdf, bold=True, size=11)
-            pdf.cell(0, 8, to_pdf_text("LİGDEN DÜŞENLER (Play-Out Alt Sıralar)"), border=1, ln=True, fill=True, align='L')
-            apply_font(pdf, bold=False, size=11)
-            pdf.ln(2)
-            for takim in dogal_sirala(dusenler):
-                pdf.cell(0, 7, to_pdf_text(f"  - {takim}"), ln=True)
+        _klasman_sayfasi_ciz(
+            pdf, kat_adi,
+            veriler.get("birinciler", []),
+            veriler.get("ikinciler", []),
+            veriler.get("ligde_kalanlar", []),
+            veriler.get("dusenler", [])
+        )
 
     return get_pdf_bytes(pdf)
 
