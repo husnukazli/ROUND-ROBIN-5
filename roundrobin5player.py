@@ -1951,7 +1951,7 @@ else:
                             takim2 = grup_df.iloc[0]['Takım 2']
                             gun_kodu = grup_df.iloc[0]['Gün']
                             mevcut_hakem = grup_df.iloc[0]['Hakem']
-                            if pd.isna(mevcut_hakem) or mevcut_hakem == "Atanmadı": mevcut_hakem = ""
+                            if pd.isna(mevcut_hakem) or mevcut_hakem == "": mevcut_hakem = ""
                             
                             match_key = f"{grup_adi}_{gun_kodu}_{eslesme_adi}"
                             is_approved = st.session_state.esame_onayli.get(match_key, False)
@@ -1985,7 +1985,7 @@ else:
                                 """, unsafe_allow_html=True)
 
     # ==============================================================================
-    # 13. TAKIM KADROLARI (İZLEYİCİ VE GENEL GÖRÜNÜM)
+    # 13. TAKIM KADROLARI (İZLEYİCİ VE GENEL GÖRÜNÜM) - KAPALI GELİR
     # ==============================================================================
     elif menu_secim == "🛡️ Takım Kadroları":
         st.subheader(f"🛡️ Takım Kadroları ({aktif_asama})")
@@ -2019,8 +2019,10 @@ else:
                 g_kadro = st.session_state.takim_kadrolari[g_isim]
                 takim_sayisi = len(g_kadro.keys())
                 
-                with st.expander(f"📁 {g_isim} ({takim_sayisi} Takım | {f_turu})", expanded=True):
+                # GRUP EXPANDER KAPALI GELİR (expanded=False)
+                with st.expander(f"📁 {g_isim} ({takim_sayisi} Takım | {f_turu})", expanded=False):
                     for t_isim in dogal_sirala(list(g_kadro.keys())):
+                        # TAKIM EXPANDER KAPALI GELİR (expanded=False)
                         with st.expander(f"🛡️ {t_isim}", expanded=False):
                             oyuncular = g_kadro[t_isim]
                             if not oyuncular or oyuncular == ["Belirtilmedi"]:
