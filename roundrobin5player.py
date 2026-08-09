@@ -56,6 +56,8 @@ if "esame_kasasi" not in st.session_state: st.session_state.esame_kasasi = {}
 if "esame_onayli" not in st.session_state: st.session_state.esame_onayli = {}
 if "hakem_listesi" not in st.session_state: st.session_state.hakem_listesi = []
 if "hakem_pinleri" not in st.session_state: st.session_state.hakem_pinleri = {}
+if "grup_gun_takvimi" not in st.session_state: st.session_state.grup_gun_takvimi = {}
+if "yayinlanan_gunler" not in st.session_state: st.session_state.yayinlanan_gunler = {}
 if "current_page" not in st.session_state: st.session_state.current_page = "Home"
 if "aktif_asama" not in st.session_state: st.session_state.aktif_asama = "1. Aşama"
 
@@ -151,7 +153,6 @@ with st.sidebar:
         if ucak_modu != aktif_durum:
             st.session_state.cevrimdisi_mod = ucak_modu
             st.session_state.sistem_kilitli = ucak_modu
-            # Ortak veriyi kaydet metodu içinde çevrimdışı işlem yapılacak
             ortak_veriyi_kaydet()
             if not ucak_modu:
                 msg_kutu = st.empty()
@@ -269,6 +270,9 @@ if st.session_state.current_page == "Home":
             st.session_state.current_page = "Home"
             st.rerun()
 
+# ==============================================================================
+# 5. İSTATİSTİKLER SAYFASI
+# ==============================================================================
 elif st.session_state.current_page == "📈 İstatistikler":
     aktif_asama = st.session_state.get("aktif_asama", "1. Aşama")
     
@@ -372,6 +376,9 @@ elif st.session_state.current_page == "📈 İstatistikler":
         s3.metric("🔢 Toplam Oynanan Set", int(toplam_set))
         s4.metric("🎯 Toplam Oynanan Oyun", int(toplam_oyun))
 
+# ==============================================================================
+# 6. DİĞER SAYFALAR (MODÜLER BAĞLANTI)
+# ==============================================================================
 else:
     aktif_asama = st.session_state.aktif_asama
     menu_secim = st.session_state.current_page
@@ -420,6 +427,9 @@ else:
     elif menu_secim == "⚙️ Yönetim & Dosya":
         ui_admin_paneli.yonetim_ve_dosya_ciz(aktif_asama)
 
+    # ==============================================================================
+    # 7. MAÇ PROGRAMI VE DİĞER FONKSİYONLAR
+    # ==============================================================================
     elif menu_secim == "👨‍✈️ Kaptan Esame Girişi":
         if st.session_state.get("sistem_kilitli", False) and not st.session_state.admin_mi:
             st.error("🚨 SİSTEM BAKIMDA: Başhakem şu an çevrimdışı (Uçak) modunda maç programını düzenliyor. Lütfen esamelerinizi kağıt üzerinde Başhakem masasına iletiniz.")
@@ -1261,30 +1271,7 @@ else:
         else:
             st.info(f"Bu aşamada henüz maç bulunmuyor.")
 
-    elif menu_secim == "🛡️ Takım Kadroları":
-        st.markdown(f"### 🛡️ Takımlar ve Oyuncu Kadroları ({aktif_asama})")
-        if st.session_state.takim_kadrolari:
-            gosterilecek_gruplar_klasor = dogal_sirala([g for g in st.session_state.takim_kadrolari.keys() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama])
-            
-            if not gosterilecek_gruplar_klasor:
-                st.info(f"{aktif_asama} için kayıtlı takım bulunmamaktadır.")
-            else:
-                for g_isim in gosterilecek_gruplar_klasor:
-                    f_turu = st.session_state.grup_formatlari.get(g_isim, "3 Maçlık (2 Tek, 1 Çift)")
-                    f_kat = st.session_state.grup_kategorileri.get(g_isim, "Erkekler")
-                    f_yas = st.session_state.grup_yas_gruplari.get(g_isim, "Yaş Belirtme")
-                    
-                    with st.expander(f"📁 {g_isim} ({f_yas} | {f_kat} | {f_turu})"):
-                        g_kadro = st.session_state.takim_kadrolari[g_isim]
-                        for t_isim in dogal_sirala(list(g_kadro.keys())):
-                            st.markdown(f"**🛡️ {t_isim}**")
-                            if g_kadro[t_isim] and g_kadro[t_isim] != ["Belirtilmedi"]:
-                                liste_metni = "<br>".join([f"**{i+1}.** {oyuncu}" for i, oyuncu in enumerate(g_kadro[t_isim])])
-                                st.markdown(liste_metni, unsafe_allow_html=True)
-                            else:
-                                st.write("Oyuncu yok")
-                            st.markdown("---")
-elif menu_secim == "📅 Maç Programı":
+    elif menu_secim == "📅 Maç Programı":
         tab_gunluk, tab_genel = st.tabs(["🗓️ Günlük Akış (Tarihe Göre)", "📋 Tüm Maçların Genel Durumu"])
         
         with tab_genel:
@@ -1293,7 +1280,7 @@ elif menu_secim == "📅 Maç Programı":
             gecerli_gruplar_genel = [g for g in st.session_state.grup_asamalari.keys() if st.session_state.grup_asamalari[g] == aktif_asama]
             df_hepsi = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'].isin(gecerli_gruplar_genel)]
             
-            # YAYINLAMA FİLTRESİ: Eğer Başhakem değilse sadece "Yayında" olan günleri ve grupları görebilir.
+            # YAYINLAMA FİLTRESİ: Eğer Başhakem değilse sadece "Yayında" olan günleri ve grupları görebilir.[cite: 2]
             if not st.session_state.admin_mi:
                 yayinli_tarihler = [t for t, stat in st.session_state.yayinlanan_gunler.items() if stat == True]
                 izinli_gruplar_gunler = st.session_state.mac_programi[st.session_state.mac_programi['Tarih'].isin(yayinli_tarihler)][['Grup', 'Gün']].drop_duplicates()
@@ -1367,7 +1354,7 @@ elif menu_secim == "📅 Maç Programı":
             gecerli_gruplar_t4 = [g for g in st.session_state.grup_asamalari.keys() if st.session_state.grup_asamalari[g] == aktif_asama]
             mac_programi_asama = st.session_state.mac_programi[st.session_state.mac_programi['Grup'].isin(gecerli_gruplar_t4)].copy()
             
-            # YAYINLAMA FİLTRESİ (TAKVM)
+            # YAYINLAMA FİLTRESİ (TAKVM)[cite: 2]
             if not st.session_state.admin_mi:
                 yayinli_tarihler = [t for t, stat in st.session_state.yayinlanan_gunler.items() if stat == True]
                 mac_programi_asama = mac_programi_asama[mac_programi_asama['Tarih'].isin(yayinli_tarihler)]
@@ -1883,7 +1870,10 @@ elif menu_secim == "📅 Maç Programı":
                                     {html_rows}
                                 </table>
                                 """, unsafe_allow_html=True)
-
+                                
+    # ==============================================================================
+    # 8. DUYURULAR
+    # ==============================================================================
     elif menu_secim == "📢 Duyurular":
         st.subheader("📢 Turnuva Duyuruları ve Belgeler")
         if st.session_state.admin_mi:
