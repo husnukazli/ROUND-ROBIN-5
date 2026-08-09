@@ -338,25 +338,46 @@ def generate_mac_sonuc_belgesi(eslesmeler_listesi):
         t1_kadro = eslesme.get("T1_Kadro", [])
         t2_kadro = eslesme.get("T2_Kadro", [])
         
+        # --- 1. ÜST BİLGİ ALANI (Saat Sol, Grup Orta, Kort Sağ, Hakem Sağ Alt) ---
         apply_font(pdf, bold=True, size=14)
-        pdf.cell(0, 8, to_pdf_text(grup_adi), ln=True, align='C')
+        y_header = pdf.get_y()
         
-        apply_font(pdf, bold=False, size=12)
+        # Sol: Saat
+        pdf.set_xy(10, y_header)
+        saat_metni = f"Saat: {saat}" if saat else "Saat: ...."
+        pdf.cell(60, 8, to_pdf_text(saat_metni), ln=0, align='L')
+        
+        # Orta: Grup Adı
+        pdf.set_xy(10, y_header)
+        pdf.cell(190, 8, to_pdf_text(grup_adi), ln=0, align='C')
+        
+        # Sağ: Kort
+        pdf.set_xy(140, y_header)
+        kort_metni = f"Kort: {kort}" if kort else "Kort: ...."
+        pdf.cell(60, 8, to_pdf_text(kort_metni), ln=1, align='R')
+        
+        # Alt Satır (Tarih Orta, Hakem Sağ)
+        y_subheader = pdf.get_y()
+        apply_font(pdf, bold=True, size=12) 
+        
+        # Orta: Tarih
+        pdf.set_xy(10, y_subheader)
         if tarih:
-            pdf.cell(0, 6, to_pdf_text(tarih), ln=True, align='C')
-            
-        saat_kort_metni = []
-        if saat: saat_kort_metni.append(f"Saat: {saat}")
-        if kort: saat_kort_metni.append(f"Kort: {kort}")
-        if saat_kort_metni:
-            pdf.cell(0, 6, to_pdf_text(" - ".join(saat_kort_metni)), ln=True, align='C')
+            pdf.cell(190, 6, to_pdf_text(tarih), ln=0, align='C')
+        
+        # Sağ Alt: Hakem
+        pdf.set_xy(140, y_subheader)
+        hakem_isim = hakem if hakem and hakem != "Atanmadı" else ".................."
+        pdf.cell(60, 6, to_pdf_text(f"Hakem: {hakem_isim}"), ln=1, align='R')
             
         pdf.ln(6)
         
+        # --- 2. TAKIMLAR VE BÜYÜTÜLMÜŞ SKOR KUTUSU ---
         apply_font(pdf, bold=True, size=12)
         pdf.cell(65, 8, to_pdf_text(f"[  ]   {takim1}"), ln=0, align='L')
         pdf.cell(65, 8, to_pdf_text(f"[  ]   {takim2}"), ln=0, align='L')
-        pdf.cell(60, 8, to_pdf_text("SKOR: [    ] - [    ]"), ln=1, align='R')
+        # Skor kutuları büyütüldü
+        pdf.cell(60, 8, to_pdf_text("SKOR: [        ] - [        ]"), ln=1, align='R')
         
         pdf.ln(3)
         
@@ -374,24 +395,23 @@ def generate_mac_sonuc_belgesi(eslesmeler_listesi):
         apply_font(pdf, bold=False, size=10)
         
         if not alt_maclar:
-            alt_maclar = [{"Branş": "2. Tekler"}, {"Branş": "1. Tekler"}, {"Branş": "Çiftler"}]
-            
-        is_beslik_format = len(alt_maclar) > 3
+            alt_maclar = [{"Branş": "1. Tekler"}, {"Branş": "2. Tekler"}, {"Branş": "Çiftler"}]
             
         for mac in alt_maclar:
             brans = mac.get("Branş", "")
             
+            # --- 3. MAÇ TÜRÜ MANTIK DEĞİŞİKLİĞİ ---
             alt_etiket = ""
-            if is_beslik_format:
-                if "3. Tekler" in brans: alt_etiket = "(1 Nolu)"
-                elif "2. Tekler" in brans: alt_etiket = "(2 Nolu)"
-                elif "1. Tekler" in brans: alt_etiket = "(3 Nolu)"
-                elif "2. Çiftler" in brans: alt_etiket = "(Sıra Top. Yüksek)"
-                elif "1. Çiftler" in brans: alt_etiket = "(Sıra Top. Düşük)"
-            else:
-                if "2. Tekler" in brans: alt_etiket = "(1 Nolu)"
-                elif "1. Tekler" in brans: alt_etiket = "(2 Nolu)"
-                # Çiftler için alt etiket boş kalacak
+            if "3. Tekler" in brans:
+                alt_etiket = "(1 Nolu)"
+            elif "2. Tekler" in brans:
+                alt_etiket = "(2 Nolu)"
+            elif "1. Tekler" in brans:
+                alt_etiket = "(3 Nolu)"
+            elif "2. Çiftler" in brans:
+                alt_etiket = "(Sıra Top. Yüksek)"
+            elif "1. Çiftler" in brans:
+                alt_etiket = "(Sıra Top. Düşük)"
                 
             brans_metni = f"{brans}\n{alt_etiket}" if alt_etiket else brans
             
@@ -403,7 +423,15 @@ def generate_mac_sonuc_belgesi(eslesmeler_listesi):
             
             pdf.rect(x, y, 30, satir_h)
             pdf.set_xy(x, y + (satir_h/2) - 4)
+            
+            # Çiftler alt yazısı uzun olabileceği için fontu ufaltalım
+            if is_ciftler:
+                apply_font(pdf, bold=False, size=7.5)
+            else:
+                apply_font(pdf, bold=False, size=9)
+                
             pdf.multi_cell(30, 4, to_pdf_text(brans_metni), align='C')
+            apply_font(pdf, bold=False, size=10) # Geri al
             
             pdf.rect(x + 30, y, 50, satir_h)
             pdf.rect(x + 80, y, 50, satir_h)
@@ -435,7 +463,7 @@ def generate_mac_sonuc_belgesi(eslesmeler_listesi):
             
         pdf.ln(6) 
         
-        # --- OYUNCU LİSTELERİ (İKİ KANARA YAKIN İKİ SÜTUN HALİNDE) ---
+        # --- 4. OYUNCU LİSTELERİ ---
         apply_font(pdf, bold=True, size=9)
         pdf.cell(95, 5, to_pdf_text(f"{takim1} Oyuncu Listesi:"), align='L')
         pdf.cell(95, 5, to_pdf_text(f"{takim2} Oyuncu Listesi:"), align='L')
@@ -451,9 +479,11 @@ def generate_mac_sonuc_belgesi(eslesmeler_listesi):
             pdf.ln(5)
             
         pdf.ln(8) 
+        
+        # --- 5. KAZANAN TAKIM VE BÜYÜTÜLMÜŞ GENEL SKOR KUTUSU ---
         apply_font(pdf, bold=True, size=11)
         pdf.cell(130, 8, to_pdf_text("KAZANAN TAKIM: ..........................................................................."), ln=0)
-        pdf.cell(60, 8, to_pdf_text("GENEL SKOR: [    ] - [    ]"), ln=1, align='R')
+        pdf.cell(60, 8, to_pdf_text("GENEL SKOR: [        ] - [        ]"), ln=1, align='R')
         
         pdf.ln(10) 
         
@@ -469,7 +499,8 @@ def generate_mac_sonuc_belgesi(eslesmeler_listesi):
         pdf.cell(64, 5, to_pdf_text(hakem_isim), align='C')
         pdf.cell(63, 5, to_pdf_text("İmza"), align='C')
         
-        pdf.ln(12) 
+        # --- 6. İMZALAR İLE NOTLAR ARASINDAKİ BOŞLUĞU AÇMA ---
+        pdf.ln(30) # İmza atmak için rahatça 3 cm boşluk bırakıldı
         
         apply_font(pdf, bold=True, size=10)
         pdf.cell(0, 6, to_pdf_text("NOTLAR:"), ln=True)
@@ -478,3 +509,6 @@ def generate_mac_sonuc_belgesi(eslesmeler_listesi):
             pdf.cell(0, 6, to_pdf_text("........................................................................................................................................................................................................"), ln=True)
 
     return get_pdf_bytes(pdf)
+# ==============================================================================
+# === BİTİŞ: MAÇ SONUÇ BELGESİ (PDF) GÜNCELLEMESİ ===
+# ==============================================================================
