@@ -453,7 +453,7 @@ def hesapla_tum_puan_durumu(df_girdi):
     return tum_stats
 
 # ==============================================================================
-# 🚀 AKILLI AVERAJ VE MİNİ LİG SIRALAMA MOTORU
+# 🚀 AKILLI AVERAJ VE ÇOKLU AVERAJ SIRALAMA MOTORU
 # ==============================================================================
 def sirala_grup_df(grup_df, gp, ham_maclar_df=None):
     # 1. Eğer Başhakem manuel sıralama yaptıysa öncelik onundur
@@ -473,6 +473,7 @@ def sirala_grup_df(grup_df, gp, ham_maclar_df=None):
 
     siralanmis_takimlar = []
     kura_gerekir_mesajlari = []
+    averaj_mesajlari = []
 
     # Galibiyet puanına göre grupları ele al (Çoktan aza)
     unique_galibiyetler = sorted(grup_df['Galibiyet'].unique(), reverse=True)
@@ -505,6 +506,19 @@ def sirala_grup_df(grup_df, gp, ham_maclar_df=None):
 
             if h2h_winner:
                 loser = t2 if h2h_winner == t1 else t1
+                
+                # İkili averaj notu için genel averaj kontrolü
+                r_w = alt_kumul[alt_kumul['Takım'] == h2h_winner].iloc[0]
+                r_l = alt_kumul[alt_kumul['Takım'] == loser].iloc[0]
+                
+                loser_better_gen = False
+                if r_l['Maç Av.'] > r_w['Maç Av.']: loser_better_gen = True
+                elif r_l['Maç Av.'] == r_w['Maç Av.'] and r_l['Set Av.'] > r_w['Set Av.']: loser_better_gen = True
+                elif r_l['Maç Av.'] == r_w['Maç Av.'] and r_l['Set Av.'] == r_w['Set Av.'] and r_l['Oyun Av.'] > r_w['Oyun Av.']: loser_better_gen = True
+                
+                if loser_better_gen:
+                    averaj_mesajlari.append(f"ℹ️ <b>İkili Averaj Bilgisi:</b> {h2h_winner}, genel averajı {loser} takımından düşük olmasına rağmen kendi aralarındaki maçı kazandığı için üst sıraya yerleştirilmiştir.")
+                
                 siralanmis_takimlar.append(h2h_winner)
                 siralanmis_takimlar.append(loser)
             else:
@@ -517,41 +531,41 @@ def sirala_grup_df(grup_df, gp, ham_maclar_df=None):
                     siralanmis_takimlar.append(row['Takım'])
 
         else:
-            # 📌 ÜÇLÜ VEYA ÇOKLU AVERAJ (MİNİ LİG) KONTROLÜ
+            # 📌 ÜÇLÜ VEYA ÇOKLU AVERAJ KONTROLÜ
             t_list = alt_kumul['Takım'].tolist()
-            mini_lig_cozuldumu = False
+            coklu_averaj_cozuldumu = False
             
             if ham_maclar_df is not None and not ham_maclar_df.empty:
                 # Sadece bu eşit puanlı takımların kendi aralarındaki maçları filtrele
-                mini_maclar = ham_maclar_df[
+                coklu_maclar = ham_maclar_df[
                     ham_maclar_df['Takım 1'].isin(t_list) & ham_maclar_df['Takım 2'].isin(t_list)
                 ]
-                if not mini_maclar.empty:
-                    mini_stats = hesapla_tum_puan_durumu(mini_maclar)
-                    if not mini_stats.empty and len(mini_stats) == len(t_list):
-                        # Mini lig sıralamasını yap (Galibiyet -> Maç Av -> Set Av -> Oyun Av)
-                        sorted_mini = mini_stats.sort_values(by=['Galibiyet', 'Maç Av.', 'Set Av.', 'Oyun Av.'], ascending=False)
+                if not coklu_maclar.empty:
+                    coklu_stats = hesapla_tum_puan_durumu(coklu_maclar)
+                    if not coklu_stats.empty and len(coklu_stats) == len(t_list):
+                        # Çoklu averaj sıralamasını yap (Galibiyet -> Maç Av -> Set Av -> Oyun Av)
+                        sorted_coklu = coklu_stats.sort_values(by=['Galibiyet', 'Maç Av.', 'Set Av.', 'Oyun Av.'], ascending=False)
                         
-                        # Kural: Kendi arasındaki maçlardan biri kopabilir ama kalanlar eşit kalırsa H2H'e DÖNülmez!
-                        # Kriterler sonuna kadar taranır. Eğer en üstteki ile alttaki tamamen eşitse kura uyarısı verilir.
-                        top_gal = sorted_mini.iloc[0]['Galibiyet']
-                        bottom_gal = sorted_mini.iloc[-1]['Galibiyet']
-                        top_mac_av = sorted_mini.iloc[0]['Maç Av.']
-                        bottom_mac_av = sorted_mini.iloc[-1]['Maç Av.']
-                        top_set_av = sorted_mini.iloc[0]['Set Av.']
-                        bottom_set_av = sorted_mini.iloc[-1]['Set Av.']
-                        top_oyun_av = sorted_mini.iloc[0]['Oyun Av.']
-                        bottom_oyun_av = sorted_mini.iloc[-1]['Oyun Av.']
+                        top_gal = sorted_coklu.iloc[0]['Galibiyet']
+                        bottom_gal = sorted_coklu.iloc[-1]['Galibiyet']
+                        top_mac_av = sorted_coklu.iloc[0]['Maç Av.']
+                        bottom_mac_av = sorted_coklu.iloc[-1]['Maç Av.']
+                        top_set_av = sorted_coklu.iloc[0]['Set Av.']
+                        bottom_set_av = sorted_coklu.iloc[-1]['Set Av.']
+                        top_oyun_av = sorted_coklu.iloc[0]['Oyun Av.']
+                        bottom_oyun_av = sorted_coklu.iloc[-1]['Oyun Av.']
                         
                         if top_gal == bottom_gal and top_mac_av == bottom_mac_av and top_set_av == bottom_set_av and top_oyun_av == bottom_oyun_av:
-                            kura_gerekir_mesajlari.append(f"⚠️ Bu grupta ({', '.join(t_list)}) üçlü/çoklu averaj tüm kriterlere rağmen çözülememiştir, kura gerekebilir!")
+                            kura_gerekir_mesajlari.append(f"⚠️ Bu grupta ({', '.join(t_list)}) çoklu averaj tüm kriterlere rağmen çözülememiştir, kura gerekebilir!")
+                        else:
+                            averaj_mesajlari.append(f"ℹ️ <b>Çoklu Averaj Bilgisi:</b> Bu grupta {', '.join(t_list)} takımları arasında puan eşitliği yaşanmış ve sıralama kendi aralarındaki maçlara (Çoklu Averaj Hesaplaması) göre belirlenmiştir.")
 
-                        for _, row in sorted_mini.iterrows():
+                        for _, row in sorted_coklu.iterrows():
                             siralanmis_takimlar.append(row['Takım'])
-                        mini_lig_cozuldumu = True
+                        coklu_averaj_cozuldumu = True
 
-            if not mini_lig_cozuldumu:
-                # Mini lig verisi yoksa genel tablodaki alt küme sıralamasına bak
+            if not coklu_averaj_cozuldumu:
+                # Çoklu averaj verisi yoksa genel tablodaki alt küme sıralamasına bak
                 sorted_alt = alt_kumul.sort_values(by=['Maç Av.', 'Set Av.', 'Oyun Av.'], ascending=False)
                 for _, row in sorted_alt.iterrows():
                     siralanmis_takimlar.append(row['Takım'])
@@ -561,10 +575,19 @@ def sirala_grup_df(grup_df, gp, ham_maclar_df=None):
     grup_df = grup_df.sort_values(by=['Sıra_Degeri']).drop(columns=['Sıra_Degeri'])
     grup_df.index = range(1, len(grup_df) + 1)
 
-    # Eğer çözülemeyen kura durumu varsa arayüze bilgi düşmesi için session state'e kaydedebiliriz
-    if kura_gerekir_mesajlari and "kura_uyarilari" not in st.session_state:
+    # Bildirimleri (Kura ve Averaj Notları) session_state'e aktar
+    if "kura_uyarilari" not in st.session_state:
         st.session_state.kura_uyarilari = {}
     if kura_gerekir_mesajlari:
         st.session_state.kura_uyarilari[gp] = " ".join(kura_gerekir_mesajlari)
+    elif gp in st.session_state.kura_uyarilari:
+        del st.session_state.kura_uyarilari[gp]
+        
+    if "averaj_bilgileri" not in st.session_state:
+        st.session_state.averaj_bilgileri = {}
+    if averaj_mesajlari:
+        st.session_state.averaj_bilgileri[gp] = "<br>".join(averaj_mesajlari)
+    elif gp in st.session_state.averaj_bilgileri:
+        del st.session_state.averaj_bilgileri[gp]
 
     return grup_df
