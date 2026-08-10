@@ -1020,7 +1020,6 @@ else:
                             
                             alt_maclar = [{"Branş": r['Branş']} for _, r in sort_maclar(g_df).iterrows()]
                             
-                            # --- TAKIM KADROLARINI DOĞRUDAN ÇEKME VE AKTARMA ---
                             grup_kadro_sozlugu = st.session_state.takim_kadrolari.get(grup_adi, {})
                             t1_kadro = grup_kadro_sozlugu.get(t1, [])
                             t2_kadro = grup_kadro_sozlugu.get(t2, [])
@@ -1164,7 +1163,6 @@ else:
                     tum_stats = hesapla_tum_puan_durumu(df_asama_t3)
                     mevcut_gruplar = dogal_sirala(list(tum_stats['Grup'].unique()))
                     
-                    # --- YENİ KATEGORİ VE GRUP FİLTRESİ ---
                     kategori_dict = {}
                     for gp in mevcut_gruplar:
                         g_kat = st.session_state.grup_kategorileri.get(gp, "Erkekler")
@@ -1216,6 +1214,13 @@ else:
                             with t_ic1:
                                 st.dataframe(grup_df, use_container_width=True)
                                 
+                                # EĞER BU GRUPTA BİR AVERAJ TABLOSU HESAPLANDIYSA EKRANDA GÖSTER
+                                if gp in st.session_state.get("averaj_tablolari", {}):
+                                    with st.expander("📊 Çoklu / İkili Averaj Hesaplama Tablosu"):
+                                        for tablo_basligi, t_df in st.session_state.averaj_tablolari[gp].items():
+                                            st.markdown(f"**{tablo_basligi}**")
+                                            st.dataframe(t_df, use_container_width=True)
+                                
                                 if st.session_state.grup_tamamlandi.get(gp, False):
                                     st.success("✅ Bu grubun maçları tamamlanmış ve sıralaması kilitlenmiştir.")
                                     
@@ -1223,7 +1228,6 @@ else:
                                     st.warning("⚠️ Bu grupta averaj eşitliği veya başka bir sebeple Başhakem kararıyla Manuel Sıralama uygulanmıştır.")
                                     manuel_siralanan_gruplar.append(gp)
 
-                                # YENİ EKLENEN AVERAJ VE KURA BİLDİRİMLERİ
                                 if gp in st.session_state.get("kura_uyarilari", {}):
                                     st.error(st.session_state.kura_uyarilari[gp])
                                     
@@ -1365,12 +1369,14 @@ else:
                             st.markdown("<br><hr>", unsafe_allow_html=True)
 
                     if pdf_gruplar_data:
-                        combined_pdf_bytes = generate_combined_standings_pdf(pdf_gruplar_data, manuel_gruplar=manuel_siralanan_gruplar)
+                        # Toplu PDF'e aktif averaj tablolarını da gönderiyoruz
+                        aktif_averaj_tablolari = st.session_state.get("averaj_tablolari", {})
+                        combined_pdf_bytes = generate_combined_standings_pdf(pdf_gruplar_data, manuel_gruplar=manuel_siralanan_gruplar, averaj_tablolari=aktif_averaj_tablolari)
                         st.download_button(label="📥 Seçili Grupların Puan Durumunu Tek PDF Olarak İndir", data=combined_pdf_bytes, file_name="puan_durumu_toplu.pdf", mime="application/pdf", key="pdf_puan_toplu")
                     
                     st.markdown("---")
                     with st.expander("⚖️ Gelişmiş Averaj ve Çoklu Averaj Hesaplayıcı"):
-                        st.info("ℹ️ Üçlü veya dörtlü averaj kilitlenmelerinde bir grup ve sadece averaja dahil edilecek takımları seçin. Sistem, dışarıdaki takımlarla oynanan maçları yoksayarak yepyeni bir Çoklu Averaj Hesaplaması oluşturur. Bu bilgiye bakarak üstteki 'Başhakem Sıralama Paneli'nden tabloyu dizebilirsiniz.")
+                        st.info("ℹ️ Üçlü veya dörtlü averaj kilitlenmelerinde bir grup ve sadece averaja dahil edilecek takımları seçin. Sistem, dışarıdaki takımlarla oynanan maçları yoksayarak yepyeni bir Çoklu Averaj Hesaplaması oluşturur.")
                         
                         avg_gruplar = dogal_sirala(list(df_asama_t3['Grup'].unique()))
                         sec_avg_grup = st.selectbox("Averaj Hesaplanacak Grubu Seçin:", ["Seçiniz"] + avg_gruplar, key="avg_grup_sec")
@@ -1439,14 +1445,12 @@ else:
                     else:
                         sec_klasmanlar = st.multiselect("Sonuçlarını Görmek ve Yazdırmak İstediğiniz Kategorileri Seçin:", options=sorted(tamamlanan_kategoriler), default=sorted(tamamlanan_kategoriler))
                         
-                        # Düşme hattını sadece Başhakem görebilir ve değiştirebilir
                         if st.session_state.admin_mi:
                             dusme_hatti = st.number_input("Play-out Gruplarında İlk Kaç Takım Ligde Kalacak? (Kırmızı Çizgi)", min_value=1, value=st.session_state.get("kayitli_dusme_hatti", 2), step=1)
                             if dusme_hatti != st.session_state.get("kayitli_dusme_hatti", 2):
                                 st.session_state["kayitli_dusme_hatti"] = dusme_hatti
-                                ortak_veriyi_kaydet() # Başhakemin seçimi sisteme kaydedilir
+                                ortak_veriyi_kaydet()
                         else:
-                            # İzleyiciler sadece sistemdeki kayıtlı değeri kullanır (varsayılan 2)
                             dusme_hatti = st.session_state.get("kayitli_dusme_hatti", 2)
                         
                         pdf_icin_hazir_veriler = {}
@@ -1579,7 +1583,6 @@ else:
             gecerli_gruplar_genel = [g for g in st.session_state.grup_asamalari.keys() if st.session_state.grup_asamalari[g] == aktif_asama]
             df_hepsi = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'].isin(gecerli_gruplar_genel)]
             
-            # YAYINLAMA FİLTRESİ
             if not st.session_state.admin_mi:
                 yayinli_tarihler = [t for t, stat in st.session_state.yayinlanan_gunler.items() if stat == True]
                 izinli_gruplar_gunler = st.session_state.mac_programi[st.session_state.mac_programi['Tarih'].isin(yayinli_tarihler)][['Grup', 'Gün']].drop_duplicates()
@@ -1653,7 +1656,6 @@ else:
             gecerli_gruplar_t4 = [g for g in st.session_state.grup_asamalari.keys() if st.session_state.grup_asamalari[g] == aktif_asama]
             mac_programi_asama = st.session_state.mac_programi[st.session_state.mac_programi['Grup'].isin(gecerli_gruplar_t4)].copy()
             
-            # YAYINLAMA FİLTRESİ
             if not st.session_state.admin_mi:
                 yayinli_tarihler = [t for t, stat in st.session_state.yayinlanan_gunler.items() if stat == True]
                 mac_programi_asama = mac_programi_asama[mac_programi_asama['Tarih'].isin(yayinli_tarihler)]
@@ -1896,9 +1898,6 @@ else:
                                     st.error("Sistem meşgul, lütfen tekrar deneyin.")
                         st.divider()
                         
-                        # ==============================================================================
-                        # === BAŞLANGIÇ: BAŞHAKEM MAÇ PROGRAMI KAZANAN KALIN (BOLD) EKRANI ===
-                        # ==============================================================================
                         edited_dfs = []
                         for (grup_adi, eslesme_adi), grup_df in df_gunluk_safe.groupby(['Grup', 'Eşleşme']):
                             takim_skoru_etiketi = ""
@@ -1918,7 +1917,6 @@ else:
                             mevcut_hakem = grup_df.iloc[0]['Hakem']
                             if pd.isna(mevcut_hakem) or mevcut_hakem == "": mevcut_hakem = "Atanmadı"
                             
-                            # --- TAKIM İSMİNİ BAŞLIKTA KALINLAŞTIRMA ---
                             t1_baslik = f"**{takim1}**" if team_winner == "T1" else takim1
                             t2_baslik = f"**{takim2}**" if team_winner == "T2" else takim2
                             
@@ -1934,7 +1932,6 @@ else:
                                 
                                 grup_df_ordered = sort_maclar(grup_df)[["Branş", "T1 Oyuncu", "T2 Oyuncu", "Skor", "Grup", "Gün", "Eşleşme", "Takım 1", "Takım 2", "Tarih", "Gün Adı", "Kazanan", "Kort", "Maç Saati", "Hakem"]]
                                 
-                                # --- OYUNCU İSİMLERİNİ KALINLAŞTIRMA (SADECE GÖRÜNTÜ İÇİN) ---
                                 for idx_m, row_m in grup_df_ordered.iterrows():
                                     win = row_m.get('Kazanan', '')
                                     if win == 'T1' and row_m['T1 Oyuncu']:
@@ -1955,7 +1952,6 @@ else:
                                     key=f"editor_{grup_adi}_{eslesme_adi}_{formatted_tarih}"
                                 )
                                 
-                                # --- GÜVENLİK: KAYIT ÖNCESİ ORİJİNAL İSİMLERİ GERİ YÜKLEME ---
                                 e_df['T1 Oyuncu'] = grup_df['T1 Oyuncu']
                                 e_df['T2 Oyuncu'] = grup_df['T2 Oyuncu']
                                 
@@ -1963,8 +1959,6 @@ else:
                                 e_df['Maç Saati'] = secilen_saat
                                 e_df['Hakem'] = secilen_hakem
                                 edited_dfs.append(e_df)
-                        # ==============================================================================
-                        # === BİTİŞ: BAŞHAKEM MAÇ PROGRAMI KAZANAN KALIN (BOLD) EKRANI ===
     
                         if st.button("💾 Değişiklikleri ve Atamaları Kaydet"):
                             if edited_dfs:
@@ -1978,7 +1972,6 @@ else:
                                 else:
                                     st.error("Sistem meşgul, lütfen tekrar deneyin.")
 
-                        # YAYINLAMA / GİZLEME KONTROLÜ
                         st.markdown("<br>", unsafe_allow_html=True)
                         is_published = st.session_state.yayinlanan_gunler.get(formatted_tarih, False)
                         
@@ -2015,7 +2008,6 @@ else:
                             
                             alt_maclar = [{"Branş": r['Branş']} for _, r in sort_maclar(g_df).iterrows()]
                             
-                            # --- TAKIM KADROLARINI DOĞRUDAN ÇEKME VE AKTARMA (MAÇ PROGRAMI) ---
                             grup_kadro_sozlugu = st.session_state.takim_kadrolari.get(grup_adi, {})
                             t1_kadro = grup_kadro_sozlugu.get(t1, ["Kayıt yok"])
                             t2_kadro = grup_kadro_sozlugu.get(t2, ["Kayıt yok"])
@@ -2269,7 +2261,7 @@ else:
             
             st.markdown("---")
             st.markdown("### 📄 Turnuva Belgeleri Ekle (Çoklu Yükleme)")
-            st.info("Kural kitapçığı veya yönetmelik gibi PDF dosyalarını sisteme buradan yükleyebilirsiniz. (Not: Ücretsiz bulut sunucular uyku moduna geçtiğinde yüklenen PDF dosyaları silinebilir. Turnuva anında profesyonel sunucuya geçildiğinde bu durum kalıcı olarak çözülecektir.)")
+            st.info("Kural kitapçığı veya yönetmelik gibi PDF dosyalarını sisteme buradan yükleyebilirsiniz.")
             uploaded_pdfs = st.file_uploader("PDF Dosyalarını Seçin:", type=["pdf"], accept_multiple_files=True)
             if uploaded_pdfs:
                 if st.button("📤 Seçilen PDF'leri Sisteme Yükle"):
