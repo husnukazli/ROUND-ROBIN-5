@@ -1230,6 +1230,11 @@ else:
                                 if gp in st.session_state.get("averaj_bilgileri", {}):
                                     st.markdown(f"<div style='padding: 12px; background-color: rgba(23, 162, 184, 0.1); border-left: 4px solid #17a2b8; color: #0c5460; border-radius: 4px; margin-top: 10px; margin-bottom: 10px; font-size: 14px; line-height: 1.5;'>{st.session_state.averaj_bilgileri[gp]}</div>", unsafe_allow_html=True)
                                 
+                                if gp in st.session_state.get("grup_averaj_tablolari", {}):
+                                    for t_adi, t_df in st.session_state.grup_averaj_tablolari[gp].items():
+                                        with st.expander(f"📊 {t_adi}", expanded=False):
+                                            st.dataframe(t_df, use_container_width=True)
+                                
                             with t_ic2:
                                 df_gp_matches = df_asama_t3[df_asama_t3['Grup'] == gp]
                                 matris_takimlar = dogal_sirala(list(set(df_gp_matches['Takım 1']).union(set(df_gp_matches['Takım 2']))))
@@ -1365,7 +1370,12 @@ else:
                             st.markdown("<br><hr>", unsafe_allow_html=True)
 
                     if pdf_gruplar_data:
-                        combined_pdf_bytes = generate_combined_standings_pdf(pdf_gruplar_data, manuel_gruplar=manuel_siralanan_gruplar)
+                        grup_averajlari = st.session_state.get("grup_averaj_tablolari", {})
+                        combined_pdf_bytes = generate_combined_standings_pdf(
+                            pdf_gruplar_data, 
+                            manuel_gruplar=manuel_siralanan_gruplar,
+                            averaj_tablolari=grup_averajlari
+                        )
                         st.download_button(label="📥 Seçili Grupların Puan Durumunu Tek PDF Olarak İndir", data=combined_pdf_bytes, file_name="puan_durumu_toplu.pdf", mime="application/pdf", key="pdf_puan_toplu")
                     
                     st.markdown("---")
@@ -1439,14 +1449,12 @@ else:
                     else:
                         sec_klasmanlar = st.multiselect("Sonuçlarını Görmek ve Yazdırmak İstediğiniz Kategorileri Seçin:", options=sorted(tamamlanan_kategoriler), default=sorted(tamamlanan_kategoriler))
                         
-                        # Düşme hattını sadece Başhakem görebilir ve değiştirebilir
                         if st.session_state.admin_mi:
                             dusme_hatti = st.number_input("Play-out Gruplarında İlk Kaç Takım Ligde Kalacak? (Kırmızı Çizgi)", min_value=1, value=st.session_state.get("kayitli_dusme_hatti", 2), step=1)
                             if dusme_hatti != st.session_state.get("kayitli_dusme_hatti", 2):
                                 st.session_state["kayitli_dusme_hatti"] = dusme_hatti
-                                ortak_veriyi_kaydet() # Başhakemin seçimi sisteme kaydedilir
+                                ortak_veriyi_kaydet() 
                         else:
-                            # İzleyiciler sadece sistemdeki kayıtlı değeri kullanır (varsayılan 2)
                             dusme_hatti = st.session_state.get("kayitli_dusme_hatti", 2)
                         
                         pdf_icin_hazir_veriler = {}
@@ -1896,9 +1904,6 @@ else:
                                     st.error("Sistem meşgul, lütfen tekrar deneyin.")
                         st.divider()
                         
-                        # ==============================================================================
-                        # === BAŞLANGIÇ: BAŞHAKEM MAÇ PROGRAMI KAZANAN KALIN (BOLD) EKRANI ===
-                        # ==============================================================================
                         edited_dfs = []
                         for (grup_adi, eslesme_adi), grup_df in df_gunluk_safe.groupby(['Grup', 'Eşleşme']):
                             takim_skoru_etiketi = ""
@@ -1918,7 +1923,6 @@ else:
                             mevcut_hakem = grup_df.iloc[0]['Hakem']
                             if pd.isna(mevcut_hakem) or mevcut_hakem == "": mevcut_hakem = "Atanmadı"
                             
-                            # --- TAKIM İSMİNİ BAŞLIKTA KALINLAŞTIRMA ---
                             t1_baslik = f"**{takim1}**" if team_winner == "T1" else takim1
                             t2_baslik = f"**{takim2}**" if team_winner == "T2" else takim2
                             
@@ -1934,7 +1938,6 @@ else:
                                 
                                 grup_df_ordered = sort_maclar(grup_df)[["Branş", "T1 Oyuncu", "T2 Oyuncu", "Skor", "Grup", "Gün", "Eşleşme", "Takım 1", "Takım 2", "Tarih", "Gün Adı", "Kazanan", "Kort", "Maç Saati", "Hakem"]]
                                 
-                                # --- OYUNCU İSİMLERİNİ KALINLAŞTIRMA (SADECE GÖRÜNTÜ İÇİN) ---
                                 for idx_m, row_m in grup_df_ordered.iterrows():
                                     win = row_m.get('Kazanan', '')
                                     if win == 'T1' and row_m['T1 Oyuncu']:
@@ -1955,7 +1958,6 @@ else:
                                     key=f"editor_{grup_adi}_{eslesme_adi}_{formatted_tarih}"
                                 )
                                 
-                                # --- GÜVENLİK: KAYIT ÖNCESİ ORİJİNAL İSİMLERİ GERİ YÜKLEME ---
                                 e_df['T1 Oyuncu'] = grup_df['T1 Oyuncu']
                                 e_df['T2 Oyuncu'] = grup_df['T2 Oyuncu']
                                 
@@ -1963,8 +1965,6 @@ else:
                                 e_df['Maç Saati'] = secilen_saat
                                 e_df['Hakem'] = secilen_hakem
                                 edited_dfs.append(e_df)
-                        # ==============================================================================
-                        # === BİTİŞ: BAŞHAKEM MAÇ PROGRAMI KAZANAN KALIN (BOLD) EKRANI ===
     
                         if st.button("💾 Değişiklikleri ve Atamaları Kaydet"):
                             if edited_dfs:
@@ -2015,7 +2015,6 @@ else:
                             
                             alt_maclar = [{"Branş": r['Branş']} for _, r in sort_maclar(g_df).iterrows()]
                             
-                            # --- TAKIM KADROLARINI DOĞRUDAN ÇEKME VE AKTARMA (MAÇ PROGRAMI) ---
                             grup_kadro_sozlugu = st.session_state.takim_kadrolari.get(grup_adi, {})
                             t1_kadro = grup_kadro_sozlugu.get(t1, ["Kayıt yok"])
                             t2_kadro = grup_kadro_sozlugu.get(t2, ["Kayıt yok"])
