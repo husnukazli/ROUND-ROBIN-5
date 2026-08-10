@@ -456,7 +456,6 @@ def hesapla_tum_puan_durumu(df_girdi):
 # 🚀 AKILLI AVERAJ VE ÇOKLU AVERAJ SIRALAMA MOTORU
 # ==============================================================================
 def sirala_grup_df(grup_df, gp, ham_maclar_df=None):
-    # 1. Eğer Başhakem manuel sıralama yaptıysa öncelik onundur
     if gp in st.session_state.grup_siralamalari and st.session_state.grup_siralamalari[gp]:
         manuel_sira = st.session_state.grup_siralamalari[gp]
         grup_df['Sıra_Degeri'] = grup_df['Takım'].apply(lambda x: manuel_sira.index(x) if x in manuel_sira else 999)
@@ -464,19 +463,18 @@ def sirala_grup_df(grup_df, gp, ham_maclar_df=None):
         grup_df.index = range(1, len(grup_df) + 1)
         return grup_df
 
-    # 2. Standart Genel Sıralama (Önce Galibiyete göre gruplara ayır - Kümeleme Mantığı)
     grup_df = grup_df.copy()
     
-    # Eğer ham maçlar verilmediyse session state'den al
     if ham_maclar_df is None and 'skor_tablosu' in st.session_state:
         ham_maclar_df = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] == gp]
 
     siralanmis_takimlar = []
     kura_gerekir_mesajlari = []
     averaj_mesajlari = []
+    grup_averaj_tablolari = {}
 
-    # Galibiyet puanına göre grupları ele al (Çoktan aza)
     unique_galibiyetler = sorted(grup_df['Galibiyet'].unique(), reverse=True)
+    toplam_grup_takim_sayisi = len(grup_df)
 
     for gal in unique_galibiyetler:
         alt_kumul = grup_df[grup_df['Galibiyet'] == gal]
@@ -486,11 +484,11 @@ def sirala_grup_df(grup_df, gp, ham_maclar_df=None):
                 siralanmis_takimlar.append(row['Takım'])
         
         elif len(alt_kumul) == 2:
-            # 📌 İKİLİ AVERAJ (Head-to-Head) KONTROLÜ
             t_list = alt_kumul['Takım'].tolist()
             t1, t2 = t_list[0], t_list[1]
             
             h2h_winner = None
+            aradaki_maclar = pd.DataFrame()
             if ham_maclar_df is not None and not ham_maclar_df.empty:
                 aradaki_maclar = ham_maclar_df[
                     ((ham_maclar_df['Takım 1'] == t1) & (ham_maclar_df['Takım 2'] == t2)) | 
@@ -506,8 +504,6 @@ def sirala_grup_df(grup_df, gp, ham_maclar_df=None):
 
             if h2h_winner:
                 loser = t2 if h2h_winner == t1 else t1
-                
-                # İkili averaj notu için genel averaj kontrolü
                 r_w = alt_kumul[alt_kumul['Takım'] == h2h_winner].iloc[0]
                 r_l = alt_kumul[alt_kumul['Takım'] == loser].iloc[0]
                 
@@ -521,29 +517,36 @@ def sirala_grup_df(grup_df, gp, ham_maclar_df=None):
                 
                 siralanmis_takimlar.append(h2h_winner)
                 siralanmis_takimlar.append(loser)
+                
+                # İkili averaj tablosunu da ekleyelim
+                if not aradaki_maclar.empty:
+                    h2h_stats = hesapla_tum_puan_durumu(aradaki_maclar)
+                    if not h2h_stats.empty:
+                        h2h_display = h2h_stats.drop(columns=['Grup']).sort_values(by=['Galibiyet', 'Maç Av.', 'Oyun Av.'], ascending=False)
+                        h2h_display.index = range(1, len(h2h_display) + 1)
+                        grup_averaj_tablolari[f"İkili Averaj Tablosu ({t1} & {t2})"] = h2h_display
             else:
-                # Kendi aralarında maç yoksa veya berabere ise genel averajlara bak
                 sorted_alt = alt_kumul.sort_values(by=['Maç Av.', 'Set Av.', 'Oyun Av.'], ascending=False)
-                # Oyun averajına kadar eşitse kura uyarısı ekle
                 if len(sorted_alt) == 2 and sorted_alt.iloc[0]['Maç Av.'] == sorted_alt.iloc[1]['Maç Av.'] and sorted_alt.iloc[0]['Set Av.'] == sorted_alt.iloc[1]['Set Av.'] and sorted_alt.iloc[0]['Oyun Av.'] == sorted_alt.iloc[1]['Oyun Av.']:
                     kura_gerekir_mesajlari.append(f"⚠️ {t1} ve {t2} arasında tüm averajlar eşit, kura gerekebilir!")
                 for _, row in sorted_alt.iterrows():
                     siralanmis_takimlar.append(row['Takım'])
 
         else:
-            # 📌 ÜÇLÜ VEYA ÇOKLU AVERAJ KONTROLÜ
             t_list = alt_kumul['Takım'].tolist()
             coklu_averaj_cozuldumu = False
             
-            if ham_maclar_df is not None and not ham_maclar_df.empty:
-                # Sadece bu eşit puanlı takımların kendi aralarındaki maçları filtrele
+            # EĞER GRUPTAKİ HERKES (TÜM TAKIMLAR) EŞİTSE (Örn: 3'lü grupta herkesin 1 galibiyeti olması),
+            # bu durumda dışarıda kalan takım yok demektir, ekstra çoklu averaj tablosu veya uyarısı gerekmez!
+            herkes_esit_ mi = (len(t_list) == toplam_grup_takim_sayisi)
+            
+            if ham_maclar_df is not None and not ham_maclar_df.empty and not herkes_esit_mi:
                 coklu_maclar = ham_maclar_df[
                     ham_maclar_df['Takım 1'].isin(t_list) & ham_maclar_df['Takım 2'].isin(t_list)
                 ]
                 if not coklu_maclar.empty:
                     coklu_stats = hesapla_tum_puan_durumu(coklu_maclar)
                     if not coklu_stats.empty and len(coklu_stats) == len(t_list):
-                        # Çoklu averaj sıralamasını yap (Galibiyet -> Maç Av -> Set Av -> Oyun Av)
                         sorted_coklu = coklu_stats.sort_values(by=['Galibiyet', 'Maç Av.', 'Set Av.', 'Oyun Av.'], ascending=False)
                         
                         top_gal = sorted_coklu.iloc[0]['Galibiyet']
@@ -558,24 +561,27 @@ def sirala_grup_df(grup_df, gp, ham_maclar_df=None):
                         if top_gal == bottom_gal and top_mac_av == bottom_mac_av and top_set_av == bottom_set_av and top_oyun_av == bottom_oyun_av:
                             kura_gerekir_mesajlari.append(f"⚠️ Bu grupta ({', '.join(t_list)}) çoklu averaj tüm kriterlere rağmen çözülememiştir, kura gerekebilir!")
                         else:
-                            averaj_mesajlari.append(f"ℹ️ <b>Çoklu Averaj Bilgisi:</b> Bu grupta {', '.join(t_list)} takımları arasında puan eşitliği yaşanmış ve sıralama kendi aralarındaki maçlara (Çoklu Averaj Hesaplaması) göre belirlenmiştir.")
+                            averaj_mesajlari.append(f"ℹ️ <b>Çoklu Averaj Bilgisi:</b> Bu grupta {', '.join(t_list)} takımları arasında puan eşitliği yaşanmış ve sıralama kendi aralarındaki maçlara göre belirlenmiştir.")
 
                         for _, row in sorted_coklu.iterrows():
                             siralanmis_takimlar.append(row['Takım'])
+                        
+                        # Çoklu averaj tablosunu ekleyelim
+                        coklu_display = sorted_coklu.drop(columns=['Grup'])
+                        coklu_display.index = range(1, len(coklu_display) + 1)
+                        grup_averaj_tablolari[f"{len(t_list)}'li Çoklu Averaj Tablosu"] = coklu_display
+                        
                         coklu_averaj_cozuldumu = True
 
             if not coklu_averaj_cozuldumu:
-                # Çoklu averaj verisi yoksa genel tablodaki alt küme sıralamasına bak
                 sorted_alt = alt_kumul.sort_values(by=['Maç Av.', 'Set Av.', 'Oyun Av.'], ascending=False)
                 for _, row in sorted_alt.iterrows():
                     siralanmis_takimlar.append(row['Takım'])
 
-    # Sıralanan takımlara göre DataFrame'i yeniden diz
     grup_df['Sıra_Degeri'] = grup_df['Takım'].apply(lambda x: siralanmis_takimlar.index(x) if x in siralanmis_takimlar else 999)
     grup_df = grup_df.sort_values(by=['Sıra_Degeri']).drop(columns=['Sıra_Degeri'])
     grup_df.index = range(1, len(grup_df) + 1)
 
-    # Bildirimleri (Kura ve Averaj Notları) session_state'e aktar
     if "kura_uyarilari" not in st.session_state:
         st.session_state.kura_uyarilari = {}
     if kura_gerekir_mesajlari:
@@ -589,5 +595,12 @@ def sirala_grup_df(grup_df, gp, ham_maclar_df=None):
         st.session_state.averaj_bilgileri[gp] = "<br>".join(averaj_mesajlari)
     elif gp in st.session_state.averaj_bilgileri:
         del st.session_state.averaj_bilgileri[gp]
+
+    if "averaj_tablolari" not in st.session_state:
+        st.session_state.averaj_tablolari = {}
+    if grup_averaj_tablolari:
+        st.session_state.averaj_tablolari[gp] = grup_averaj_tablolari
+    elif gp in st.session_state.averaj_tablolari:
+        del st.session_state.averaj_tablolari[gp]
 
     return grup_df
