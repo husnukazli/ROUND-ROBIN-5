@@ -32,11 +32,9 @@ def apply_font(pdf, bold=False, size=10):
     else:
         pdf.set_font("Arial", 'B' if bold else '', size)
 
-# 🚀 HIZLANDIRMA VE TASARIM: Otomatik font küçültme algoritması 
 def pdf_cell_fit(pdf, w, h, txt, border=1, align='C', is_bold=False, fill=False, base_size=9):
     size = base_size
     apply_font(pdf, bold=is_bold, size=size)
-    # Metin, ayrılan genişliği (w) aşıyorsa fontu adım adım ufaltır (en fazla 5 puntoya kadar)
     while pdf.get_string_width(to_pdf_text(txt)) > (w - 2) and size > 5:
         size -= 0.5
         apply_font(pdf, bold=is_bold, size=size)
@@ -124,14 +122,16 @@ def generate_pdf(df, baslik, not_metni=""):
                     
                 if is_bold and FONT_YUKLENDI and not FONT_BOLD_YUKLENDI:
                     text = f"{text} *" 
-                    
+                
                 pdf_cell_fit(pdf, col_widths[i], 8, text, is_bold=is_bold, fill=is_takim_satiri, base_size=hedef_punto)
             pdf.ln()
     return get_pdf_bytes(pdf)
 
-def generate_combined_standings_pdf(gruplar_dict, manuel_gruplar=None):
+def generate_combined_standings_pdf(gruplar_dict, manuel_gruplar=None, averaj_tablolari=None):
     if manuel_gruplar is None:
         manuel_gruplar = []
+    if averaj_tablolari is None:
+        averaj_tablolari = {}
         
     pdf = FPDF(orientation='P', unit='mm', format='A4')
     pdf.add_page()
@@ -159,6 +159,23 @@ def generate_combined_standings_pdf(gruplar_dict, manuel_gruplar=None):
                     pdf_cell_fit(pdf, col_widths[i], 8, str(item), is_bold=False)
                 pdf.ln()
                 
+        # Eğer bu grupta hesaplanmış çoklu averaj tablosu varsa doğrudan PDF'e bas
+        if grup_adi in averaj_tablolari:
+            pdf.ln(3)
+            for t_adi, t_df in averaj_tablolari[grup_adi].items():
+                apply_font(pdf, bold=True, size=9.5)
+                pdf.cell(0, 6, to_pdf_text(f"-> {t_adi}:"), ln=True, align='L')
+                if not t_df.empty:
+                    t_widths = get_proportional_widths(pdf, t_df, usable_width=170)
+                    for i, col in enumerate(t_df.columns):
+                        pdf_cell_fit(pdf, t_widths[i], 6, col, is_bold=True, base_size=8.5)
+                    pdf.ln()
+                    for _, t_row in t_df.iterrows():
+                        for i, t_item in enumerate(t_row):
+                            pdf_cell_fit(pdf, t_widths[i], 6, str(t_item), is_bold=False, base_size=8.5)
+                        pdf.ln()
+                pdf.ln(2)
+
         if grup_adi in manuel_gruplar:
             pdf.ln(2)
             apply_font(pdf, bold=True, size=9)
@@ -177,7 +194,6 @@ def _klasman_sayfasi_ciz(pdf, kategori_adi, birinciler_liste, ikinciler_liste, l
     pdf.line(10, pdf.get_y()+2, 200, pdf.get_y()+2)
     pdf.ln(10)
 
-    # Kategori adı uzun olursa taşmaması için pdf_cell_fit kullanıldı
     pdf_cell_fit(pdf, 190, 10, f"KATEGORİ: {kategori_adi.upper()} - NİHAİ KLASMAN", border=0, align='C', is_bold=True, base_size=14)
     pdf.ln(12)
 
@@ -224,7 +240,6 @@ def _klasman_sayfasi_ciz(pdf, kategori_adi, birinciler_liste, ikinciler_liste, l
         for takim in dogal_sirala(dusenler):
             pdf_cell_fit(pdf, 190, 7, f"  - {takim}", border=0, align='L', is_bold=False, base_size=11)
             pdf.ln(7)
-
 
 def generate_klasman_pdf(kategori_adi, birinciler_liste, ikinciler_liste, ligde_kalanlar, dusenler):
     pdf = FPDF(orientation='P', unit='mm', format='A4')
@@ -336,43 +351,34 @@ def generate_mac_sonuc_belgesi(eslesmeler_listesi):
         t1_kadro = eslesme.get("T1_Kadro", [])
         t2_kadro = eslesme.get("T2_Kadro", [])
         
-        # --- 1. ÜST BİLGİ ALANI (Saat Sol, Grup Orta, Kort Sağ, Hakem Sağ Alt) ---
         apply_font(pdf, bold=True, size=14)
         y_header = pdf.get_y()
         
-        # Sol: Saat
         pdf.set_xy(10, y_header)
         saat_metni = f"Saat: {saat}" if saat else "Saat: ...."
         pdf.cell(60, 8, to_pdf_text(saat_metni), ln=0, align='L')
         
-        # Orta: Grup Adı (Taşmayı önlemek için pdf_cell_fit kullanıldı)
         pdf.set_xy(70, y_header)
         pdf_cell_fit(pdf, 70, 8, grup_adi, border=0, align='C', is_bold=True, base_size=14)
         
-        # Sağ: Kort
         pdf.set_xy(140, y_header)
         kort_metni = f"Kort: {kort}" if kort else "Kort: ...."
         pdf.cell(60, 8, to_pdf_text(kort_metni), ln=1, align='R')
         
-        # Alt Satır (Tarih Orta, Hakem Sağ)
         y_subheader = pdf.get_y()
         
-        # Orta: Tarih
         pdf.set_xy(70, y_subheader)
         if tarih:
             pdf_cell_fit(pdf, 70, 6, tarih, border=0, align='C', is_bold=True, base_size=12)
         
-        # Sağ Alt: Hakem (Taşmayı önlemek için pdf_cell_fit kullanıldı)
         pdf.set_xy(140, y_subheader)
         hakem_isim = hakem if hakem and hakem != "Atanmadı" else ".................."
         pdf_cell_fit(pdf, 60, 6, f"Hakem: {hakem_isim}", border=0, align='R', is_bold=True, base_size=12)
             
         pdf.ln(6)
         
-        # --- 2. TAKIMLAR VE BÜYÜTÜLMÜŞ SKOR KUTUSU ---
-        # Takım isimleri uzun olabileceği için pdf_cell_fit ile güvene alındı
-        pdf_cell_fit(pdf, 65, 8, f"[  ]   {takim1}", border=0, align='L', is_bold=True, base_size=12)
-        pdf_cell_fit(pdf, 65, 8, f"[  ]   {takim2}", border=0, align='L', is_bold=True, base_size=12)
+        pdf_cell_fit(pdf, 65, 8, f"[  ]    {takim1}", border=0, align='L', is_bold=True, base_size=12)
+        pdf_cell_fit(pdf, 65, 8, f"[  ]    {takim2}", border=0, align='L', is_bold=True, base_size=12)
         pdf.cell(60, 8, to_pdf_text("SKOR: [        ] - [        ]"), ln=1, align='R')
         
         pdf.ln(3)
@@ -408,7 +414,6 @@ def generate_mac_sonuc_belgesi(eslesmeler_listesi):
             else:
                 if "2. Tekler" in brans: alt_etiket = "(1 Nolu)"
                 elif "1. Tekler" in brans: alt_etiket = "(2 Nolu)"
-                # Çiftler için alt etiket boş kalacak
                 
             brans_metni = f"{brans}\n{alt_etiket}" if alt_etiket else brans
             
@@ -421,14 +426,13 @@ def generate_mac_sonuc_belgesi(eslesmeler_listesi):
             pdf.rect(x, y, 30, satir_h)
             pdf.set_xy(x, y + (satir_h/2) - 4)
             
-            # Çiftler alt yazısı uzun olabileceği için fontu ufaltalım
             if is_ciftler:
                 apply_font(pdf, bold=False, size=7.5)
             else:
                 apply_font(pdf, bold=False, size=9)
                 
             pdf.multi_cell(30, 4, to_pdf_text(brans_metni), align='C')
-            apply_font(pdf, bold=False, size=10) # Geri al
+            apply_font(pdf, bold=False, size=10) 
             
             pdf.rect(x + 30, y, 50, satir_h)
             pdf.rect(x + 80, y, 50, satir_h)
@@ -460,8 +464,6 @@ def generate_mac_sonuc_belgesi(eslesmeler_listesi):
             
         pdf.ln(6) 
         
-        # --- 4. OYUNCU LİSTELERİ ---
-        # Oyuncu listelerindeki takım başlıkları taştığında font ufalsın
         pdf_cell_fit(pdf, 95, 5, f"{takim1} Oyuncu Listesi:", border=0, align='L', is_bold=True, base_size=9)
         pdf_cell_fit(pdf, 95, 5, f"{takim2} Oyuncu Listesi:", border=0, align='L', is_bold=True, base_size=9)
         pdf.ln(5)
@@ -477,14 +479,12 @@ def generate_mac_sonuc_belgesi(eslesmeler_listesi):
             
         pdf.ln(8) 
         
-        # --- 5. KAZANAN TAKIM VE BÜYÜTÜLMÜŞ GENEL SKOR KUTUSU ---
         apply_font(pdf, bold=True, size=11)
         pdf.cell(130, 8, to_pdf_text("KAZANAN TAKIM: ..........................................................................."), ln=0)
         pdf.cell(60, 8, to_pdf_text("GENEL SKOR: [        ] - [        ]"), ln=1, align='R')
         
         pdf.ln(10) 
         
-        # --- 6. İMZALAR (Kaptan takım isimleri uzun olabilir) ---
         pdf_cell_fit(pdf, 63, 5, f"{takim1} Kaptanı", border=0, align='C', is_bold=True, base_size=10)
         pdf_cell_fit(pdf, 64, 5, "Müsabaka Hakemi", border=0, align='C', is_bold=True, base_size=10)
         pdf_cell_fit(pdf, 63, 5, f"{takim2} Kaptanı", border=0, align='C', is_bold=True, base_size=10)
@@ -496,8 +496,7 @@ def generate_mac_sonuc_belgesi(eslesmeler_listesi):
         pdf_cell_fit(pdf, 64, 5, hakem_isim, border=0, align='C', is_bold=False, base_size=9)
         pdf.cell(63, 5, to_pdf_text("İmza"), align='C', ln=1)
         
-        # --- 7. NOTLAR ---
-        pdf.ln(30) # İmza atmak için rahatça 3 cm boşluk bırakıldı
+        pdf.ln(30) 
         
         apply_font(pdf, bold=True, size=10)
         pdf.cell(0, 6, to_pdf_text("NOTLAR:"), ln=True)
