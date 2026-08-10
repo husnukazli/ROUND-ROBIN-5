@@ -127,11 +127,13 @@ def generate_pdf(df, baslik, not_metni=""):
             pdf.ln()
     return get_pdf_bytes(pdf)
 
-def generate_combined_standings_pdf(gruplar_dict, manuel_gruplar=None, averaj_tablolari=None):
+def generate_combined_standings_pdf(gruplar_dict, manuel_gruplar=None, averaj_tablolari=None, averaj_bilgileri=None):
     if manuel_gruplar is None:
         manuel_gruplar = []
     if averaj_tablolari is None:
         averaj_tablolari = {}
+    if averaj_bilgileri is None:
+        averaj_bilgileri = {}
         
     pdf = FPDF(orientation='P', unit='mm', format='A4')
     pdf.add_page()
@@ -141,6 +143,7 @@ def generate_combined_standings_pdf(gruplar_dict, manuel_gruplar=None, averaj_ta
         satir_sayisi = len(df)
         
         ekstra_pay = 10 if grup_adi in manuel_gruplar else 0
+        if grup_adi in averaj_bilgileri: ekstra_pay += 15
         gerekli_yukseklik = 10 + 8 + (satir_sayisi * 8) + 10 + ekstra_pay 
         
         if pdf.get_y() + gerekli_yukseklik > 280: 
@@ -158,8 +161,13 @@ def generate_combined_standings_pdf(gruplar_dict, manuel_gruplar=None, averaj_ta
                 for i, item in enumerate(row): 
                     pdf_cell_fit(pdf, col_widths[i], 8, str(item), is_bold=False)
                 pdf.ln()
+
+        if grup_adi in averaj_bilgileri:
+            pdf.ln(3)
+            apply_font(pdf, bold=False, size=9)
+            temiz_metin = averaj_bilgileri[grup_adi].replace("<b>", "").replace("</b>", "").replace("<br>", "\n").replace("ℹ️ ", "").strip()
+            pdf.multi_cell(0, 5, to_pdf_text(f"Not: {temiz_metin}"), align='L')
                 
-        # Eğer bu grupta hesaplanmış çoklu averaj tablosu varsa doğrudan PDF'e bas
         if grup_adi in averaj_tablolari:
             pdf.ln(3)
             for t_adi, t_df in averaj_tablolari[grup_adi].items():
