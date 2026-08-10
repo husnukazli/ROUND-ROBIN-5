@@ -146,8 +146,24 @@ def ortak_veriyi_yukle():
             try:
                 res = supabase.table("turnuva_ayarlari").select("*").eq("id", 1).execute()
                 if res.data: data = res.data[0]
-                maclar_res = supabase.table("maclar").select("*").execute()
-                if maclar_res.data: maclar_data = maclar_res.data
+                
+                # 🚀 SUPABASE 1000 SATIR SINIRINI AŞMAK İÇİN DÖNGÜ EKLENDİ (Tüm maçları paketler halinde çeker)
+                all_matches = []
+                start = 0
+                limit = 1000
+                while True:
+                    maclar_res = supabase.table("maclar").select("*").range(start, start + limit - 1).execute()
+                    if not maclar_res.data:
+                        break
+                    all_matches.extend(maclar_res.data)
+                    # Gelen veri limitin altındaysa son sayfaya gelinmiştir, döngüyü kır
+                    if len(maclar_res.data) < limit:
+                        break
+                    start += limit
+                
+                if all_matches:
+                    maclar_data = all_matches
+
             except Exception as e:
                 st.error(f"⚠️ Supabase'ten veri okunamadı: {e}. Turnuva verileri boş görünüyor olabilir!")
 
