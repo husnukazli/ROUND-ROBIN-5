@@ -37,7 +37,6 @@ if "kaptan_mi" not in st.session_state: st.session_state.kaptan_mi = False
 if "hakem_mi" not in st.session_state: st.session_state.hakem_mi = False
 if "kaptan_takim" not in st.session_state: st.session_state.kaptan_takim = ""
 if "aktif_hakem" not in st.session_state: st.session_state.aktif_hakem = ""
-if "expand_all" not in st.session_state: st.session_state.expand_all = False
 if "selected_date_filter" not in st.session_state: st.session_state.selected_date_filter = datetime.date.today()
 if "grup_formatlari" not in st.session_state: st.session_state.grup_formatlari = {}
 if "grup_kategorileri" not in st.session_state: st.session_state.grup_kategorileri = {}
@@ -998,8 +997,6 @@ else:
                     
                     st.markdown("---")
                     st.markdown("### ⚙️ Görünüm ve Çıktı Ayarları")
-                    if st.button("🔄 Tüm Bireysel Maçları Ekranda Göster / Gizle"):
-                        st.session_state.expand_all = not st.session_state.expand_all; st.rerun()
                     
                     with st.expander("🖨️ Islak İmzalı Hakem Maç Kağıtları"):
                         st.info("Kortlara dağıtılacak boş skor/imza kağıtlarını buradan üretebilirsiniz. Tüm günün maçlarını tek PDF'te basabilir veya sadece seçtiğiniz bir eşleşmenin kağıdını çıkarabilirsiniz.")
@@ -1167,10 +1164,36 @@ else:
                     tum_stats = hesapla_tum_puan_durumu(df_asama_t3)
                     mevcut_gruplar = dogal_sirala(list(tum_stats['Grup'].unique()))
                     
-                    secim_opsiyonlari = ["Tüm Grupları Göster"] + mevcut_gruplar
-                    secilen_gruplar = st.multiselect("🔍 Görüntülenecek Grupları Seçin:", options=secim_opsiyonlari, default=["Tüm Grupları Göster"])
-                    gosterilecek_gruplar = mevcut_gruplar if "Tüm Grupları Göster" in secilen_gruplar or len(secilen_gruplar) == 0 else [g for g in secilen_gruplar if g != "Tüm Grupları Göster"]
-
+                    # --- YENİ KATEGORİ VE GRUP FİLTRESİ ---
+                    kategori_dict = {}
+                    for gp in mevcut_gruplar:
+                        g_kat = st.session_state.grup_kategorileri.get(gp, "Erkekler")
+                        g_yas = st.session_state.grup_yas_gruplari.get(gp, "Yaş Belirtme")
+                        kat_isim = f"{g_yas} {g_kat}" if g_yas != "Yaş Belirtme" else g_kat
+                        if kat_isim not in kategori_dict:
+                            kategori_dict[kat_isim] = []
+                        kategori_dict[kat_isim].append(gp)
+                    
+                    kat_isimleri = dogal_sirala(list(kategori_dict.keys()))
+                    
+                    c_kat, c_grup = st.columns(2)
+                    secilen_kategoriler = c_kat.multiselect("📂 Görüntülenecek Kategoriyi Seçin:", options=["Tüm Kategorileri Göster"] + kat_isimleri, default=["Tüm Kategorileri Göster"])
+                    
+                    filtreli_gruplar = []
+                    if "Tüm Kategorileri Göster" in secilen_kategoriler or len(secilen_kategoriler) == 0:
+                        filtreli_gruplar = mevcut_gruplar
+                    else:
+                        for k in secilen_kategoriler:
+                            if k in kategori_dict:
+                                filtreli_gruplar.extend(kategori_dict[k])
+                    
+                    secim_grup_opsiyonlari = ["Tüm Grupları Göster"] + dogal_sirala(filtreli_gruplar)
+                    secilen_gruplar = c_grup.multiselect("🔍 Görüntülenecek Grupları Seçin:", options=secim_grup_opsiyonlari, default=["Tüm Grupları Göster"])
+                    
+                    gosterilecek_gruplar = filtreli_gruplar if "Tüm Grupları Göster" in secilen_gruplar or len(secilen_gruplar) == 0 else [g for g in secilen_gruplar if g != "Tüm Grupları Göster"]
+                    
+                    st.markdown("---")
+                    
                     pdf_gruplar_data = {}
                     manuel_siralanan_gruplar = [] 
 
@@ -1199,6 +1222,13 @@ else:
                                 if gp in st.session_state.grup_siralamalari and st.session_state.grup_siralamalari[gp]:
                                     st.warning("⚠️ Bu grupta averaj eşitliği veya başka bir sebeple Başhakem kararıyla Manuel Sıralama uygulanmıştır.")
                                     manuel_siralanan_gruplar.append(gp)
+
+                                # YENİ EKLENEN AVERAJ VE KURA BİLDİRİMLERİ
+                                if gp in st.session_state.get("kura_uyarilari", {}):
+                                    st.error(st.session_state.kura_uyarilari[gp])
+                                    
+                                if gp in st.session_state.get("averaj_bilgileri", {}):
+                                    st.markdown(f"<div style='padding: 12px; background-color: rgba(23, 162, 184, 0.1); border-left: 4px solid #17a2b8; color: #0c5460; border-radius: 4px; margin-top: 10px; margin-bottom: 10px; font-size: 14px; line-height: 1.5;'>{st.session_state.averaj_bilgileri[gp]}</div>", unsafe_allow_html=True)
                                 
                             with t_ic2:
                                 df_gp_matches = df_asama_t3[df_asama_t3['Grup'] == gp]
@@ -1262,7 +1292,7 @@ else:
                                                     pdf_matrix_df.at[t1, t2] = hucre_metni
                                                     
                                 matris_pdf_bytes = draw_matrix_pdf(gp, matris_takimlar, pdf_matrix_df)
-                                st.download_button(label="📥 Matrisi İndir (PDF - Sade Görünüm)", data=matris_pdf_bytes, file_name=f"matris_{gp}.pdf", mime="application/pdf", key=f"mat_pdf_{gp}")
+                                st.download_button(label="📥 Maç Matrisini İndir (PDF)", data=matris_pdf_bytes, file_name=f"matris_{gp}.pdf", mime="application/pdf", key=f"mat_pdf_{gp}")
                             
                             if st.session_state.admin_mi:
                                 with st.expander(f"🛠️ {gp} - Başhakem Sıralama ve Onay Paneli", expanded=False):
@@ -1339,8 +1369,8 @@ else:
                         st.download_button(label="📥 Seçili Grupların Puan Durumunu Tek PDF Olarak İndir", data=combined_pdf_bytes, file_name="puan_durumu_toplu.pdf", mime="application/pdf", key="pdf_puan_toplu")
                     
                     st.markdown("---")
-                    with st.expander("⚖️ Gelişmiş Averaj ve Mini Lig Hesaplayıcı"):
-                        st.info("ℹ️ Üçlü veya dörtlü averaj kilitlenmelerinde bir grup ve sadece averaja dahil edilecek takımları seçin. Sistem, dışarıdaki takımlarla oynanan maçları yoksayarak yepyeni bir Mini Lig oluşturur. Bu bilgiye bakarak üstteki 'Başhakem Sıralama Paneli'nden tabloyu dizebilirsiniz.")
+                    with st.expander("⚖️ Gelişmiş Averaj ve Çoklu Averaj Hesaplayıcı"):
+                        st.info("ℹ️ Üçlü veya dörtlü averaj kilitlenmelerinde bir grup ve sadece averaja dahil edilecek takımları seçin. Sistem, dışarıdaki takımlarla oynanan maçları yoksayarak yepyeni bir Çoklu Averaj Hesaplaması oluşturur. Bu bilgiye bakarak üstteki 'Başhakem Sıralama Paneli'nden tabloyu dizebilirsiniz.")
                         
                         avg_gruplar = dogal_sirala(list(df_asama_t3['Grup'].unique()))
                         sec_avg_grup = st.selectbox("Averaj Hesaplanacak Grubu Seçin:", ["Seçiniz"] + avg_gruplar, key="avg_grup_sec")
@@ -1352,7 +1382,7 @@ else:
                             secilen_takimlar_avg = st.multiselect("Averaja Kalmış (Kendi aralarında hesaplanacak) Takımları Seçin:", options=takimlar_avg)
                             
                             if len(secilen_takimlar_avg) >= 2:
-                                if st.button("🧮 Seçili Takımların Kendi Arasındaki Averajını Hesapla (Mini Lig)"):
+                                if st.button("🧮 Seçili Takımların Kendi Arasındaki Averajını Hesapla"):
                                     mask_t1 = grup_maclari_avg['Takım 1'].isin(secilen_takimlar_avg)
                                     mask_t2 = grup_maclari_avg['Takım 2'].isin(secilen_takimlar_avg)
                                     mini_lig_df = grup_maclari_avg[mask_t1 & mask_t2]
@@ -1365,7 +1395,7 @@ else:
                                             mini_grup_df = mini_stats.drop(columns=['Grup']).sort_values(by=['Galibiyet', 'Maç Av.', 'Oyun Av.'], ascending=False)
                                             mini_grup_df.index = range(1, len(mini_grup_df) + 1)
                                             
-                                            st.success(f"✅ {sec_avg_grup} - Mini Lig Puan Durumu (Sadece seçili takımlar)")
+                                            st.success(f"✅ {sec_avg_grup} - Çoklu Averaj Puan Durumu (Sadece seçili takımlar)")
                                             st.dataframe(mini_grup_df, use_container_width=True)
                             elif len(secilen_takimlar_avg) == 1:
                                 st.warning("Averaj hesaplamak için en az 2 takım seçmelisiniz.")
@@ -1646,8 +1676,6 @@ else:
                 turkce_gunler = {0: "Pazartesi", 1: "Salı", 2: "Çarşamba", 3: "Perşembe", 4: "Cuma", 5: "Cumartesi", 6: "Pazar"}
                 
                 if st.session_state.admin_mi:
-                    if 'expand_all' not in st.session_state: st.session_state.expand_all = False
-                    
                     secilen_tarih = st.date_input("🗓️ Program Yapılacak / Görüntülenecek Tarih:", value=st.session_state.selected_date_filter)
                     st.session_state.selected_date_filter = secilen_tarih
                     formatted_tarih = secilen_tarih.strftime("%d.%m.%Y")
@@ -1896,7 +1924,7 @@ else:
                             
                             expander_title = f"{saat} | {kort} | {grup_adi} | {t1_baslik} - {t2_baslik}{takim_skoru_etiketi} (👮‍♂️ {mevcut_hakem})"
                             
-                            with st.expander(expander_title, expanded=st.session_state.expand_all):
+                            with st.expander(expander_title, expanded=False):
                                 c_k, c_s, c_h = st.columns(3)
                                 secilen_kort = c_k.text_input("📍 Kort (Tüm maçlara uygulanır):", value=kort, key=f"kort_{grup_adi}_{eslesme_adi}_{formatted_tarih}")
                                 secilen_saat = c_s.text_input("⏰ Maç Saati (Tüm maçlara uygulanır):", value=saat, key=f"saat_{grup_adi}_{eslesme_adi}_{formatted_tarih}")
@@ -1970,8 +1998,6 @@ else:
     
                     st.markdown("---")
                     st.markdown("### ⚙️ Görünüm ve Çıktı Ayarları")
-                    if st.button("🔄 Tüm Bireysel Maçları Ekranda Göster / Gizle"):
-                        st.session_state.expand_all = not st.session_state.expand_all; st.rerun()
                     
                     with st.expander("🖨️ Islak İmzalı Hakem Maç Kağıtları"):
                         st.info("Kortlara dağıtılacak boş skor/imza kağıtlarını buradan üretebilirsiniz. Tüm günün maçlarını tek PDF'te basabilir veya sadece seçtiğiniz bir eşleşmenin kağıdını çıkarabilirsiniz.")
