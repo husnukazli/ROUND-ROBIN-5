@@ -117,9 +117,13 @@ def ortak_veriyi_kaydet(guncellenen_mac_idleri=None):
     else:
         if not supabase: return False
         try:
-            # 🚀 Sadece guncellenen (veya ilk yüklemedeki) maçları yolla
+            # 🚀 GÜVENLİK VE YAZMA SINIRI: Verileri 500'lük paketler (chunk) halinde gönder
             if mac_kayitlari:
-                supabase.table("maclar").upsert(mac_kayitlari).execute()
+                chunk_size = 500
+                for i in range(0, len(mac_kayitlari), chunk_size):
+                    chunk = mac_kayitlari[i:i + chunk_size]
+                    supabase.table("maclar").upsert(chunk).execute()
+                    
             supabase.table("turnuva_ayarlari").update(ayarlar).eq("id", 1).execute()
             return True
         except Exception as e:
@@ -147,7 +151,7 @@ def ortak_veriyi_yukle():
                 res = supabase.table("turnuva_ayarlari").select("*").eq("id", 1).execute()
                 if res.data: data = res.data[0]
                 
-                # 🚀 SUPABASE 1000 SATIR SINIRINI AŞMAK İÇİN DÖNGÜ EKLENDİ (Tüm maçları paketler halinde çeker)
+                # 🚀 SUPABASE OKUMA SINIRI: 1000'erli paketler halinde tüm veriyi çeken döngü
                 all_matches = []
                 start = 0
                 limit = 1000
