@@ -173,8 +173,8 @@ def grup_ayarlari_ciz(aktif_asama):
                                     if t_isim in st.session_state.havuz_yas_gruplari: del st.session_state.havuz_yas_gruplari[t_isim]
                                     ortak_veriyi_kaydet()
                                     st.rerun()
-                            st.markdown("<hr style='margin: 5px 0px;'>", unsafe_allow_html=True)
-                            
+                        st.markdown("<hr style='margin: 5px 0px;'>", unsafe_allow_html=True)
+                        
                     if st.button("🗑️ Tüm Takım Havuzunu Komple Temizle"):
                         st.session_state.takim_havuzu = {}
                         st.session_state.havuz_kategorileri = {}
@@ -215,6 +215,7 @@ def grup_ayarlari_ciz(aktif_asama):
         havuz_isimleri = ["✏️ Yeni / Listede Olmayan Takım (Elle Gir)"]
         baska_gruplardaki_takimlar = {}
 
+        # --- YENİ ZEKİ ÇAKIŞMA KONTROLÜ VE HAVUZ OLUŞTURMA ---
         if aktif_asama == "1. Aşama":
             for g_n, g_k in st.session_state.takim_kadrolari.items():
                 g_kat = st.session_state.grup_kategorileri.get(g_n, "Erkekler")
@@ -232,11 +233,13 @@ def grup_ayarlari_ciz(aktif_asama):
             ])
             havuz_isimleri += musait_havuz
         else:
+            # 2. AŞAMA İÇİN: 1. Aşamadaki takımları çek ve Çakışmayı esnet!
             for g_n, g_k in st.session_state.takim_kadrolari.items():
                 g_kat = st.session_state.grup_kategorileri.get(g_n, "Erkekler")
                 g_asam = st.session_state.grup_asamalari.get(g_n, "1. Aşama")
                 g_yas = st.session_state.grup_yas_gruplari.get(g_n, "Yaş Belirtme")
                 
+                # SADECE 2. Aşamadaki DİĞER gruplara bakıyoruz, 1. Aşamadakilere değil!
                 if g_n != grup_adi_temiz and g_kat == kategori_secimi and g_yas == yas_secimi and g_asam == "2. Aşama":
                     for t_n in g_k.keys(): baska_gruplardaki_takimlar[t_n] = g_n
             
@@ -260,6 +263,7 @@ def grup_ayarlari_ciz(aktif_asama):
                         grup_df = sirala_grup_df(grup_df, gp) 
                         for sira, row in grup_df.iterrows():
                             takim = row['Takım']
+                            # Takım SADECE 2. Aşamada başka bir grupta yoksa havuza ekle
                             if takim not in baska_gruplardaki_takimlar:
                                 stage2_havuz.append(f"{gp} {sira}.si ({takim})")
             havuz_isimleri += stage2_havuz
@@ -283,7 +287,15 @@ def grup_ayarlari_ciz(aktif_asama):
                 secim = st.selectbox(f"{i+1}. Takım Seçimi", options=havuz_isimleri, key=f"sec_takim_{i}", label_visibility="collapsed")
                 
                 if secim == "✏️ Yeni / Listede Olmayan Takım (Elle Gir)":
-                    t_isim = st.text_input("Takım Adı:", key=f"isim_t_{i}", placeholder="Takım Adı Yazın")
+                    raw_isim = st.text_input("Takım Adı:", key=f"isim_t_{i}", placeholder="Örn: Atik 1")
+                    # KALICI ÇÖZÜM: Yeni takım girildiğinde yaş ve kategoriyi ismin sonuna gizlice mühürle
+                    if raw_isim.strip():
+                        if yas_secimi != "Yaş Belirtme":
+                            t_isim = f"{raw_isim.strip()} ({yas_secimi} {kategori_secimi})"
+                        else:
+                            t_isim = f"{raw_isim.strip()} ({kategori_secimi})"
+                    else:
+                        t_isim = ""
                     def_kadro = ""
                 elif aktif_asama == "2. Aşama":
                     match = re.search(r'\((.*?)\)$', secim)
@@ -614,9 +626,9 @@ def yonetim_ve_dosya_ciz(aktif_asama):
                                 else:
                                     aktif_oyuncular = m_kadrolar.get(esk_ad, ["Belirtilmedi"])
                                     
-                                with c_b:
-                                    y_o_text = st.text_area(f"Oyuncular ({y_ad})", value="\n".join(aktif_oyuncular), key=f"oyuncu_{sec_g}_{i}", height=100)
-                                    yeni_k_yapisi[y_ad if y_ad else esk_ad] = [o.strip() for o in y_o_text.split('\n') if o.strip()]
+                            with c_b:
+                                y_o_text = st.text_area(f"Oyuncular ({y_ad})", value="\n".join(aktif_oyuncular), key=f"oyuncu_{sec_g}_{i}", height=100)
+                                yeni_k_yapisi[y_ad if y_ad else esk_ad] = [o.strip() for o in y_o_text.split('\n') if o.strip()]
                         
                         if st.button("💾 Yapılan Değişiklikleri Veritabanına Yaz"):
                             g_hedef = yeni_grup_adi if yeni_grup_adi.strip() != "" else sec_g
@@ -644,52 +656,54 @@ def yonetim_ve_dosya_ciz(aktif_asama):
                                                     supabase.table("maclar").delete().in_("id", silinecek_idler[idx_chunk:idx_chunk+100]).execute()
                                         except Exception:
                                             pass
-                                            
+                                        
                                         st.session_state.skor_tablosu = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] != sec_g]
                                         st.session_state.mac_programi = st.session_state.mac_programi[st.session_state.mac_programi['Grup'] != sec_g]
                                         
-                                        st.session_state.takim_kadrolari[g_hedef] = yeni_k_yapisi
-                                        st.session_state.grup_formatlari[g_hedef] = yeni_format
-                                        st.session_state.grup_kategorileri[g_hedef] = yeni_kategori
-                                        st.session_state.grup_asamalari[g_hedef] = aktif_asama
-                                        st.session_state.grup_yas_gruplari[g_hedef] = yeni_yas
-                                        st.session_state.grup_statuleri[g_hedef] = grup_statusu 
-                                        
-                                        if sec_g != g_hedef:
-                                            if sec_g in st.session_state.takim_kadrolari: del st.session_state.takim_kadrolari[sec_g]
-                                            if sec_g in st.session_state.grup_formatlari: del st.session_state.grup_formatlari[sec_g]
-                                            if sec_g in st.session_state.grup_kategorileri: del st.session_state.grup_kategorileri[sec_g]
-                                            if sec_g in st.session_state.grup_asamalari: del st.session_state.grup_asamalari[sec_g]
-                                            if sec_g in st.session_state.grup_siralamalari: st.session_state.grup_siralamalari[g_hedef] = st.session_state.grup_siralamalari.pop(sec_g)
-                                            if sec_g in st.session_state.grup_tamamlandi: st.session_state.grup_tamamlandi[g_hedef] = st.session_state.grup_tamamlandi.pop(sec_g)
-                                            if sec_g in st.session_state.grup_yas_gruplari: st.session_state.grup_yas_gruplari[g_hedef] = st.session_state.grup_yas_gruplari.pop(sec_g)
-                                            if sec_g in st.session_state.grup_statuleri: st.session_state.grup_statuleri[g_hedef] = st.session_state.grup_statuleri.pop(sec_g)
-                                            
-                                        yeni_takim_listesi = list(yeni_k_yapisi.keys())
-                                        yeni_df = pd.DataFrame(eslesmeleri_olustur(g_hedef, yeni_takim_listesi, yeni_grup_tipi, yeni_format))
-                                        if st.session_state.skor_tablosu.empty: st.session_state.skor_tablosu = yeni_df
-                                        else: st.session_state.skor_tablosu = pd.concat([st.session_state.skor_tablosu, yeni_df], ignore_index=True)
-                                        
-                                        if ortak_veriyi_kaydet():
-                                            st.success("Grup ayarları güncellendi ve yeni fikstür başarıyla oluşturuldu!")
-                                        else:
-                                            st.error("Sistem meşgul, lütfen tekrar deneyin.")
-                                        
+                                    st.session_state.takim_kadrolari[g_hedef] = yeni_k_yapisi
+                                    st.session_state.grup_formatlari[g_hedef] = yeni_format
+                                    st.session_state.grup_kategorileri[g_hedef] = yeni_kategori
+                                    st.session_state.grup_asamalari[g_hedef] = aktif_asama
+                                    st.session_state.grup_yas_gruplari[g_hedef] = yeni_yas
+                                    st.session_state.grup_statuleri[g_hedef] = grup_statusu 
+                                    
+                                    if sec_g != g_hedef:
+                                        st.session_state.skor_tablosu.loc[st.session_state.skor_tablosu['Grup'] == sec_g, 'Grup'] = g_hedef
+                                        st.session_state.mac_programi.loc[st.session_state.mac_programi['Grup'] == sec_g, 'Grup'] = g_hedef
+                                        st.session_state.takim_kadrolari[g_hedef] = st.session_state.takim_kadrolari.pop(sec_g)
+                                        if sec_g in st.session_state.grup_formatlari: st.session_state.grup_formatlari[g_hedef] = st.session_state.grup_formatlari.pop(sec_g)
+                                        if sec_g in st.session_state.grup_kategorileri: st.session_state.grup_kategorileri[g_hedef] = st.session_state.grup_kategorileri.pop(sec_g)
+                                        if sec_g in st.session_state.grup_asamalari: st.session_state.grup_asamalari[g_hedef] = st.session_state.grup_asamalari.pop(sec_g)
+                                        if sec_g in st.session_state.grup_siralamalari: st.session_state.grup_siralamalari[g_hedef] = st.session_state.grup_siralamalari.pop(sec_g)
+                                        if sec_g in st.session_state.grup_tamamlandi: st.session_state.grup_tamamlandi[g_hedef] = st.session_state.grup_tamamlandi.pop(sec_g)
+                                        if sec_g in st.session_state.grup_yas_gruplari: st.session_state.grup_yas_gruplari[g_hedef] = st.session_state.grup_yas_gruplari.pop(sec_g)
+                                        if sec_g in st.session_state.grup_statuleri: st.session_state.grup_statuleri[g_hedef] = st.session_state.grup_statuleri.pop(sec_g)
+                                    
+                                    yeni_takim_listesi = list(yeni_k_yapisi.keys())
+                                    yeni_df = pd.DataFrame(eslesmeleri_olustur(g_hedef, yeni_takim_listesi, yeni_grup_tipi, yeni_format))
+                                    if st.session_state.skor_tablosu.empty: st.session_state.skor_tablosu = yeni_df
+                                    else: st.session_state.skor_tablosu = pd.concat([st.session_state.skor_tablosu, yeni_df], ignore_index=True)
+                                    
+                                    if ortak_veriyi_kaydet():
+                                        st.success("Grup ayarları güncellendi ve yeni fikstür başarıyla oluşturuldu!")
                                     else:
-                                        st.session_state.takim_kadrolari[sec_g] = yeni_k_yapisi
-                                        st.session_state.grup_kategorileri[sec_g] = yeni_kategori
-                                        st.session_state.grup_asamalari[sec_g] = aktif_asama
-                                        st.session_state.grup_yas_gruplari[sec_g] = yeni_yas
-                                        st.session_state.grup_statuleri[sec_g] = grup_statusu 
-                                        
-                                        if isim_degisiklikleri:
-                                            mask_s = st.session_state.skor_tablosu['Grup'] == sec_g
-                                            mask_m = st.session_state.mac_programi['Grup'] == sec_g
-                                            for e_a, y_a in isim_degisiklikleri.items():
-                                                st.session_state.skor_tablosu.loc[mask_s, 'Takım 1'] = st.session_state.skor_tablosu.loc[mask_s, 'Takım 1'].replace(e_a, y_a)
-                                                st.session_state.skor_tablosu.loc[mask_s, 'Takım 2'] = st.session_state.skor_tablosu.loc[mask_s, 'Takım 2'].replace(e_a, y_a)
-                                                st.session_state.mac_programi.loc[mask_m, 'Takım 1'] = st.session_state.mac_programi.loc[mask_m, 'Takım 1'].replace(e_a, y_a)
-                                                st.session_state.mac_programi.loc[mask_m, 'Takım 2'] = st.session_state.mac_programi.loc[mask_m, 'Takım 2'].replace(e_a, y_a)
+                                        st.error("Sistem meşgul, lütfen tekrar deneyin.")
+                                    
+                                else:
+                                    st.session_state.takim_kadrolari[sec_g] = yeni_k_yapisi
+                                    st.session_state.grup_kategorileri[sec_g] = yeni_kategori
+                                    st.session_state.grup_asamalari[sec_g] = aktif_asama
+                                    st.session_state.grup_yas_gruplari[sec_g] = yeni_yas
+                                    st.session_state.grup_statuleri[sec_g] = grup_statusu 
+                                    
+                                    if isim_degisiklikleri:
+                                        mask_s = st.session_state.skor_tablosu['Grup'] == sec_g
+                                        mask_m = st.session_state.mac_programi['Grup'] == sec_g
+                                        for e_a, y_a in isim_degisiklikleri.items():
+                                            st.session_state.skor_tablosu.loc[mask_s, 'Takım 1'] = st.session_state.skor_tablosu.loc[mask_s, 'Takım 1'].replace(e_a, y_a)
+                                            st.session_state.skor_tablosu.loc[mask_s, 'Takım 2'] = st.session_state.skor_tablosu.loc[mask_s, 'Takım 2'].replace(e_a, y_a)
+                                            st.session_state.mac_programi.loc[mask_m, 'Takım 1'] = st.session_state.mac_programi.loc[mask_m, 'Takım 1'].replace(e_a, y_a)
+                                            st.session_state.mac_programi.loc[mask_m, 'Takım 2'] = st.session_state.mac_programi.loc[mask_m, 'Takım 2'].replace(e_a, y_a)
                                         
                                         if g_hedef != sec_g:
                                             st.session_state.skor_tablosu.loc[st.session_state.skor_tablosu['Grup'] == sec_g, 'Grup'] = g_hedef
