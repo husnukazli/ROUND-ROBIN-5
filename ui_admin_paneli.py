@@ -640,7 +640,10 @@ def yonetim_ve_dosya_ciz(aktif_asama):
                                 for g_n, g_k in st.session_state.takim_kadrolari.items():
                                     g_kat = st.session_state.grup_kategorileri.get(g_n, "Erkekler")
                                     g_asam = st.session_state.grup_asamalari.get(g_n, "1. Aşama")
-                                    if g_n != sec_g and g_kat == yeni_kategori and g_asam == aktif_asama:
+                                    g_yas_kontrol = st.session_state.grup_yas_gruplari.get(g_n, "Yaş Belirtme")
+                                    
+                                    # YENİ: Artık sadece aynı yaş grubundaki (Örn: 50+) Erkekler takımlarına bakacak!
+                                    if g_n != sec_g and g_kat == yeni_kategori and g_yas_kontrol == yeni_yas and g_asam == aktif_asama:
                                         for t_n in g_k.keys(): kullanilan_baska_takimlar_tab6[t_n] = g_n
                                 
                                 cakisanlar_tab6 = [t for t in list(yeni_k_yapisi.keys()) if t in kullanilan_baska_takimlar_tab6 and t != bye_opt]
