@@ -12,7 +12,7 @@ from veritabani_islemleri import ortak_veriyi_kaydet, supabase, BELGELER_KLASORU
 
 def esame_kontrol_merkezi_ciz():
     if st.session_state.admin_mi:
-        st.info("ℹ️ Kaptanların veya Hakemlerin girdikleri kadrolar burada toplanır. Geçmiş veya gelecek tüm esameleri tarih seçerek inceleyebilirsin.")
+        st.info("ℹ️ Kaptanların veya Hakemlerin girdikleri kadrolar burada toplanır. Geçmiş veya gelecek tüm esamements tarih seçerek inceleyebilirsin.")
         
         tum_tarihler = st.session_state.mac_programi['Tarih'].dropna().unique().tolist()
         
@@ -351,6 +351,7 @@ def grup_ayarlari_ciz(aktif_asama):
                     else:
                         st.error("Sistem meşgul, lütfen tekrar deneyin.")
                 
+        # --- YENİ: GÜN/TARİH EŞLEŞTİRİCİ MOTORU ---
         st.markdown("---")
         st.markdown("### 🗓️ Grup Gün-Tarih Eşleştirmesi (Fikstür Takvimi)")
         st.info("Grupların fikstüründeki '1. Gün', '2. Gün' gibi aşamaları gerçek takvim günleriyle eşleştirip, maçları gizli olarak Maç Programı sayfasına fırlatabilirsiniz.")
@@ -367,6 +368,10 @@ def grup_ayarlari_ciz(aktif_asama):
                     yeni_takvim = {}
                     
                     st.write(f"**{sec_grup_takvim} Takvimi:**")
+                    
+                    if mevcut_takvim:
+                        st.warning("⚠️ DİKKAT: Bu grubun maçlarına daha önceden tarih atanmış! Aşağıdan yeni bir tarih kaydederseniz eski program ezilir ve maçlar habersizce yer değiştirir.")
+                        
                     c1, c2 = st.columns(2)
                     for i, gun in enumerate(gunler):
                         eski_tarih_str = mevcut_takvim.get(gun, "")
@@ -426,6 +431,7 @@ def grup_ayarlari_ciz(aktif_asama):
                             time.sleep(1.5)
                             st.rerun()
                 
+        # --- YENİ: 2 KADEMELİ KLASÖR MİMARİSİ ---
         if st.session_state.takim_kadrolari:
             st.markdown("---")
             st.markdown(f"### 📁 Mevcut Kayıtlı Gruplar ve Kadrolar ({aktif_asama})")
