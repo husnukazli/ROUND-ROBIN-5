@@ -184,7 +184,7 @@ def get_formatted_match_score(row, target_t1):
     return f"<b>{brans}</b>: <span style='opacity: 0.8;'>{score_str}</span>"
 
 def render_html_matrix(takimlar, df_grup):
-    # KAYDIRILABİLİR (SCROLL) TABLO ÖZELLİĞİ EKLENDİ
+    # KAYDIRILABİLİR (SCROLL) TABLO ÖZELLİĞİ
     html = '<div style="overflow-x: auto; white-space: nowrap; padding-bottom: 10px;">'
     html += '<table style="width:100%; border-collapse: collapse; text-align:center; font-family: sans-serif; font-size: 14px;">'
     html += '<tr style="background-color: rgba(128,128,128,0.1);">'
@@ -470,7 +470,7 @@ def sirala_grup_df(grup_df, gp, ham_maclar_df=None):
     if ham_maclar_df is None and 'skor_tablosu' in st.session_state:
         ham_maclar_df = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] == gp]
 
-    # --- YENİ: GRUBUN TAMAMLANMA KONTROLÜ (Skor girilmemiş maç var mı?) ---
+    # --- GRUBUN TAMAMLANMA KONTROLÜ (Skor girilmemiş maç var mı?) ---
     admin_kilidi = st.session_state.get('grup_tamamlandi', {}).get(gp, False)
     grup_bitti_mi = admin_kilidi
     
@@ -488,7 +488,6 @@ def sirala_grup_df(grup_df, gp, ham_maclar_df=None):
                 
         if biten_mac_sayisi == len(ham_maclar_df):
             grup_bitti_mi = True
-    # -----------------------------------------------------------------------
 
     siralanmis_takimlar = []
     kura_gerekir_mesajlari = []
@@ -594,7 +593,7 @@ def sirala_grup_df(grup_df, gp, ham_maclar_df=None):
     grup_df = grup_df.sort_values(by=['Sıra_Degeri']).drop(columns=['Sıra_Degeri'])
     grup_df.index = range(1, len(grup_df) + 1)
 
-    # --- YENİ: GRUP BİTMEDİYSE UYARILARI GİZLE ---
+    # --- GRUP BİTMEDİYSE UYARILARI GİZLE ---
     if "kura_uyarilari" not in st.session_state:
         st.session_state.kura_uyarilari = {}
     if kura_gerekir_mesajlari and grup_bitti_mi:
