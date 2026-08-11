@@ -12,7 +12,7 @@ from veritabani_islemleri import ortak_veriyi_kaydet, supabase, BELGELER_KLASORU
 
 def esame_kontrol_merkezi_ciz():
     if st.session_state.admin_mi:
-        st.info("ℹ️ Kaptanların veya Hakemlerin girdikleri kadrolar burada toplanır. Geçmiş veya gelecek tüm esamements tarih seçerek inceleyebilirsin.")
+        st.info("ℹ️ Kaptanların veya Hakemlerin girdikleri kadrolar burada toplanır. Geçmiş veya gelecek tüm esameleri tarih seçerek inceleyebilirsin.")
         
         tum_tarihler = st.session_state.mac_programi['Tarih'].dropna().unique().tolist()
         
@@ -57,12 +57,15 @@ def esame_kontrol_merkezi_ciz():
                             st.success(f"Bu esameler onaylanmış ve {secilen_tarih} tarihli Maç Programına yansıtılmıştır.")
                             if kaynak_t1 == "Hakem" or kaynak_t2 == "Hakem":
                                 st.warning("⚠️ Bu kadrolardan biri veya ikisi Gözlemci Hakem tarafından girilmiştir.")
+                            elif kaynak_t1 == "Başhakem" or kaynak_t2 == "Başhakem":
+                                st.info("👑 Bu kadrolar Başhakem tarafından doğrudan sisteme işlenmiştir.")
                         
                         c1, c2 = st.columns(2)
                         with c1:
                             st.markdown(f"**🛡️ {t1} Kadrosu**")
                             if t1_girdi:
                                 if kaynak_t1 == "Hakem": st.caption("*(Hakem Tarafından Girildi)*")
+                                elif kaynak_t1 == "Başhakem": st.caption("*(Başhakem Tarafından Girildi)*")
                                 for k, v in kasadaki_veri[t1].items(): 
                                     if k != "_kaynak": st.write(f"- {k}: **{v}**")
                             else: st.warning("Henüz giriş yapılmadı.")
@@ -70,6 +73,7 @@ def esame_kontrol_merkezi_ciz():
                             st.markdown(f"**🛡️ {t2} Kadrosu**")
                             if t2_girdi:
                                 if kaynak_t2 == "Hakem": st.caption("*(Hakem Tarafından Girildi)*")
+                                elif kaynak_t2 == "Başhakem": st.caption("*(Başhakem Tarafından Girildi)*")
                                 for k, v in kasadaki_veri[t2].items(): 
                                     if k != "_kaynak": st.write(f"- {k}: **{v}**")
                             else: st.warning("Henüz giriş yapılmadı.")
@@ -77,7 +81,68 @@ def esame_kontrol_merkezi_ciz():
                         if not is_approved:
                             if kaynak_t1 == "Hakem" or kaynak_t2 == "Hakem":
                                 st.error("⚠️ Bu esame bilgileri hakem tarafından girilmiştir.")
+                            elif kaynak_t1 == "Başhakem" or kaynak_t2 == "Başhakem":
+                                st.info("👑 Bu esame bilgileri Başhakem olarak sizin tarafınızdan girilmiştir.")
                                 
+                            # --- YENİ BAŞHAKEM DOĞRUDAN GİRİŞ FORMU ---
+                            st.markdown("---")
+                            st.markdown("#### 👑 Başhakem Kadro Girişi / Düzenleme")
+                            st.caption("Kaptanlardan veya hakemden beklemek yerine, kadroları doğrudan siz belirleyebilirsiniz. (Çiftleri boş bırakabilirsiniz)")
+                            
+                            grup_kadrolari = st.session_state.takim_kadrolari.get(grup, {})
+                            t1_havuz = grup_kadrolari.get(t1, ["Belirtilmedi"])
+                            t2_havuz = grup_kadrolari.get(t2, ["Belirtilmedi"])
+                            
+                            with st.form(key=f"form_admin_{match_key}"):
+                                c_f1, c_f2 = st.columns(2)
+                                form_t1 = {}
+                                form_t2 = {}
+                                
+                                with c_f1:
+                                    st.markdown(f"**{t1}**")
+                                    for idx_mp_e, row_mp_e in sort_maclar(match_df).iterrows():
+                                        brans = row_mp_e['Branş']
+                                        eski_val = kasadaki_veri.get(t1, {}).get(brans, "")
+                                        if "Çiftler" in brans:
+                                            eski_liste = [o.strip() for o in eski_val.split(",") if o.strip() in t1_havuz]
+                                            sec_t1 = st.multiselect(f"{brans}", options=t1_havuz, default=eski_liste, max_selections=2, key=f"adm_ms_t1_{match_key}_{brans}")
+                                            form_t1[brans] = ", ".join(sec_t1)
+                                        else:
+                                            idx_def = (["Seçiniz"] + t1_havuz).index(eski_val) if eski_val in t1_havuz else 0
+                                            sec_t1 = st.selectbox(f"{brans}", options=["Seçiniz"] + t1_havuz, index=idx_def, key=f"adm_sb_t1_{match_key}_{brans}")
+                                            form_t1[brans] = sec_t1 if sec_t1 != "Seçiniz" else ""
+                                
+                                with c_f2:
+                                    st.markdown(f"**{t2}**")
+                                    for idx_mp_e, row_mp_e in sort_maclar(match_df).iterrows():
+                                        brans = row_mp_e['Branş']
+                                        eski_val = kasadaki_veri.get(t2, {}).get(brans, "")
+                                        if "Çiftler" in brans:
+                                            eski_liste = [o.strip() for o in eski_val.split(",") if o.strip() in t2_havuz]
+                                            sec_t2 = st.multiselect(f"{brans}", options=t2_havuz, default=eski_liste, max_selections=2, key=f"adm_ms_t2_{match_key}_{brans}")
+                                            form_t2[brans] = ", ".join(sec_t2)
+                                        else:
+                                            idx_def = (["Seçiniz"] + t2_havuz).index(eski_val) if eski_val in t2_havuz else 0
+                                            sec_t2 = st.selectbox(f"{brans}", options=["Seçiniz"] + t2_havuz, index=idx_def, key=f"adm_sb_t2_{match_key}_{brans}")
+                                            form_t2[brans] = sec_t2 if sec_t2 != "Seçiniz" else ""
+                                
+                                if st.form_submit_button("💾 Kadroları Başhakem Olarak Kaydet (Zarfa Koy)", use_container_width=True):
+                                    if match_key not in st.session_state.esame_kasasi:
+                                        st.session_state.esame_kasasi[match_key] = {}
+                                    
+                                    form_t1["_kaynak"] = "Başhakem"
+                                    form_t2["_kaynak"] = "Başhakem"
+                                    
+                                    st.session_state.esame_kasasi[match_key][t1] = form_t1
+                                    st.session_state.esame_kasasi[match_key][t2] = form_t2
+                                    
+                                    if ortak_veriyi_kaydet():
+                                        st.success("Kadrolar başarıyla kaydedildi! Şimdi aşağıdan Onaylayarak maç programına yansıtabilirsiniz.")
+                                        st.rerun()
+                                    else:
+                                        st.error("Sistem meşgul, lütfen tekrar deneyin.")
+
+                            st.markdown("---")
                             if st.button("📢 Esameleri Onayla ve Maç Programına Yansıt (Zarfları Aç)", key=f"onay_{match_key}", type="primary"):
                                 st.session_state.esame_onayli[match_key] = True
                                 
@@ -351,7 +416,6 @@ def grup_ayarlari_ciz(aktif_asama):
                     else:
                         st.error("Sistem meşgul, lütfen tekrar deneyin.")
                 
-        # --- YENİ: GÜN/TARİH EŞLEŞTİRİCİ MOTORU ---
         st.markdown("---")
         st.markdown("### 🗓️ Grup Gün-Tarih Eşleştirmesi (Fikstür Takvimi)")
         st.info("Grupların fikstüründeki '1. Gün', '2. Gün' gibi aşamaları gerçek takvim günleriyle eşleştirip, maçları gizli olarak Maç Programı sayfasına fırlatabilirsiniz.")
@@ -431,7 +495,6 @@ def grup_ayarlari_ciz(aktif_asama):
                             time.sleep(1.5)
                             st.rerun()
                 
-        # --- YENİ: 2 KADEMELİ KLASÖR MİMARİSİ ---
         if st.session_state.takim_kadrolari:
             st.markdown("---")
             st.markdown(f"### 📁 Mevcut Kayıtlı Gruplar ve Kadrolar ({aktif_asama})")
