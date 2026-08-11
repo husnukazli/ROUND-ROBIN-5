@@ -425,10 +425,10 @@ def generate_mac_sonuc_belgesi(eslesmeler_listesi):
         pdf.set_xy(70, y_header)
         pdf_cell_fit(pdf, 70, 8, grup_adi, border=0, align='C', is_bold=True, base_size=14)
         
-        pdf.set_xy(140, y_header) # (ÜST KANCA - HİZALAMA İÇİN KULLAN)
+        pdf.set_xy(140, y_header) # (ÜST KANCA - DEĞİŞMEYECEK)
         kort_metni = f"Kort: {kort}" if kort else "Kort: ...."
-        apply_font(pdf, bold=True, size=18)
-        pdf.cell(60, 8, to_pdf_text(kort_metni), ln=1, align='R')
+        apply_font(pdf, bold=True, size=24) # Fontu 24 yaparak çok daha devasa hale getirdik
+        pdf.cell(60, 12, to_pdf_text(kort_metni), ln=1, align='R') # Sığması için hücre yüksekliğini 12 yaptık
         apply_font(pdf, bold=True, size=14)
         
         y_subheader = pdf.get_y()
