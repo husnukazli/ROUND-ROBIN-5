@@ -108,7 +108,7 @@ def generate_pdf(df, baslik, not_metni="", kategori_map=None):
                         if str(row["Takım 1"]).startswith("**") and str(row["Takım 2"]).startswith("**"):
                             is_takim_satiri = True
             
-            # --- YENİ EKLENEN KISIM: KATEGORİYE GÖRE RENKLENDİRME ---
+            # --- KATEGORİYE GÖRE RENKLENDİRME ---
             if is_takim_satiri:
                 g_val = str(row.get("Grup", ""))
                 kat_ismi = str(kategori_map.get(g_val, "")).lower()
@@ -163,7 +163,7 @@ def generate_combined_standings_pdf(gruplar_dict, manuel_gruplar=None, averaj_ta
         apply_font(pdf, bold=True, size=12)
         pdf.cell(0, 10, to_pdf_text(grup_adi + " Puan Durumu"), ln=True, align='L')
         
-        # --- YENİ EKLENEN KISIM: KATEGORİYE GÖRE RENKLENDİRME ---
+        # --- KATEGORİYE GÖRE RENKLENDİRME ---
         kat_ismi = str(kategori_map.get(grup_adi, "")).lower()
         if "kadın" in kat_ismi or "kız" in kat_ismi: r, g, b = 255, 220, 235 # Açık pembe
         elif "erkek" in kat_ismi: r, g, b = 220, 235, 255 # Açık mavi
@@ -180,7 +180,7 @@ def generate_combined_standings_pdf(gruplar_dict, manuel_gruplar=None, averaj_ta
                     pdf_cell_fit(pdf, col_widths[i], 8, str(item), is_bold=False)
                 pdf.ln()
 
-        # --- YENİ EKLENEN KISIM: AÇIKLAMA METİNLERİNİ PDF'E BASMA ---
+        # --- AÇIKLAMA METİNLERİNİ PDF'E BASMA ---
         if grup_adi in averaj_bilgileri:
             pdf.ln(3)
             apply_font(pdf, bold=False, size=9)
