@@ -59,7 +59,8 @@ def get_pdf_bytes(pdf):
     out = pdf.output(dest='S')
     return out.encode('latin-1') if isinstance(out, str) else bytes(out)
 
-def generate_pdf(df, baslik, not_metni=""):
+def generate_pdf(df, baslik, not_metni="", kategori_map=None):
+    if kategori_map is None: kategori_map = {}
     pdf = FPDF(orientation='P', unit='mm', format='A4')
     pdf.add_page()
     setup_pdf_fonts(pdf)
@@ -85,7 +86,7 @@ def generate_pdf(df, baslik, not_metni=""):
     if len(df_print.columns) > 0:
         col_widths = get_proportional_widths(pdf, df_print)
         
-        pdf.set_fill_color(200, 200, 200)
+        pdf.set_fill_color(200, 200, 200) # Ana başlık satırı gri kalsın
         for i, col in enumerate(df_print.columns): 
             pdf_cell_fit(pdf, col_widths[i], 10, col, is_bold=True, fill=True, base_size=10)
         pdf.ln()
@@ -107,8 +108,16 @@ def generate_pdf(df, baslik, not_metni=""):
                         if str(row["Takım 1"]).startswith("**") and str(row["Takım 2"]).startswith("**"):
                             is_takim_satiri = True
             
+            # --- YENİ EKLENEN KISIM: KATEGORİYE GÖRE RENKLENDİRME ---
             if is_takim_satiri:
-                pdf.set_fill_color(225, 225, 225)
+                g_val = str(row.get("Grup", ""))
+                kat_ismi = str(kategori_map.get(g_val, "")).lower()
+                if "kadın" in kat_ismi or "kız" in kat_ismi:
+                    pdf.set_fill_color(255, 220, 235) # Açık Pembe
+                elif "erkek" in kat_ismi:
+                    pdf.set_fill_color(220, 235, 255) # Açık Mavi
+                else:
+                    pdf.set_fill_color(225, 225, 225) # Standart Gri
             
             for i, item in enumerate(row): 
                 text = str(item)
@@ -127,13 +136,11 @@ def generate_pdf(df, baslik, not_metni=""):
             pdf.ln()
     return get_pdf_bytes(pdf)
 
-def generate_combined_standings_pdf(gruplar_dict, manuel_gruplar=None, averaj_tablolari=None, averaj_bilgileri=None):
-    if manuel_gruplar is None:
-        manuel_gruplar = []
-    if averaj_tablolari is None:
-        averaj_tablolari = {}
-    if averaj_bilgileri is None:
-        averaj_bilgileri = {}
+def generate_combined_standings_pdf(gruplar_dict, manuel_gruplar=None, averaj_tablolari=None, averaj_bilgileri=None, kategori_map=None):
+    if manuel_gruplar is None: manuel_gruplar = []
+    if averaj_tablolari is None: averaj_tablolari = {}
+    if averaj_bilgileri is None: averaj_bilgileri = {}
+    if kategori_map is None: kategori_map = {}
         
     pdf = FPDF(orientation='P', unit='mm', format='A4')
     pdf.add_page()
@@ -144,6 +151,10 @@ def generate_combined_standings_pdf(gruplar_dict, manuel_gruplar=None, averaj_ta
         
         ekstra_pay = 10 if grup_adi in manuel_gruplar else 0
         if grup_adi in averaj_bilgileri: ekstra_pay += 15
+        if grup_adi in averaj_tablolari:
+            for t_adi, t_df in averaj_tablolari[grup_adi].items():
+                ekstra_pay += 10 + (len(t_df) * 8)
+                
         gerekli_yukseklik = 10 + 8 + (satir_sayisi * 8) + 10 + ekstra_pay 
         
         if pdf.get_y() + gerekli_yukseklik > 280: 
@@ -152,22 +163,30 @@ def generate_combined_standings_pdf(gruplar_dict, manuel_gruplar=None, averaj_ta
         apply_font(pdf, bold=True, size=12)
         pdf.cell(0, 10, to_pdf_text(grup_adi + " Puan Durumu"), ln=True, align='L')
         
+        # --- YENİ EKLENEN KISIM: KATEGORİYE GÖRE RENKLENDİRME ---
+        kat_ismi = str(kategori_map.get(grup_adi, "")).lower()
+        if "kadın" in kat_ismi or "kız" in kat_ismi: r, g, b = 255, 220, 235 # Açık pembe
+        elif "erkek" in kat_ismi: r, g, b = 220, 235, 255 # Açık mavi
+        else: r, g, b = 200, 200, 200 # Standart gri
+        
         if len(df.columns) > 0:
             col_widths = get_proportional_widths(pdf, df)
+            pdf.set_fill_color(r, g, b)
             for i, col in enumerate(df.columns): 
-                pdf_cell_fit(pdf, col_widths[i], 8, col, is_bold=True)
+                pdf_cell_fit(pdf, col_widths[i], 8, col, is_bold=True, fill=True)
             pdf.ln()
             for _, row in df.iterrows():
                 for i, item in enumerate(row): 
                     pdf_cell_fit(pdf, col_widths[i], 8, str(item), is_bold=False)
                 pdf.ln()
 
+        # --- YENİ EKLENEN KISIM: AÇIKLAMA METİNLERİNİ PDF'E BASMA ---
         if grup_adi in averaj_bilgileri:
             pdf.ln(3)
             apply_font(pdf, bold=False, size=9)
-            temiz_metin = averaj_bilgileri[grup_adi].replace("<b>", "").replace("</b>", "").replace("<br>", "\n").replace("ℹ️ ", "").strip()
+            temiz_metin = str(averaj_bilgileri[grup_adi]).replace("<b>", "").replace("</b>", "").replace("<br>", "\n").replace("ℹ️ ", "").strip()
             pdf.multi_cell(0, 5, to_pdf_text(f"Not: {temiz_metin}"), align='L')
-                
+
         if grup_adi in averaj_tablolari:
             pdf.ln(3)
             for t_adi, t_df in averaj_tablolari[grup_adi].items():
