@@ -50,9 +50,10 @@ def esame_kontrol_merkezi_ciz():
                     kaynak_t2 = kasadaki_veri.get(t2, {}).get("_kaynak", "Kaptan") if t2_girdi else ""
                     
                     durum_ikon_t1 = f"✅ Teslim Etti ({kaynak_t1})" if t1_girdi else "❌ Bekleniyor"
-                    durum_ikon_t2 = f"✅ Teslim Etti ({kaynak_t2})" if t2_girdi else "❌ Bekleniyor"
+                    durum_ikon_t2 = f"✅ Teslim Etti ({kaynak_t2})" if t2_girdi else "❌ Bekleniyor" # (ÜST KANCA)
                     
-                    with st.expander(f"{saat} | {kort} | {grup} | {t1} ({durum_ikon_t1})  VS  {t2} ({durum_ikon_t2})", expanded=not is_approved):
+                    with st.expander(f"{saat} | {kort} | {grup} | {t1} ({durum_ikon_t1})  VS  {t2} ({durum_ikon_t2})", expanded=False):
+                        if is_approved:
                         if is_approved:
                             st.success(f"Bu esameler onaylanmış ve {secilen_tarih} tarihli Maç Programına yansıtılmıştır.")
                             if kaynak_t1 == "Hakem" or kaynak_t2 == "Hakem":
