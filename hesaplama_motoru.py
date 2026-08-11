@@ -570,12 +570,15 @@ def sirala_grup_df(grup_df, gp, ham_maclar_df=None):
                             top_oyun_av = sorted_coklu.iloc[0]['Oyun Av.']
                             bottom_oyun_av = sorted_coklu.iloc[-1]['Oyun Av.']
                             
+                            # YENİ: DİNAMİK İSİMLENDİRME SİSTEMİ (Üçlü, Dörtlü vb.)
+                            isim_map = {3: "Üçlü", 4: "Dörtlü", 5: "Beşli", 6: "Altılı"}
+                            averaj_baslik = isim_map.get(len(t_list), f"{len(t_list)}'li")
+                            
                             if top_gal == bottom_gal and top_mac_av == bottom_mac_av and top_set_av == bottom_set_av and top_oyun_av == bottom_oyun_av:
-                                kura_gerekir_mesajlari.append(f"⚠️ Bu grupta ({', '.join(t_list)}) çoklu averaj tüm kriterlere rağmen çözülememiştir, kura gerekebilir!")
+                                kura_gerekir_mesajlari.append(f"⚠️ Bu grupta ({', '.join(t_list)}) {averaj_baslik.lower()} averaj tüm kriterlere rağmen çözülememiştir, kura gerekebilir!")
                             else:
                                 coklu_sira = sorted_coklu['Takım'].tolist()
                                 
-                                # SADECE genel averajda "Daha Kötü" olan bir takım, "Daha İyi" olan bir takımı geçtiyse uyarı ver!
                                 sira_degisti_mi = False
                                 for i in range(len(coklu_sira)):
                                     for j in range(i + 1, len(coklu_sira)):
@@ -597,10 +600,10 @@ def sirala_grup_df(grup_df, gp, ham_maclar_df=None):
                                         break
 
                                 if sira_degisti_mi:
-                                    averaj_mesajlari.append(f"ℹ️ <b>Çoklu Averaj Bilgisi:</b> Bu grupta {', '.join(t_list)} takımları arasında puan eşitliği yaşanmış ve sıralama genel averaja bakılmaksızın <b>kendi aralarındaki maçlara</b> göre yeniden belirlenmiştir.")
+                                    averaj_mesajlari.append(f"ℹ️ <b>{averaj_baslik} Averaj Bilgisi:</b> Bu grupta {', '.join(t_list)} takımları arasında puan eşitliği yaşanmış ve sıralama genel averaja bakılmaksızın <b>kendi aralarındaki maçlara</b> göre yeniden belirlenmiştir.")
                                     mini_tablo_df = sorted_coklu.drop(columns=['Grup'])
                                     mini_tablo_df.index = range(1, len(mini_tablo_df) + 1)
-                                    grup_averaj_tablolari[f"({', '.join(t_list)}) Takımları Çoklu Averaj Tablosu"] = mini_tablo_df
+                                    grup_averaj_tablolari[f"({', '.join(t_list)}) Takımları {averaj_baslik} Averaj Tablosu"] = mini_tablo_df
 
                             for t_adi in coklu_sira:
                                 siralanmis_takimlar.append(t_adi)
