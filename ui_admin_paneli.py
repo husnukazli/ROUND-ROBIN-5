@@ -53,12 +53,17 @@ def esame_kontrol_merkezi_ciz():
                     durum_ikon_t2 = f"✅ Teslim Etti ({kaynak_t2})" if t2_girdi else "❌ Bekleniyor"
                     
                     with st.expander(f"{saat} | {kort} | {grup} | {t1} ({durum_ikon_t1})  VS  {t2} ({durum_ikon_t2})", expanded=False):
-                        if is_approved: # (ALT KANCA)
+                        if is_approved:
                             st.success(f"Bu esameler onaylanmış ve {secilen_tarih} tarihli Maç Programına yansıtılmıştır.")
                             if kaynak_t1 == "Hakem" or kaynak_t2 == "Hakem":
                                 st.warning("⚠️ Bu kadrolardan biri veya ikisi Gözlemci Hakem tarafından girilmiştir.")
                             elif kaynak_t1 == "Başhakem" or kaynak_t2 == "Başhakem":
                                 st.info("👑 Bu kadrolar Başhakem tarafından doğrudan sisteme işlenmiştir.")
+                            
+                            # YENİ: KİLİT AÇMA (GERİ ALMA) BUTONU
+                            if st.button("🔓 Kilidi Aç ve Kadroları Yeniden Düzenle", key=f"kilit_ac_{match_key}"):
+                                st.session_state.esame_onayli[match_key] = False
+                                st.rerun()
                         
                         c1, c2 = st.columns(2)
                         with c1:
@@ -84,7 +89,6 @@ def esame_kontrol_merkezi_ciz():
                             elif kaynak_t1 == "Başhakem" or kaynak_t2 == "Başhakem":
                                 st.info("👑 Bu esame bilgileri Başhakem olarak sizin tarafınızdan girilmiştir.")
                                 
-                            # --- YENİ BAŞHAKEM DOĞRUDAN GİRİŞ FORMU ---
                             st.markdown("---")
                             st.markdown("#### 👑 Başhakem Kadro Girişi / Düzenleme")
                             st.caption("Kaptanlardan veya hakemden beklemek yerine, kadroları doğrudan siz belirleyebilirsiniz. (Çiftleri boş bırakabilirsiniz)")
@@ -127,20 +131,62 @@ def esame_kontrol_merkezi_ciz():
                                             form_t2[brans] = sec_t2 if sec_t2 != "Seçiniz" else ""
                                 
                                 if st.form_submit_button("💾 Kadroları Başhakem Olarak Kaydet (Zarfa Koy)", use_container_width=True):
-                                    if match_key not in st.session_state.esame_kasasi:
-                                        st.session_state.esame_kasasi[match_key] = {}
+                                    hatalar = []
+                                    format_sec = st.session_state.grup_formatlari.get(grup, "3 Maçlık (2 Tek, 1 Çift)")
                                     
-                                    form_t1["_kaynak"] = "Başhakem"
-                                    form_t2["_kaynak"] = "Başhakem"
-                                    
-                                    st.session_state.esame_kasasi[match_key][t1] = form_t1
-                                    st.session_state.esame_kasasi[match_key][t2] = form_t2
-                                    
-                                    if ortak_veriyi_kaydet():
-                                        st.success("Kadrolar başarıyla kaydedildi! Şimdi aşağıdan Onaylayarak maç programına yansıtabilirsiniz.")
-                                        st.rerun()
+                                    # YENİ: BAŞHAKEM İÇİN KAT KATI KURALLAR / VİLDASYONLAR
+                                    for t_adi, f_data, havuz in [(t1, form_t1, t1_havuz), (t2, form_t2, t2_havuz)]:
+                                        o1 = f_data.get("1. Tekler")
+                                        o2 = f_data.get("2. Tekler")
+                                        o3 = f_data.get("3. Tekler")
+                                        r1 = havuz.index(o1) if o1 in havuz else -1
+                                        r2 = havuz.index(o2) if o2 in havuz else -1
+                                        r3 = havuz.index(o3) if o3 in havuz else -1
+
+                                        for b in ["1. Çiftler", "2. Çiftler", "Çiftler"]:
+                                            c_str = f_data.get(b, "")
+                                            if c_str:
+                                                c_list = [o.strip() for o in c_str.split(",") if o.strip()]
+                                                if len(c_list) == 1: hatalar.append(f"❌ {t_adi}: {b} maçına tek oyuncu yazılamaz. Boş bırakabilirsiniz.")
+
+                                        if r1 != -1 and r2 != -1 and r1 >= r2: hatalar.append(f"❌ {t_adi}: 1. Tekler oyuncusu, 2. Teklerden üst sırada olmalıdır.")
+                                        if r2 != -1 and r3 != -1 and r2 >= r3: hatalar.append(f"❌ {t_adi}: 2. Tekler oyuncusu, 3. Teklerden üst sırada olmalıdır.")
+                                        if r1 != -1 and r3 != -1 and r2 == -1 and r1 >= r3: hatalar.append(f"❌ {t_adi}: 1. Tekler oyuncusu, 3. Teklerden üst sırada olmalıdır.")
+
+                                        if o1 and o1 != "Seçiniz" and o1 == o2: hatalar.append(f"❌ {t_adi}: Aynı oyuncu birden fazla tekler maçına yazılamaz.")
+                                        if o2 and o2 != "Seçiniz" and o2 == o3: hatalar.append(f"❌ {t_adi}: Aynı oyuncu birden fazla tekler maçına yazılamaz.")
+                                        if o1 and o1 != "Seçiniz" and o1 == o3: hatalar.append(f"❌ {t_adi}: Aynı oyuncu birden fazla tekler maçına yazılamaz.")
+
+                                        if "5 Maçlık" in format_sec:
+                                            c1_list = [o.strip() for o in f_data.get("1. Çiftler", "").split(",") if o.strip()]
+                                            c2_list = [o.strip() for o in f_data.get("2. Çiftler", "").split(",") if o.strip()]
+                                            ortak = set(c1_list).intersection(set(c2_list))
+                                            if ortak: hatalar.append(f"❌ {t_adi}: Aynı oyuncu iki çiftler maçına da yazılamaz.")
+
+                                            if len(c1_list) == 2 and len(c2_list) == 2 and not ortak:
+                                                dortlu = sorted([(p, havuz.index(p)) for p in c1_list + c2_list if p in havuz], key=lambda x: x[1])
+                                                yeni_rank = {p: i+1 for i, (p, _) in enumerate(dortlu)}
+                                                t_c1 = yeni_rank.get(c1_list[0], 99) + yeni_rank.get(c1_list[1], 99)
+                                                t_c2 = yeni_rank.get(c2_list[0], 99) + yeni_rank.get(c2_list[1], 99)
+                                                if t_c1 > t_c2: hatalar.append(f"❌ {t_adi}: 1. Çiftler, 2. Çiftlerden daha güçlü (veya eşit) olmalıdır.")
+
+                                    if hatalar:
+                                        for h in hatalar: st.error(h)
                                     else:
-                                        st.error("Sistem meşgul, lütfen tekrar deneyin.")
+                                        if match_key not in st.session_state.esame_kasasi:
+                                            st.session_state.esame_kasasi[match_key] = {}
+                                        
+                                        form_t1["_kaynak"] = "Başhakem"
+                                        form_t2["_kaynak"] = "Başhakem"
+                                        
+                                        st.session_state.esame_kasasi[match_key][t1] = form_t1
+                                        st.session_state.esame_kasasi[match_key][t2] = form_t2
+                                        
+                                        if ortak_veriyi_kaydet():
+                                            st.success("Kadrolar başarıyla kaydedildi! Şimdi aşağıdan Onaylayarak maç programına yansıtabilirsiniz.")
+                                            st.rerun()
+                                        else:
+                                            st.error("Sistem meşgul, lütfen tekrar deneyin.")
 
                             st.markdown("---")
                             if st.button("📢 Esameleri Onayla ve Maç Programına Yansıt (Zarfları Aç)", key=f"onay_{match_key}", type="primary"):
