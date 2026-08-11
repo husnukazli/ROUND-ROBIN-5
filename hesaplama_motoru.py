@@ -184,7 +184,9 @@ def get_formatted_match_score(row, target_t1):
     return f"<b>{brans}</b>: <span style='opacity: 0.8;'>{score_str}</span>"
 
 def render_html_matrix(takimlar, df_grup):
-    html = '<table style="width:100%; border-collapse: collapse; text-align:center; font-family: sans-serif; font-size: 14px;">'
+    # KAYDIRILABİLİR (SCROLL) TABLO ÖZELLİĞİ EKLENDİ
+    html = '<div style="overflow-x: auto; white-space: nowrap; padding-bottom: 10px;">'
+    html += '<table style="width:100%; border-collapse: collapse; text-align:center; font-family: sans-serif; font-size: 14px;">'
     html += '<tr style="background-color: rgba(128,128,128,0.1);">'
     html += '<th style="border: 1px solid rgba(128,128,128,0.3); padding: 10px;">Takımlar</th>'
     for t in takimlar:
@@ -258,7 +260,7 @@ def render_html_matrix(takimlar, df_grup):
                         
                         html += f'<td style="border: 1px solid rgba(128,128,128,0.3); padding: 10px; vertical-align: top;">{main_score}{puan_div}<div style="font-size: 11px; opacity: 0.8; line-height: 1.4;">{details_html}</div></td>'
         html += '</tr>'
-    html += '</table>'
+    html += '</table></div>'
     return html
     
 def hesapla_tum_puan_durumu(df_girdi):
@@ -453,7 +455,7 @@ def hesapla_tum_puan_durumu(df_girdi):
     return tum_stats
 
 # ==============================================================================
-# 🚀 AKILLI AVERAJ VE ÇOKLU AVERAJ SIRALAMA MOTORU (GÜNCELLENDİ)
+# 🚀 AKILLI AVERAJ VE ÇOKLU AVERAJ SIRALAMA MOTORU
 # ==============================================================================
 def sirala_grup_df(grup_df, gp, ham_maclar_df=None):
     if gp in st.session_state.grup_siralamalari and st.session_state.grup_siralamalari[gp]:
@@ -467,6 +469,26 @@ def sirala_grup_df(grup_df, gp, ham_maclar_df=None):
     
     if ham_maclar_df is None and 'skor_tablosu' in st.session_state:
         ham_maclar_df = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'] == gp]
+
+    # --- YENİ: GRUBUN TAMAMLANMA KONTROLÜ (Skor girilmemiş maç var mı?) ---
+    admin_kilidi = st.session_state.get('grup_tamamlandi', {}).get(gp, False)
+    grup_bitti_mi = admin_kilidi
+    
+    if not grup_bitti_mi and ham_maclar_df is not None and not ham_maclar_df.empty:
+        biten_mac_sayisi = 0
+        for _, r in ham_maclar_df.iterrows():
+            d = str(r.get('Durum', 'Tamamlandı'))
+            try:
+                s1_1, s1_2 = int(r.get('1.Set T1', 0)), int(r.get('1.Set T2', 0))
+            except:
+                s1_1, s1_2 = 0, 0
+                
+            if "W/O" in d or "Ret." in d or s1_1 > 0 or s1_2 > 0 or d == "Çift Taraflı W/O":
+                biten_mac_sayisi += 1
+                
+        if biten_mac_sayisi == len(ham_maclar_df):
+            grup_bitti_mi = True
+    # -----------------------------------------------------------------------
 
     siralanmis_takimlar = []
     kura_gerekir_mesajlari = []
@@ -526,8 +548,6 @@ def sirala_grup_df(grup_df, gp, ham_maclar_df=None):
             t_list = alt_kumul['Takım'].tolist()
             toplam_takim_sayisi = len(grup_df)
             
-            # Eğer gruptaki TÜM takımlar bu alt kümedeyse (örneğin 3'lü grupta herkesin 1 galibiyeti varsa), 
-            # ekstra çoklu averaj hesaplamaya ve uyarı/tablo üretmeye gerek yoktur.
             if len(alt_kumul) == toplam_takim_sayisi:
                 sorted_alt = alt_kumul.sort_values(by=['Maç Av.', 'Set Av.', 'Oyun Av.'], ascending=False)
                 for _, row in sorted_alt.iterrows():
@@ -557,7 +577,6 @@ def sirala_grup_df(grup_df, gp, ham_maclar_df=None):
                             else:
                                 averaj_mesajlari.append(f"ℹ️ <b>Çoklu Averaj Bilgisi:</b> Bu grupta {', '.join(t_list)} takımları arasında puan eşitliği yaşanmış ve sıralama kendi aralarındaki maçlara göre belirlenmiştir.")
                                 
-                                # Arayüz ve PDF için alt tablo (mini lig tablosu) kaydı
                                 mini_tablo_df = sorted_coklu.drop(columns=['Grup'])
                                 mini_tablo_df.index = range(1, len(mini_tablo_df) + 1)
                                 grup_averaj_tablolari[f"({', '.join(t_list)}) Takımları Çoklu Averaj Tablosu"] = mini_tablo_df
@@ -575,23 +594,24 @@ def sirala_grup_df(grup_df, gp, ham_maclar_df=None):
     grup_df = grup_df.sort_values(by=['Sıra_Degeri']).drop(columns=['Sıra_Degeri'])
     grup_df.index = range(1, len(grup_df) + 1)
 
+    # --- YENİ: GRUP BİTMEDİYSE UYARILARI GİZLE ---
     if "kura_uyarilari" not in st.session_state:
         st.session_state.kura_uyarilari = {}
-    if kura_gerekir_mesajlari:
+    if kura_gerekir_mesajlari and grup_bitti_mi:
         st.session_state.kura_uyarilari[gp] = " ".join(kura_gerekir_mesajlari)
     elif gp in st.session_state.kura_uyarilari:
         del st.session_state.kura_uyarilari[gp]
         
     if "averaj_bilgileri" not in st.session_state:
         st.session_state.averaj_bilgileri = {}
-    if averaj_mesajlari:
+    if averaj_mesajlari and grup_bitti_mi:
         st.session_state.averaj_bilgileri[gp] = "<br>".join(averaj_mesajlari)
     elif gp in st.session_state.averaj_bilgileri:
         del st.session_state.averaj_bilgileri[gp]
         
     if "grup_averaj_tablolari" not in st.session_state:
         st.session_state.grup_averaj_tablolari = {}
-    if grup_averaj_tablolari:
+    if grup_averaj_tablolari and grup_bitti_mi:
         st.session_state.grup_averaj_tablolari[gp] = grup_averaj_tablolari
     elif gp in st.session_state.grup_averaj_tablolari:
         del st.session_state.grup_averaj_tablolari[gp]
