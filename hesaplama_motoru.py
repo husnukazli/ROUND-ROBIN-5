@@ -574,14 +574,20 @@ def sirala_grup_df(grup_df, gp, ham_maclar_df=None):
                             if top_gal == bottom_gal and top_mac_av == bottom_mac_av and top_set_av == bottom_set_av and top_oyun_av == bottom_oyun_av:
                                 kura_gerekir_mesajlari.append(f"⚠️ Bu grupta ({', '.join(t_list)}) çoklu averaj tüm kriterlere rağmen çözülememiştir, kura gerekebilir!")
                             else:
-                                averaj_mesajlari.append(f"ℹ️ <b>Çoklu Averaj Bilgisi:</b> Bu grupta {', '.join(t_list)} takımları arasında puan eşitliği yaşanmış ve sıralama kendi aralarındaki maçlara göre belirlenmiştir.")
+                                # Normal (genel) sıralama ile çoklu averaj sıralamasını karşılaştırıyoruz
+                                normal_sira = alt_kumul.sort_values(by=['Maç Av.', 'Set Av.', 'Oyun Av.'], ascending=False)['Takım'].tolist()
+                                coklu_sira = sorted_coklu['Takım'].tolist()
                                 
-                                mini_tablo_df = sorted_coklu.drop(columns=['Grup'])
-                                mini_tablo_df.index = range(1, len(mini_tablo_df) + 1)
-                                grup_averaj_tablolari[f"({', '.join(t_list)}) Takımları Çoklu Averaj Tablosu"] = mini_tablo_df
+                                # SADECE sıralama değişiyorsa (farklıysa) uyarı ve tablo bas!
+                                if normal_sira != coklu_sira:
+                                    averaj_mesajlari.append(f"ℹ️ <b>Çoklu Averaj Bilgisi:</b> Bu grupta {', '.join(t_list)} takımları arasında puan eşitliği yaşanmış ve sıralama genel averaja bakılmaksızın <b>kendi aralarındaki maçlara</b> göre yeniden belirlenmiştir.")
+                                    
+                                    mini_tablo_df = sorted_coklu.drop(columns=['Grup'])
+                                    mini_tablo_df.index = range(1, len(mini_tablo_df) + 1)
+                                    grup_averaj_tablolari[f"({', '.join(t_list)}) Takımları Çoklu Averaj Tablosu"] = mini_tablo_df
 
-                            for _, row in sorted_coklu.iterrows():
-                                siralanmis_takimlar.append(row['Takım'])
+                            for t_adi in coklu_sira:
+                                siralanmis_takimlar.append(t_adi)
                             coklu_averaj_cozuldumu = True
 
                 if not coklu_averaj_cozuldumu:
