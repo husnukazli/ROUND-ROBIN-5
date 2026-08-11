@@ -256,7 +256,8 @@ if st.session_state.current_page == "Home":
         with st.expander("⚙️ Sistem Yöneticisi (Başhakem) Girişi"):
             girilen_sifre = st.text_input("Şifre:", type="password", key="login_pass")
             if st.button("🔒 Yönetici Olarak Giriş Yap"):
-                if girilen_sifre == "zonguldak2026":
+                # Şifre artık doğrudan kodun içinde değil, Streamlit Secrets kasasından kontrol ediliyor
+                if girilen_sifre == st.secrets.get("ADMIN_PASS", "zonguldak2026"):
                     st.session_state.admin_mi = True
                     st.session_state.kaptan_mi = False
                     st.session_state.hakem_mi = False
