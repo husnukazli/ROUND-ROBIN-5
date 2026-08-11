@@ -84,7 +84,6 @@ def hakem_panelini_ciz():
                         t1_kaptan_girdi = t1 in kasadaki_veri and kasadaki_veri[t1].get("_kaynak", "Kaptan") == "Kaptan"
                         t2_kaptan_girdi = t2 in kasadaki_veri and kasadaki_veri[t2].get("_kaynak", "Kaptan") == "Kaptan"
 
-                        # BAŞLIK DURUMU (NETLEŞTİRİLDİ)
                         if is_gecmis:
                             baslik_durumu = "🔒 [GEÇMİŞ]"
                         elif is_gelecek:
@@ -98,14 +97,11 @@ def hakem_panelini_ciz():
                         
                         with st.expander(expander_baslik, expanded=False):
                             
-                            # --- GELECEK MAÇLAR ---
                             if is_gelecek:
                                 st.warning(f"⏳ **{tarih_str} Bekleniyor:** Bu eşleşmenin günü henüz gelmemiştir. Oyuncu kadroları ve skor girişleri maç günü aktif olacaktır.")
                             
-                            # --- GEÇMİŞ MAÇLAR ---
                             elif is_gecmis:
                                 st.error(f"🔒 **{tarih_str} Geçmiş Maç:** Bu eşleşme geçmişte kalmıştır. Herhangi bir esame veya skor değişikliği yapılamaz.")
-                                
                                 html_rows = ""
                                 for _, row in sort_maclar(g_df).iterrows():
                                     skor = str(row.get('Skor', 'Oynanmadı'))
@@ -128,7 +124,6 @@ def hakem_panelini_ciz():
                                 </table>
                                 """, unsafe_allow_html=True)
                             
-                            # --- BUGÜNÜN MAÇLARI (AKTİF) ---
                             else:
                                 if is_approved:
                                     st.markdown("<div style='background-color: #f8fff9; border-left: 5px solid #28a745; padding: 10px; border-radius: 4px; color: #155724; font-weight: bold; margin-bottom: 15px;'>BU MAÇIN SKOR GİRİŞİ AÇIKTIR</div>", unsafe_allow_html=True)
@@ -136,7 +131,6 @@ def hakem_panelini_ciz():
                                     st.markdown("<div style='background-color: #f4f8ff; border-left: 5px solid #17a2b8; padding: 10px; border-radius: 4px; color: #0c5460; font-weight: bold; margin-bottom: 15px;'>ESAMELERİN ONAYLANMASI BEKLENİYOR</div>", unsafe_allow_html=True)
 
                                 if not is_approved:
-                                    # --- ESAME GİRİŞ BÖLÜMÜ ---
                                     hk_sent = (t1 in kasadaki_veri and kasadaki_veri[t1].get("_kaynak") == "Hakem") or \
                                               (t2 in kasadaki_veri and kasadaki_veri[t2].get("_kaynak") == "Hakem")
                                     kaptan_sent = (t1 in kasadaki_veri and kasadaki_veri[t1].get("_kaynak") == "Kaptan") and \
@@ -145,7 +139,7 @@ def hakem_panelini_ciz():
                                     if hk_sent or kaptan_sent:
                                         st.info("✅ Takım Esame Listeleri Başhakem'e iletildi. Lütfen Başhakem'in onaylamasını bekleyiniz (Onaydan sonra Skor ekranı açılacaktır).")
                                     else:
-                                        st.info("📌 Maçın esameleri henüz onaylanmamış. Hakem olarak Takım Esame Listesini korta siz girebilirsiniz.")
+                                        st.info("📌 Maçın esameleri henüz onaylanmamış. Hakem olarak Takım Esame Listesini korta siz girebilirsiniz. Çiftler maçlarını şimdilik boş bırakabilirsiniz.")
                                         
                                         hk_adim_key = f"hk_adim_{match_key}"
                                         if hk_adim_key not in st.session_state:
@@ -195,7 +189,7 @@ def hakem_panelini_ciz():
                                                             c_str = form_secimleri_t1.get(b, "")
                                                             if c_str:
                                                                 c_list = [o.strip() for o in c_str.split(",") if o.strip()]
-                                                                if len(c_list) == 1: hatalar.append(f"❌ {b} maçına tek oyuncu yazılamaz.")
+                                                                if len(c_list) == 1: hatalar.append(f"❌ {b} maçına tek oyuncu yazılamaz. (Boş bırakabilirsiniz)")
                                                                 
                                                         if r1 != -1 and r2 != -1 and r1 >= r2: hatalar.append("❌ 1. Tekler oyuncusu, 2. Teklerden üst sırada olmalıdır.")
                                                         if r2 != -1 and r3 != -1 and r2 >= r3: hatalar.append("❌ 2. Tekler oyuncusu, 3. Teklerden üst sırada olmalıdır.")
@@ -267,7 +261,7 @@ def hakem_panelini_ciz():
                                                             c_str = form_secimleri_t2.get(b, "")
                                                             if c_str:
                                                                 c_list = [o.strip() for o in c_str.split(",") if o.strip()]
-                                                                if len(c_list) == 1: hatalar.append(f"❌ {b} maçına tek oyuncu yazılamaz.")
+                                                                if len(c_list) == 1: hatalar.append(f"❌ {b} maçına tek oyuncu yazılamaz. (Boş bırakabilirsiniz)")
                                                                 
                                                         if r1 != -1 and r2 != -1 and r1 >= r2: hatalar.append("❌ 1. Tekler oyuncusu, 2. Teklerden üst sırada olmalıdır.")
                                                         if r2 != -1 and r3 != -1 and r2 >= r3: hatalar.append("❌ 2. Tekler oyuncusu, 3. Teklerden üst sırada olmalıdır.")
@@ -311,7 +305,9 @@ def hakem_panelini_ciz():
                                                 _, r_data = row_mp_3
                                                 brans = r_data['Branş']
                                                 o1 = temp_t1.get(brans, "Belirtilmedi")
+                                                if not o1: o1 = "Belirtilmedi"
                                                 o2 = temp_t2.get(brans, "Belirtilmedi")
+                                                if not o2: o2 = "Belirtilmedi"
                                                 st.markdown(f"**{i_m+1}. Maç ({brans}):** {o1} &nbsp;🆚&nbsp; {o2}")
                                                 
                                             st.write("")
@@ -334,7 +330,6 @@ def hakem_panelini_ciz():
                                                 st.rerun()
                                                 
                                 else:
-                                    # --- SKOR GİRİŞ BÖLÜMÜ ---
                                     form_verileri = {}
                                     for idx_mp, row_mp in sort_maclar(g_df).iterrows():
                                         mask = (st.session_state.skor_tablosu['Grup'] == row_mp['Grup']) & \
@@ -346,8 +341,54 @@ def hakem_panelini_ciz():
                                         if not skor_row_df.empty:
                                             idx = skor_row_df.index[0]
                                             row = skor_row_df.iloc[0]
-
-                                            st.markdown(f"**{row['Branş']}** &nbsp;&nbsp;|&nbsp;&nbsp; {row.get('T1_Oyuncu', '-')} vs {row.get('T2_Oyuncu', '-')}")
+                                            brans_adi = row['Branş']
+                                            is_ciftler = "Çiftler" in brans_adi
+                                            
+                                            # --- YENİ EKLENEN ÇİFTLER KADRO DEĞİŞTİRME ZEKASI ---
+                                            if is_ciftler:
+                                                c_isim, c_degistir = st.columns([3, 1])
+                                                with c_isim:
+                                                    st.markdown(f"**{brans_adi}** &nbsp;&nbsp;|&nbsp;&nbsp; {row.get('T1_Oyuncu', '-')} vs {row.get('T2_Oyuncu', '-')}")
+                                                with c_degistir:
+                                                    if st.button("🔄 Kadro Değiştir", key=f"btn_cift_edit_{idx}_{idx_mp}", use_container_width=True):
+                                                        st.session_state[f"show_edit_{idx}"] = not st.session_state.get(f"show_edit_{idx}", False)
+                                                        st.rerun()
+                                                
+                                                if st.session_state.get(f"show_edit_{idx}", False):
+                                                    st.markdown("<div style='background-color:#fff3cd; padding:10px; border-radius:5px; border-left:3px solid #ffc107; margin-bottom:10px;'>", unsafe_allow_html=True)
+                                                    st.write("👥 **Çiftler Oyuncularını Belirle / Güncelle**")
+                                                    
+                                                    grup_kadrolari = st.session_state.takim_kadrolari.get(grup_adi, {})
+                                                    t1_havuzu = grup_kadrolari.get(t1, ["Belirtilmedi"])
+                                                    t2_havuzu = grup_kadrolari.get(t2, ["Belirtilmedi"])
+                                                    
+                                                    eski_t1 = [x.strip() for x in str(row.get('T1_Oyuncu', '')).split(",") if x.strip() in t1_havuzu]
+                                                    eski_t2 = [x.strip() for x in str(row.get('T2_Oyuncu', '')).split(",") if x.strip() in t2_havuzu]
+                                                    
+                                                    yeni_cift_t1 = st.multiselect(f"{t1} Kadrosu:", options=t1_havuzu, default=eski_t1, max_selections=2, key=f"ms_t1_cift_{idx}")
+                                                    yeni_cift_t2 = st.multiselect(f"{t2} Kadrosu:", options=t2_havuzu, default=eski_t2, max_selections=2, key=f"ms_t2_cift_{idx}")
+                                                    
+                                                    if st.button("💾 Yeni Kadroyu Onayla ve Kapat", key=f"btn_cift_save_{idx}", type="primary"):
+                                                        if len(yeni_cift_t1) == 1 or len(yeni_cift_t2) == 1:
+                                                            st.error("❌ Çiftler maçına tek oyuncu yazılamaz. Lütfen 2 kişi seçin veya boş bırakın.")
+                                                        else:
+                                                            st.session_state.skor_tablosu.at[idx, 'T1_Oyuncu'] = ", ".join(yeni_cift_t1) if yeni_cift_t1 else "Belirtilmedi"
+                                                            st.session_state.skor_tablosu.at[idx, 'T2_Oyuncu'] = ", ".join(yeni_cift_t2) if yeni_cift_t2 else "Belirtilmedi"
+                                                            
+                                                            # Arşivdeki (Esame Kasasındaki) bilgiyi de güncelliyoruz ki sonradan bakıldığında doğru görünsün
+                                                            if match_key in st.session_state.esame_kasasi:
+                                                                if t1 in st.session_state.esame_kasasi[match_key]:
+                                                                    st.session_state.esame_kasasi[match_key][t1][brans_adi] = ", ".join(yeni_cift_t1) if yeni_cift_t1 else ""
+                                                                if t2 in st.session_state.esame_kasasi[match_key]:
+                                                                    st.session_state.esame_kasasi[match_key][t2][brans_adi] = ", ".join(yeni_cift_t2) if yeni_cift_t2 else ""
+                                                            
+                                                            ortak_veriyi_kaydet()
+                                                            st.session_state[f"show_edit_{idx}"] = False
+                                                            st.rerun()
+                                                    st.markdown("</div>", unsafe_allow_html=True)
+                                            else:
+                                                st.markdown(f"**{brans_adi}** &nbsp;&nbsp;|&nbsp;&nbsp; {row.get('T1_Oyuncu', '-')} vs {row.get('T2_Oyuncu', '-')}")
+                                            # -----------------------------------------------------------
 
                                             st.markdown("<div style='background-color: rgba(128,128,128,0.05); padding: 15px; border-radius: 10px; border-left: 5px solid #0B3B24; margin-bottom: 10px;'>", unsafe_allow_html=True)
                                             durum_opts = ["Tamamlandı", "Takım 1 Kazandı (W/O)", "Takım 2 Kazandı (W/O)", "Takım 1 Kazandı (Ret.)", "Takım 2 Kazandı (Ret.)", "Çift Taraflı W/O"]
