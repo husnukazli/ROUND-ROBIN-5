@@ -184,7 +184,6 @@ def get_formatted_match_score(row, target_t1):
     return f"<b>{brans}</b>: <span style='opacity: 0.8;'>{score_str}</span>"
 
 def render_html_matrix(takimlar, df_grup):
-    # KAYDIRILABİLİR (SCROLL) TABLO ÖZELLİĞİ
     html = '<div style="overflow-x: auto; white-space: nowrap; padding-bottom: 10px;">'
     html += '<table style="width:100%; border-collapse: collapse; text-align:center; font-family: sans-serif; font-size: 14px;">'
     html += '<tr style="background-color: rgba(128,128,128,0.1);">'
@@ -574,14 +573,31 @@ def sirala_grup_df(grup_df, gp, ham_maclar_df=None):
                             if top_gal == bottom_gal and top_mac_av == bottom_mac_av and top_set_av == bottom_set_av and top_oyun_av == bottom_oyun_av:
                                 kura_gerekir_mesajlari.append(f"⚠️ Bu grupta ({', '.join(t_list)}) çoklu averaj tüm kriterlere rağmen çözülememiştir, kura gerekebilir!")
                             else:
-                                # Normal (genel) sıralama ile çoklu averaj sıralamasını karşılaştırıyoruz
-                                normal_sira = alt_kumul.sort_values(by=['Maç Av.', 'Set Av.', 'Oyun Av.'], ascending=False)['Takım'].tolist()
                                 coklu_sira = sorted_coklu['Takım'].tolist()
                                 
-                                # SADECE sıralama değişiyorsa (farklıysa) uyarı ve tablo bas!
-                                if normal_sira != coklu_sira:
+                                # SADECE genel averajda "Daha Kötü" olan bir takım, "Daha İyi" olan bir takımı geçtiyse uyarı ver!
+                                sira_degisti_mi = False
+                                for i in range(len(coklu_sira)):
+                                    for j in range(i + 1, len(coklu_sira)):
+                                        t_ust = coklu_sira[i]
+                                        t_alt = coklu_sira[j]
+                                        
+                                        r_ust = alt_kumul[alt_kumul['Takım'] == t_ust].iloc[0]
+                                        r_alt = alt_kumul[alt_kumul['Takım'] == t_alt].iloc[0]
+                                        
+                                        alt_daha_iyi = False
+                                        if r_alt['Maç Av.'] > r_ust['Maç Av.']: alt_daha_iyi = True
+                                        elif r_alt['Maç Av.'] == r_ust['Maç Av.'] and r_alt['Set Av.'] > r_ust['Set Av.']: alt_daha_iyi = True
+                                        elif r_alt['Maç Av.'] == r_ust['Maç Av.'] and r_alt['Set Av.'] == r_ust['Set Av.'] and r_alt['Oyun Av.'] > r_ust['Oyun Av.']: alt_daha_iyi = True
+                                        
+                                        if alt_daha_iyi:
+                                            sira_degisti_mi = True
+                                            break
+                                    if sira_degisti_mi:
+                                        break
+
+                                if sira_degisti_mi:
                                     averaj_mesajlari.append(f"ℹ️ <b>Çoklu Averaj Bilgisi:</b> Bu grupta {', '.join(t_list)} takımları arasında puan eşitliği yaşanmış ve sıralama genel averaja bakılmaksızın <b>kendi aralarındaki maçlara</b> göre yeniden belirlenmiştir.")
-                                    
                                     mini_tablo_df = sorted_coklu.drop(columns=['Grup'])
                                     mini_tablo_df.index = range(1, len(mini_tablo_df) + 1)
                                     grup_averaj_tablolari[f"({', '.join(t_list)}) Takımları Çoklu Averaj Tablosu"] = mini_tablo_df
