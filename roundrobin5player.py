@@ -2148,10 +2148,68 @@ else:
                                 dosya_adi = f"mac_programi_{hedef_tarih}.pdf"
                                 buton_adi = "📥 Maç Programını PDF Olarak İndir"
                                 
+                            # Kategori renkleri için map bilgisi eklendi
                             pdf_bytes_admin = generate_pdf(final_pdf_df, baslik_metni, not_metni=pdf_notu, kategori_map=st.session_state.grup_kategorileri)
-                            st.download_button(buton_adi, data=pdf_bytes_admin, file_name=dosya_adi, mime="application/pdf", key="pdf_admin_skor")
-        else:
-            st.warning("🔒 Skor ve esame giriş paneli dışarıya kapalıdır. Lütfen giriş yapınız.")
+                            st.download_button(buton_adi, data=pdf_bytes_admin, file_name=dosya_adi, mime="application/pdf", key="pdf_admin")
+    
+                else:
+                    st.markdown(f"### 📋 {formatted_tarih} Tarihli Maç Akışı ({aktif_asama})")
+                    if df_gunluk_safe.empty:
+                        st.info("Bu tarihte planlanmış maç bulunmamaktadır.")
+                    else:
+                        st.divider()
+                        for (grup_adi, eslesme_adi), grup_df in df_gunluk_safe.groupby(['Grup', 'Eşleşme']):
+                            takim_skoru_etiketi = ""
+                            team_winner = ""
+                            if not df_team_summary.empty:
+                                ozet_satiri = df_team_summary[(df_team_summary['Grup'] == grup_adi) & (df_team_summary['Eşleşme'] == eslesme_adi)]
+                                if not ozet_satiri.empty:
+                                    val = ozet_satiri.iloc[0]['Skor']
+                                    team_winner = ozet_satiri.iloc[0]['Kazanan']
+                                    if val != "Oynanmadı": takim_skoru_etiketi = f"  🟢 SKOR: {val}"
+    
+                            kort = grup_df.iloc[0]['Kort']
+                            saat = grup_df.iloc[0]['Maç Saati']
+                            takim1 = grup_df.iloc[0]['Takım 1']
+                            takim2 = grup_df.iloc[0]['Takım 2']
+                            gun_kodu = grup_df.iloc[0]['Gün']
+                            mevcut_hakem = grup_df.iloc[0]['Hakem']
+                            if pd.isna(mevcut_hakem) or mevcut_hakem == "Atanmadı": mevcut_hakem = ""
+                            
+                            match_key = f"{grup_adi}_{gun_kodu}_{eslesme_adi}"
+                            is_approved = st.session_state.esame_onayli.get(match_key, False)
+                            
+                            hakem_baslik_etiketi = f" (👮‍♂️ {mevcut_hakem})" if mevcut_hakem else ""
+                            
+                            t1_baslik = f"**{takim1}**" if team_winner == "T1" else takim1
+                            t2_baslik = f"**{takim2}**" if team_winner == "T2" else takim2
+                            
+                            expander_title = f"🎾 {saat} | {kort} | {grup_adi} | {t1_baslik} - {t2_baslik}{takim_skoru_etiketi}{hakem_baslik_etiketi}"
+                            
+                            with st.expander(expander_title, expanded=False):
+                                html_rows = ""
+                                for _, row in sort_maclar(grup_df).iterrows():
+                                    skor = str(row.get('Skor', 'Oynanmadı'))
+                                    skor_html = f"<span style='color:#28a745; font-weight:bold;'>{skor}</span>" if skor not in ["Oynanmadı", ""] else "<i>Bekleniyor</i>"
+                                    
+                                    if is_approved:
+                                        t1_o = html.escape(str(row.get('T1 Oyuncu', '')).strip())
+                                        t2_o = html.escape(str(row.get('T2 Oyuncu', '')).strip())
+                                    else:
+                                        t1_o = "🔒 Esame Bekleniyor"
+                                        t2_o = "🔒 Esame Bekleniyor"
+                                    
+                                    if row.get('Kazanan') == 'T1' and is_approved: t1_o = f"<b>{t1_o}</b>"
+                                    elif row.get('Kazanan') == 'T2' and is_approved: t2_o = f"<b>{t2_o}</b>"
+                                    
+                                    html_rows += f"<tr><td style='border:1px solid rgba(128,128,128,0.3); padding:5px;'>{row['Branş']}</td><td style='border:1px solid rgba(128,128,128,0.3); padding:5px;'>{t1_o} / {t2_o}</td><td style='border:1px solid rgba(128,128,128,0.3); padding:5px;'>{skor_html}</td></tr>"
+                                
+                                st.markdown(f"""
+                                <table style="width:100%; border-collapse: collapse; font-family: sans-serif;">
+                                    <tr><th style="border:1px solid rgba(128,128,128,0.3); padding:5px; background-color: rgba(128, 128, 128, 0.1);">Branş</th><th style="border:1px solid rgba(128,128,128,0.3); padding:5px; background-color: rgba(128, 128, 128, 0.1);">Oyuncular</th><th style="border:1px solid rgba(128,128,128,0.3); padding:5px; background-color: rgba(128, 128, 128, 0.1);">Skor</th></tr>
+                                    {html_rows}
+                                </table>
+                                """, unsafe_allow_html=True)
 
     # ==============================================================================
     # 13. TAKIM KADROLARI (İZLEYİCİ VE GENEL GÖRÜNÜM)
