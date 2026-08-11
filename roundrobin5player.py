@@ -2008,23 +2008,17 @@ else:
                         gunluk_eslesmeler_listesi = []
                         eslesme_secenekleri = ["Seçiniz"]
                         
-                        for (grup_adi, eslesme_adi), g_df in df_tarih.groupby(['Grup', 'Eşleşme']):
-                            tarih_str = g_df.iloc[0]['Tarih_Filtre']
-                            
-                            k_key = f"{grup_adi}_{g_df.iloc[0]['Gün']}_{eslesme_adi}"
-                            saat = saat_map.get(k_key, "??:??")
-                            kort = kort_map.get(k_key, "Kortsuz")
-                            
+                        for (grup_adi, eslesme_adi), g_df in df_gunluk_safe.groupby(['Grup', 'Eşleşme']):
+                            tarih_str = g_df.iloc[0]['Tarih']
+                            saat = g_df.iloc[0]['Maç Saati']
+                            kort = g_df.iloc[0]['Kort']
                             t1 = g_df.iloc[0]['Takım 1']
                             t2 = g_df.iloc[0]['Takım 2']
-                            hakem = "" 
-                            if not df_prog.empty:
-                                h_mask = df_prog[(df_prog['Grup'] == grup_adi) & (df_prog['Eşleşme'] == eslesme_adi)]
-                                if not h_mask.empty: hakem = h_mask.iloc[0].get('Hakem', '')
+                            hakem = g_df.iloc[0]['Hakem']
                             
                             alt_maclar = [{"Branş": r['Branş']} for _, r in sort_maclar(g_df).iterrows()]
                             
-                            # --- TAKIM KADROLARINI DOĞRUDAN ÇEKME VE AKTARMA ---
+                            # --- TAKIM KADROLARINI DOĞRUDAN ÇEKME VE AKTARMA (MAÇ PROGRAMI) ---
                             grup_kadro_sozlugu = st.session_state.takim_kadrolari.get(grup_adi, {})
                             t1_kadro = grup_kadro_sozlugu.get(t1, ["Kayıt yok"])
                             t2_kadro = grup_kadro_sozlugu.get(t2, ["Kayıt yok"])
@@ -2042,9 +2036,9 @@ else:
                         if gunluk_eslesmeler_listesi:
                             pdf_bytes_toplu = generate_mac_sonuc_belgesi(gunluk_eslesmeler_listesi)
                             st.download_button(
-                                label=f"📥 Seçili Tarihin Tüm Maç Kağıtlarını Tek PDF'te İndir ({len(gunluk_eslesmeler_listesi)} Sayfa)",
+                                label=f"📥 Günün Tüm Maç Kağıtlarını Tek PDF'te İndir ({len(gunluk_eslesmeler_listesi)} Sayfa)",
                                 data=pdf_bytes_toplu,
-                                file_name=f"Tum_Hakem_Kagitlari_{hedef_tarih}.pdf",
+                                file_name=f"Tum_Hakem_Kagitlari_{formatted_tarih}.pdf",
                                 mime="application/pdf",
                                 type="primary",
                                 use_container_width=True
@@ -2052,7 +2046,7 @@ else:
                             
                             st.markdown("<hr style='margin: 10px 0;'>", unsafe_allow_html=True)
                             st.markdown("**Veya Tek Bir Eşleşmeyi Yeniden Yazdır:**")
-                            secilen_tekil = st.selectbox("Kağıdı çıkarılacak maçı seçin:", eslesme_secenekleri, key="tekil_kagit_secici_skor")
+                            secilen_tekil = st.selectbox("Kağıdı çıkarılacak maçı seçin:", eslesme_secenekleri, key="tekil_kagit_secici")
                             if secilen_tekil != "Seçiniz":
                                 secilen_idx = eslesme_secenekleri.index(secilen_tekil) - 1
                                 tekil_veri = [gunluk_eslesmeler_listesi[secilen_idx]]
@@ -2078,22 +2072,21 @@ else:
     
                         if is_bireysel_pdf:
                             pdf_rows = []
-                            for (grup_adi, eslesme_adi), g_df in df_tarih.groupby(['Grup', 'Eşleşme'], dropna=False):
+                            for (grup_adi, eslesme_adi), g_df in df_gunluk_safe.groupby(['Grup', 'Eşleşme'], dropna=False):
                                 t1 = g_df.iloc[0]['Takım 1']
                                 t2 = g_df.iloc[0]['Takım 2']
-                                k_key = f"{grup_adi}_{g_df.iloc[0]['Gün']}_{eslesme_adi}"
-                                saat = saat_map.get(k_key, "")
-                                kort = kort_map.get(k_key, "")
-                                tarih_str = g_df.iloc[0]['Tarih_Filtre']
+                                saat = g_df.iloc[0]['Maç Saati']
+                                kort = g_df.iloc[0]['Kort']
+                                tarih_str = g_df.iloc[0]['Tarih']
+                                gun_isim = g_df.iloc[0]['Gün Adı']
                                 gun_val = g_df.iloc[0]['Gün']
-                                
-                                gun_isim = ""
-                                if not df_prog.empty:
-                                    prog_s = df_prog[(df_prog['Grup'] == grup_adi) & (df_prog['Eşleşme'] == eslesme_adi)]
-                                    if not prog_s.empty: gun_isim = prog_s.iloc[0].get('Gün Adı', '')
                                 
                                 team_score = "Oynanmadı"
                                 team_winner = ""
+                                ozet_df = df_team_summary[(df_team_summary['Grup'] == grup_adi) & (df_team_summary['Eşleşme'] == eslesme_adi)]
+                                if not ozet_df.empty:
+                                    team_score = ozet_df.iloc[0]['Skor']
+                                    team_winner = ozet_df.iloc[0]['Kazanan']
                                 
                                 header_row = {
                                     "Kort": kort, "Maç Saati": saat, "Tarih": tarih_str, "Gün Adı": gun_isim, 
@@ -2110,9 +2103,6 @@ else:
                                 for _, row in sort_maclar(g_df).iterrows():
                                     match_row = row.copy()
                                     match_row['Branş'] = f" -> {match_row['Branş']}" 
-                                    match_row['Maç Saati'] = saat
-                                    match_row['Kort'] = kort
-                                    match_row['Tarih'] = tarih_str
                                     
                                     win = match_row.get('Kazanan', '')
                                     if win == 'T1':
@@ -2127,28 +2117,33 @@ else:
                                     
                             df_pdf_export = pd.DataFrame(pdf_rows)
                         else:
-                            st.info("Takım özet görünümü Maç Programı sekmesinden alınabilir.")
-                            df_pdf_export = pd.DataFrame()
+                            df_pdf_export = df_team_summary.copy()
+                            if not df_pdf_export.empty:
+                                df_pdf_export['_IS_HEADER_'] = False
+                                for i in df_pdf_export.index:
+                                    win = df_pdf_export.at[i, 'Kazanan']
+                                    if win == 'T1': df_pdf_export.at[i, 'Takım 1'] = f"**{df_pdf_export.at[i, 'Takım 1']}**"
+                                    elif win == 'T2': df_pdf_export.at[i, 'Takım 2'] = f"**{df_pdf_export.at[i, 'Takım 2']}**"
+                                    df_pdf_export.at[i, 'Skor'] = f"**{df_pdf_export.at[i, 'Skor']}**"
                                     
                         if not df_pdf_export.empty and secilen_pdf_cols:
                             final_pdf_df = df_pdf_export[secilen_pdf_cols].copy()
                             final_pdf_df["_IS_HEADER_"] = df_pdf_export["_IS_HEADER_"]
                             
-                            pdf_notu = st.session_state.gunluk_notlar.get(hedef_tarih, "")
+                            pdf_notu = st.session_state.gunluk_notlar.get(formatted_tarih, "")
                             
                             st.markdown("<br>", unsafe_allow_html=True)
                             pdf_turu = st.radio("📄 Belge Başlığı (PDF'te ne yazsın?):", ["Maç Programı (Sabah)", "Günün Sonuçları (Akşam)"], horizontal=True)
                             
                             if "Sonuçları" in pdf_turu:
-                                baslik_metni = f"{hedef_tarih} - Günün Sonuçları"
-                                dosya_adi = f"mac_sonuclari_{hedef_tarih}.pdf"
+                                baslik_metni = f"{formatted_tarih} {gun_adi} - Günün Sonuçları"
+                                dosya_adi = f"mac_sonuclari_{formatted_tarih}.pdf"
                                 buton_adi = "📥 Günün Sonuçlarını PDF Olarak İndir"
                             else:
-                                baslik_metni = f"{hedef_tarih} - Maç Programı"
-                                dosya_adi = f"mac_programi_{hedef_tarih}.pdf"
+                                baslik_metni = f"{formatted_tarih} {gun_adi} - Maç Programı"
+                                dosya_adi = f"mac_programi_{formatted_tarih}.pdf"
                                 buton_adi = "📥 Maç Programını PDF Olarak İndir"
                                 
-                            # Kategori renkleri için map bilgisi eklendi
                             pdf_bytes_admin = generate_pdf(final_pdf_df, baslik_metni, not_metni=pdf_notu, kategori_map=st.session_state.grup_kategorileri)
                             st.download_button(buton_adi, data=pdf_bytes_admin, file_name=dosya_adi, mime="application/pdf", key="pdf_admin")
     
