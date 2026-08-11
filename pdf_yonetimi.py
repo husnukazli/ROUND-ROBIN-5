@@ -91,7 +91,8 @@ def generate_pdf(df, baslik, not_metni="", kategori_map=None):
             pdf_cell_fit(pdf, col_widths[i], 10, col, is_bold=True, fill=True, base_size=10)
         pdf.ln()
         
-        for row_idx, row in df_print.reset_index(drop=True).iterrows():
+        df_reset = df_print.reset_index(drop=True)
+        for row_idx, row in df_reset.iterrows():
             is_takim_satiri = False
             
             if has_header_col:
@@ -107,7 +108,43 @@ def generate_pdf(df, baslik, not_metni="", kategori_map=None):
                     if not is_takim_satiri and "Takım 1" in df_print.columns and "Takım 2" in df_print.columns:
                         if str(row["Takım 1"]).startswith("**") and str(row["Takım 2"]).startswith("**"):
                             is_takim_satiri = True
-            
+
+            # --- YENİ: SAYFA BÖLÜNMESİNİ ENGELLEME KONTROLÜ ---
+            if is_takim_satiri:
+                alt_satir_sayisi = 0
+                for next_idx in range(row_idx + 1, len(df_reset)):
+                    next_is_header = False
+                    if has_header_col:
+                        next_is_header = bool(header_flags[next_idx])
+                    else:
+                        next_row = df_reset.iloc[next_idx]
+                        if "Skor" in df_print.columns and str(next_row["Skor"]).startswith("**"):
+                            next_is_header = True
+                        else:
+                            for val in next_row.values:
+                                if "**TAKIM EŞLEŞMESİ**" in str(val):
+                                    next_is_header = True
+                                    break
+                            if not next_is_header and "Takım 1" in df_print.columns and "Takım 2" in df_print.columns:
+                                if str(next_row["Takım 1"]).startswith("**") and str(next_row["Takım 2"]).startswith("**"):
+                                    next_is_header = True
+                    if next_is_header:
+                        break
+                    alt_satir_sayisi += 1
+                
+                # Başlık + Alt maçlar yüksekliği (her biri için 8 birim) + 5 birim pay
+                gerekli_yukseklik = (1 + alt_satir_sayisi) * 8 + 5
+                
+                # A4 sayfası uzunluğu 297mm'dir. Alt boşluk payı olarak 275'i sınır belirliyoruz.
+                if pdf.get_y() + gerekli_yukseklik > 275:
+                    pdf.add_page()
+                    # Yeni sayfa açılınca tablo sütun başlıklarını tekrar bas
+                    pdf.set_fill_color(200, 200, 200)
+                    for i, col in enumerate(df_print.columns): 
+                        pdf_cell_fit(pdf, col_widths[i], 10, col, is_bold=True, fill=True, base_size=10)
+                    pdf.ln()
+            # ----------------------------------------------------
+
             # --- KATEGORİYE GÖRE RENKLENDİRME ---
             if is_takim_satiri:
                 g_val = str(row.get("Grup", ""))
