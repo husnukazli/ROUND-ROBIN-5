@@ -764,7 +764,7 @@ else:
                                         for idx_mp, row_mp in sort_maclar(df_eslesme).iterrows():
                                             idx = idx_mp
                                             row = row_mp
-        
+            
                                             s1t1_k = int(row['1.Set T1'])
                                             s1t2_k = int(row['1.Set T2'])
                                             durum_k = str(row.get('Durum', 'Tamamlandı'))
@@ -783,7 +783,7 @@ else:
                                             h_cols[3].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; border-bottom: 2px solid rgba(128,128,128,0.5); padding-bottom: 2px;'>1. SET</div>", unsafe_allow_html=True)
                                             h_cols[5].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; border-bottom: 2px solid rgba(128,128,128,0.5); padding-bottom: 2px;'>2. SET</div>", unsafe_allow_html=True)
                                             h_cols[7].markdown("<div style='text-align:center; font-size:11px; font-weight:bold; border-bottom: 2px solid rgba(128,128,128,0.5); padding-bottom: 2px;'>3. SET</div>", unsafe_allow_html=True)
-        
+            
                                             r_cols = st.columns([2.8, 2.8, 2.1, 0.5, 0.7, 0.7, 0.2, 0.7, 0.7, 0.2, 0.7, 0.7])
                                             
                                             grup_kadro_dict = st.session_state.takim_kadrolari.get(cur_grup, {})
@@ -805,7 +805,7 @@ else:
                                                     idx1 = opts1.index(eski_o1) if eski_o1 in opts1 else 0
                                                     t1_secim_raw = st.selectbox("T1 Oyuncu", options=opts1, index=idx1, key=f"t1_o_{idx}", label_visibility="collapsed")
                                                     t1_oyuncu_str = t1_secim_raw if t1_secim_raw != "Seçiniz" else ""
-        
+            
                                             with r_cols[1]:
                                                 if "Çiftler" in str(row['Branş']):
                                                     eski_kayit2 = str(row['T2_Oyuncu'])
@@ -831,11 +831,11 @@ else:
                                                 elif mevcut_durum == "Takım 2 (Ret.)": mevcut_durum = "Takım 1 Kazandı (Ret.)"
                                                 d_idx = durum_opts.index(mevcut_durum) if mevcut_durum in durum_opts else 0
                                                 secilen_durum = st.selectbox("Durum", options=durum_opts, index=d_idx, key=f"durum_{idx}", label_visibility="collapsed")
-        
+            
                                             with r_cols[3]:
                                                 mevcut_stb = bool(row.get('STB', False))
                                                 secilen_stb = st.checkbox("STB", value=mevcut_stb, key=f"stb_{idx}")
-        
+            
                                             is_wo = "W/O" in secilen_durum
                                             
                                             s1t1 = r_cols[4].number_input("S1T1", min_value=0, value=0 if is_wo else int(row['1.Set T1']), step=1, key=f"s1t1_{idx}", label_visibility="collapsed", disabled=is_wo)
@@ -921,8 +921,13 @@ else:
                                             
                                             if uyarilar: st.warning(f"⚠️ **Sıralama Uyarısı ({takim_ismi}):**\n\n" + "\n".join([f"- {u}" for u in uyarilar]) + "\n\n*(Başhakem olarak bu uyarıya rağmen kaydetme yetkiniz bulunmaktadır.)*")
                                         
+                                        # ====================================================================
+                                        # YENİ "ETSİN AMA KAYDETSİN" MANTIĞI:
+                                        # ====================================================================
                                         if st.button(f"💾 {t1} - {t2} Skorlarını Kaydet", key=f"btn_save_{cur_grup}_{gun_val}_{eslesme_adi}", type="primary", use_container_width=True):
                                             hata_mesajlari = []
+                                            uyari_mesajlari = [] # Göz ardı edilebilir uyarılar listesi
+                                            
                                             for idx_save, guncel_row in form_verileri.items():
                                                 mac_tanimi = f"{st.session_state.skor_tablosu.loc[idx_save]['Branş']}"
                                                 
@@ -941,7 +946,8 @@ else:
                                                 
                                                 if durum_s == "Tamamlandı":
                                                     if s1t1_s == 0 and s1t2_s == 0 and s2t1_s == 0 and s2t2_s == 0 and s3t1_s == 0 and s3t2_s == 0:
-                                                        hata_mesajlari.append(f"❌ {mac_tanimi}: Durum 'Tamamlandı' seçilmiş ama tüm skorlar 0-0! Maç oynanmadıysa durumunu 'Çift Taraflı W/O' veya benzeri bir seçenekle değiştirin.")
+                                                        # Artık HATA değil, UYARI listesine atıyoruz, işlemi kesmeyecek!
+                                                        uyari_mesajlari.append(f"⚠️ {mac_tanimi} (0-0 Oynanmadı)")
                                                     else:
                                                         t1_s1_kazandi = s1t1_s > s1t2_s
                                                         t2_s1_kazandi = s1t2_s > s1t1_s
@@ -977,8 +983,11 @@ else:
                                                         st.session_state.esame_onayli[match_key] = True
         
                                                 if ortak_veriyi_kaydet():
-                                                    st.success("Tebrikler! Bu maçın skorları kaydedildi ve Maç Programı'na aktarıldı.")
-                                                    time.sleep(1)
+                                                    if uyari_mesajlari:
+                                                        st.warning("Oynanan maçlar başarıyla kaydedildi! Bekleyenler: " + ", ".join(uyari_mesajlari))
+                                                    else:
+                                                        st.success("Tebrikler! Tüm skorlar kaydedildi ve Maç Programı'na aktarıldı.")
+                                                    time.sleep(1.5)
                                                     st.rerun()
                                                 else:
                                                     st.error("Sistem meşgul, lütfen tekrar deneyin.")
