@@ -548,6 +548,14 @@ def sirala_grup_df(grup_df, gp, ham_maclar_df=None):
             
             if len(alt_kumul) == toplam_takim_sayisi:
                 sorted_alt = alt_kumul.sort_values(by=['Maç Av.', 'Set Av.', 'Oyun Av.'], ascending=False)
+                
+                # --- TAM KÖR DÜĞÜM (3'te 3 veya 4'te 4 Sıfır) KONTROLÜ ---
+                t_top = sorted_alt.iloc[0]
+                t_bot = sorted_alt.iloc[-1]
+                if t_top['Maç Av.'] == t_bot['Maç Av.'] and t_top['Set Av.'] == t_bot['Set Av.'] and t_top['Oyun Av.'] == t_bot['Oyun Av.']:
+                    kura_gerekir_mesajlari.append(f"⚠️ Bu grupta tüm takımların genel averajları tamamen eşittir. Kura çekimi gerekmektedir!")
+                # ---------------------------------------------------------
+                
                 for _, row in sorted_alt.iterrows():
                     siralanmis_takimlar.append(row['Takım'])
             else:
@@ -570,15 +578,15 @@ def sirala_grup_df(grup_df, gp, ham_maclar_df=None):
                             top_oyun_av = sorted_coklu.iloc[0]['Oyun Av.']
                             bottom_oyun_av = sorted_coklu.iloc[-1]['Oyun Av.']
                             
-                            # YENİ: DİNAMİK İSİMLENDİRME SİSTEMİ (Üçlü, Dörtlü vb.)
                             isim_map = {3: "Üçlü", 4: "Dörtlü", 5: "Beşli", 6: "Altılı"}
                             averaj_baslik = isim_map.get(len(t_list), f"{len(t_list)}'li")
+                            
+                            # --- ÇÖKME (UnboundLocalError) KORUMASI ---
+                            coklu_sira = sorted_coklu['Takım'].tolist()
                             
                             if top_gal == bottom_gal and top_mac_av == bottom_mac_av and top_set_av == bottom_set_av and top_oyun_av == bottom_oyun_av:
                                 kura_gerekir_mesajlari.append(f"⚠️ Bu grupta ({', '.join(t_list)}) {averaj_baslik.lower()} averaj tüm kriterlere rağmen çözülememiştir, kura gerekebilir!")
                             else:
-                                coklu_sira = sorted_coklu['Takım'].tolist()
-                                
                                 sira_degisti_mi = False
                                 for i in range(len(coklu_sira)):
                                     for j in range(i + 1, len(coklu_sira)):
