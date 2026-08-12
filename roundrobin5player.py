@@ -52,11 +52,13 @@ basa_don_html = """
 }
 </style>
 <a href="#" class="basa-don-btn" onclick="
-    var parentDoc = window.parent.document;
-    var containers = parentDoc.querySelectorAll('[data-testid=\\'stAppViewContainer\\'], .main, .stApp, html, body');
-    for(var i=0; i<containers.length; i++){
-        containers[i].scrollTop = 0;
+    var elements = document.querySelectorAll('*');
+    for (var i = 0; i < elements.length; i++) {
+        if (elements[i].scrollTop > 0) {
+            elements[i].scrollTop = 0;
+        }
     }
+    window.scrollTo(0, 0);
     return false;
 ">
     ⬆️ Başa Dön
@@ -64,7 +66,6 @@ basa_don_html = """
 """
 st.markdown(basa_don_html, unsafe_allow_html=True)
 # ------------------------------------------
-
 # ==============================================================================
 # 2. SESSION STATE (HAFIZA) BAŞLATMA
 # ==============================================================================
