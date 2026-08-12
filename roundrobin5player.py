@@ -999,25 +999,32 @@ else:
                                             grup_df_display = sirala_grup_df(grup_df_display, secilen_grup)
                                             st.dataframe(grup_df_display, use_container_width=True)
                                             
-                                            # --- KURA ÇEKİMİ KONTROLÜ (BAŞHAKEM MANTIĞI) ---
-                                            if 'Oynanan Maç' in grup_df_display.columns:
-                                                aktifler = grup_df_display.copy()
-                                                aktifler['Oynanan Maç'] = pd.to_numeric(aktifler['Oynanan Maç'], errors='coerce').fillna(0)
-                                                aktifler = aktifler[aktifler['Oynanan Maç'] > 0]
-                                                
-                                                if not aktifler.empty:
-                                                    # Sadece tablodaki şu 4 ana sütuna bak:
-                                                    kolonlar = [c for c in ['Galibiyet', 'Maç Av.', 'Set Av.', 'Oyun Av.'] if c in aktifler.columns]
+                                            # --- KURA ÇEKİMİ KONTROLÜ (KOPUKLUK GİDERİLDİ - SAF METİN MANTIĞI) ---
+                                            try:
+                                                if 'Oynanan Maç' in grup_df_display.columns:
+                                                    imzalar = {}
+                                                    # Arka plandaki sayısal formata değil, tablonun metin haline (ekranda ne yazıyorsa) bakıyoruz
+                                                    for r_dict in grup_df_display.to_dict('records'):
+                                                        oynanan = str(r_dict.get('Oynanan Maç', '0')).strip()
+                                                        if oynanan and oynanan != '0' and oynanan != '0.0':
+                                                            
+                                                            g = str(r_dict.get('Galibiyet', '0')).strip()
+                                                            ma = str(r_dict.get('Maç Av.', '0')).strip()
+                                                            sa = str(r_dict.get('Set Av.', '0')).strip()
+                                                            oa = str(r_dict.get('Oyun Av.', '0')).strip()
+                                                            
+                                                            # Takımın averaj parmak izini (imzasını) oluştur
+                                                            imza = f"{g}_{ma}_{sa}_{oa}"
+                                                            takim = str(r_dict.get('Takım', 'Bilinmiyor'))
+                                                            
+                                                            if imza not in imzalar: imzalar[imza] = []
+                                                            imzalar[imza].append(takim)
                                                     
-                                                    # Sayıları ekrandaki gibi netleştir (küsurat veya boşluk hatalarını ez)
-                                                    for k in kolonlar:
-                                                        aktifler[k] = pd.to_numeric(aktifler[k], errors='coerce').fillna(0).round(2)
-                                                        
-                                                    # Eşit olanları bul ve direkt bas
-                                                    for _, ayni_olanlar in aktifler.groupby(kolonlar):
-                                                        if len(ayni_olanlar) >= 3:
-                                                            isimler = ayni_olanlar['Takım'].tolist()
-                                                            st.error(f"🚨 **KURA ÇEKİMİ GEREKİYOR:** **{', '.join(isimler)}** takımlarının Galibiyet ve tüm averajları tamamen eşittir ({len(isimler)}'lü düğüm).")
+                                                    for imza, takim_listesi in imzalar.items():
+                                                        if len(takim_listesi) >= 3:
+                                                            st.error(f"🚨 **KURA ÇEKİMİ GEREKİYOR:** **{', '.join(takim_listesi)}** takımlarının Galibiyet ve tüm averajları tamamen eşittir ({len(takim_listesi)}'lü düğüm).")
+                                            except Exception:
+                                                pass
                                             # -------------------------------------------------------------
                                         else:
                                             st.info("Bu grup için henüz puan durumu oluşmadı.")
