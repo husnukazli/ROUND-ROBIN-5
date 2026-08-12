@@ -996,11 +996,51 @@ else:
                                         grup_stats = hesapla_tum_puan_durumu(df_guncel)
                                         if not grup_stats.empty:
                                             grup_df_display = grup_stats.drop(columns=['Grup'])
-                                            
-                                            # KÖK NEDEN ÇÖZÜLDÜ: ham_maclar_df parametresini motora gönderiyoruz!
-                                            grup_df_display = sirala_grup_df(grup_df_display, secilen_grup, ham_maclar_df=df_guncel)
-                                            
+                                            grup_df_display = sirala_grup_df(grup_df_display, secilen_grup)
                                             st.dataframe(grup_df_display, use_container_width=True)
+                                            
+                                            # --- KURA ÇEKİMİ KONTROLÜ (GERÇEK BAŞHAKEM KURALLARI) ---
+                                            try:
+                                                if 'Oynanan Maç' in grup_df_display.columns:
+                                                    aktif_df = grup_df_display.copy()
+                                                    
+                                                    # En az 1 maç oynamış takımları al (Hiç oynamayanları sayma)
+                                                    aktif_df['Oyn_Kontrol'] = pd.to_numeric(aktif_df['Oynanan Maç'], errors='coerce').fillna(0)
+                                                    aktif_df = aktif_df[aktif_df['Oyn_Kontrol'] > 0]
+                                                    
+                                                    if len(aktif_df) >= 2:
+                                                        imzalar = {}
+                                                        
+                                                        # Aldığı/Verdiği sütunlarına ASLA BAKMA! Sadece net averajlara bak:
+                                                        hedef_sutunlar = ['Galibiyet', 'Maç Av.', 'Set Av.', 'Oyun Av.']
+                                                        mevcut_sutunlar = [c for c in hedef_sutunlar if c in aktif_df.columns]
+                                                        
+                                                        for _, row in aktif_df.iterrows():
+                                                            takim_adi = str(row.get('Takım', 'Bilinmeyen'))
+                                                            imza_parcalari = []
+                                                            
+                                                            for col in mevcut_sutunlar:
+                                                                # 0, 0.0 veya "0" fark etmeksizin hepsini matematiksel bir sayıya çevir
+                                                                try:
+                                                                    val = float(row[col])
+                                                                    imza_parcalari.append(f"{val:.2f}") # Hepsini tek tip yap (örn: 0.00)
+                                                                except:
+                                                                    imza_parcalari.append(str(row[col]).strip())
+                                                                    
+                                                            # Takımın sadece Averajlardan oluşan parmak izi
+                                                            imza = "_".join(imza_parcalari)
+                                                            
+                                                            if imza not in imzalar: imzalar[imza] = []
+                                                            imzalar[imza].append(takim_adi)
+                                                            
+                                                        for imza, takim_listesi in imzalar.items():
+                                                            if len(takim_listesi) >= 3:
+                                                                st.error(f"🚨 **KURA ÇEKİMİ GEREKİYOR:** **{', '.join(takim_listesi)}** takımlarının Galibiyet ve tüm Averajları (Maç/Set/Oyun) birbirine eşittir ({len(takim_listesi)}'lü kör düğüm). Kura çekerek sıralamayı belirleyiniz.")
+                                                            elif len(takim_listesi) == 2:
+                                                                st.warning(f"⚠️ **İkili Eşitlik:** **{', '.join(takim_listesi)}** takımlarının Galibiyet ve tüm Averajları eşit. Sıralama kendi aralarındaki maça göre belirlenir. (O maç berabereyse kura gerekebilir).")
+                                            except Exception:
+                                                pass
+                                            # -------------------------------------------------------------
                                         else:
                                             st.info("Bu grup için henüz puan durumu oluşmadı.")
         else:
@@ -1010,61 +1050,433 @@ else:
     # 11. PUAN DURUMU (ŞAMPİYONLUK VE KLASMAN VİTRİNİ)
     # ==============================================================================
     elif menu_secim == "🏆 Puan Durumu":
-        st.markdown(f"### 🏆 Puan Durumu ve Sıralama ({aktif_asama})")
-        st.info("Puan durumu sonuçlara göre otomatik hesaplanır. 3'lü averaj gibi karmaşık durumlarda 'kura' uyarısı çıkabilir.")
-        
-        df_asama = st.session_state.skor_tablosu.copy()
-        
-        if df_asama.empty:
-            st.warning(f"{aktif_asama} için henüz maç/grup kaydı bulunmuyor.")
-        else:
-            gruplar = dogal_sirala([g for g in df_asama['Grup'].unique() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama])
+        if not st.session_state.skor_tablosu.empty:
+            tab_puan, tab_klasman = st.tabs(["📊 Grup Puan Durumları", "Nihai Klasman"])
             
-            if not gruplar:
-                st.info(f"{aktif_asama} için puan durumu oluşmadı.")
-            else:
-                kategori_dict = {}
-                for g_isim in gruplar:
-                    f_kat = st.session_state.grup_kategorileri.get(g_isim, "Erkekler")
-                    f_yas = st.session_state.grup_yas_gruplari.get(g_isim, "Yaş Belirtme")
-                    k_key = f"{f_yas} {f_kat}" if f_yas != "Yaş Belirtme" else f_kat
+            with tab_puan:
+                gecerli_gruplar_t3 = [g for g in st.session_state.skor_tablosu['Grup'].unique() if st.session_state.grup_asamalari.get(g, "1. Aşama") == aktif_asama]
+                df_asama_t3 = st.session_state.skor_tablosu[st.session_state.skor_tablosu['Grup'].isin(gecerli_gruplar_t3)]
+                
+                if not df_asama_t3.empty:
+                    tum_stats = hesapla_tum_puan_durumu(df_asama_t3)
+                    mevcut_gruplar = dogal_sirala(list(tum_stats['Grup'].unique()))
                     
-                    if k_key not in kategori_dict:
-                        kategori_dict[k_key] = []
-                    kategori_dict[k_key].append(g_isim)
+                    # --- YENİ KATEGORİ VE GRUP FİLTRESİ ---
+                    kategori_dict = {}
+                    for gp in mevcut_gruplar:
+                        g_kat = st.session_state.grup_kategorileri.get(gp, "Erkekler")
+                        g_yas = st.session_state.grup_yas_gruplari.get(gp, "Yaş Belirtme")
+                        kat_isim = f"{g_yas} {g_kat}" if g_yas != "Yaş Belirtme" else g_kat
+                        if kat_isim not in kategori_dict:
+                            kategori_dict[kat_isim] = []
+                        kategori_dict[kat_isim].append(gp)
                     
-                for kat_adi in dogal_sirala(list(kategori_dict.keys())):
-                    st.markdown(f"#### 🎾 {kat_adi} Kategorisi")
+                    kat_isimleri = dogal_sirala(list(kategori_dict.keys()))
                     
-                    for gp in dogal_sirala(kategori_dict[kat_adi]):
-                        df_grup_maclari = df_asama[df_asama['Grup'] == gp].copy()
-                        grup_stats = hesapla_tum_puan_durumu(df_grup_maclari)
-                        
-                        if not grup_stats.empty:
-                            grup_df = grup_stats.drop(columns=['Grup'])
-                            
-                            # KÖK NEDEN ÇÖZÜLDÜ: ham_maclar_df parametresini motora gönderiyoruz!
-                            grup_df = sirala_grup_df(grup_df, gp, ham_maclar_df=df_grup_maclari)
-                            
-                            grup_statusu = st.session_state.grup_statuleri.get(gp, "")
-                            statu_rozet = f" *(🏅 {grup_statusu})*" if aktif_asama == "2. Aşama" and grup_statusu else ""
-                            st.markdown(f"**🛡️ {gp}{statu_rozet}**")
-                            st.dataframe(grup_df, use_container_width=True)
-                            
-                            # Motorun ürettiği kura mesajlarını ekrana bas
-                            kura_msg_key = f"kura_mesaji_{gp}"
-                            if kura_msg_key in st.session_state and st.session_state[kura_msg_key]:
-                                st.error(st.session_state[kura_msg_key])
-                            
-                            ikili_msg_key = f"ikili_mesaji_{gp}"
-                            if ikili_msg_key in st.session_state and st.session_state[ikili_msg_key]:
-                                st.warning(st.session_state[ikili_msg_key])
-                        else:
-                            st.info(f"{gp} için puan durumu verisi yok.")
+                    c_kat, c_grup = st.columns(2)
+                    secilen_kategoriler = c_kat.multiselect("📂 Görüntülenecek Kategoriyi Seçin:", options=["Tüm Kategorileri Göster"] + kat_isimleri, default=["Tüm Kategorileri Göster"])
+                    
+                    filtreli_gruplar = []
+                    if "Tüm Kategorileri Göster" in secilen_kategoriler or len(secilen_kategoriler) == 0:
+                        filtreli_gruplar = mevcut_gruplar
+                    else:
+                        for k in secilen_kategoriler:
+                            if k in kategori_dict:
+                                filtreli_gruplar.extend(kategori_dict[k])
+                    
+                    secim_grup_opsiyonlari = ["Tüm Grupları Göster"] + dogal_sirala(filtreli_gruplar)
+                    secilen_gruplar = c_grup.multiselect("🔍 Görüntülenecek Grupları Seçin:", options=secim_grup_opsiyonlari, default=["Tüm Grupları Göster"])
+                    
+                    gosterilecek_gruplar = filtreli_gruplar if "Tüm Grupları Göster" in secilen_gruplar or len(secilen_gruplar) == 0 else [g for g in secilen_gruplar if g != "Tüm Grupları Göster"]
+                    
                     st.markdown("---")
+                    
+                    pdf_gruplar_data = {}
+                    manuel_siralanan_gruplar = [] 
+
+                    for gp in dogal_sirala(gosterilecek_gruplar):
+                        if gp in mevcut_gruplar:
+                            g_kat = st.session_state.grup_kategorileri.get(gp, "Erkekler")
+                            g_yas = st.session_state.grup_yas_gruplari.get(gp, "Yaş Belirtme")
+                            baslik_ek = f" ({g_yas} {g_kat})" if g_yas != "Yaş Belirtme" else f" ({g_kat})"
+                            
+                            st.markdown(f"### 🏆 {gp} Puan Durumu{baslik_ek}")
+                            
+                            grup_df = tum_stats[tum_stats['Grup'] == gp].drop(columns=['Grup'])
+                            grup_df = sirala_grup_df(grup_df, gp)
+                            
+                            pdf_df = grup_df.reset_index().rename(columns={"index": "Sıra"})
+                            pdf_gruplar_data[gp] = pdf_df
+                            
+                            t_ic1, t_ic2 = st.tabs(["🏆 Puan Durumu Tablosu", "📊 Maç Matrisi"])
+                            
+                            with t_ic1:
+                                st.dataframe(grup_df, use_container_width=True)
+                                
+                                if st.session_state.grup_tamamlandi.get(gp, False):
+                                    st.success("✅ Bu grubun maçları tamamlanmış ve sıralaması kilitlenmiştir.")
+                                    
+                                if gp in st.session_state.grup_siralamalari and st.session_state.grup_siralamalari[gp]:
+                                    st.warning("⚠️ Bu grupta averaj eşitliği veya başka bir sebeple Başhakem kararıyla Manuel Sıralama uygulanmıştır.")
+                                    manuel_siralanan_gruplar.append(gp)
+
+                                # YENİ EKLENEN AVERAJ VE KURA BİLDİRİMLERİ (Ekrana Basma - Otomatik)
+                                if gp in st.session_state.get("kura_uyarilari", {}):
+                                    st.error(st.session_state.kura_uyarilari[gp])
+                                    
+                                if gp in st.session_state.get("averaj_bilgileri", {}):
+                                    st.markdown(f"<div style='padding: 12px; background-color: rgba(23, 162, 184, 0.1); border-left: 4px solid #17a2b8; color: #0c5460; border-radius: 4px; margin-top: 10px; margin-bottom: 10px; font-size: 14px; line-height: 1.5;'>{st.session_state.averaj_bilgileri[gp]}</div>", unsafe_allow_html=True)
+                                
+                                if gp in st.session_state.get("grup_averaj_tablolari", {}):
+                                    for t_adi, t_df in st.session_state.grup_averaj_tablolari[gp].items():
+                                        with st.expander(f"📊 {t_adi}", expanded=False):
+                                            st.dataframe(t_df, use_container_width=True)
+                                
+                            with t_ic2:
+                                df_gp_matches = df_asama_t3[df_asama_t3['Grup'] == gp]
+                                matris_takimlar = dogal_sirala(list(set(df_gp_matches['Takım 1']).union(set(df_gp_matches['Takım 2']))))
+                                
+                                html_matrix = render_html_matrix(matris_takimlar, df_gp_matches)
+                                st.markdown(html_matrix, unsafe_allow_html=True)
+                                
+                                st.write("")
+                                
+                                pdf_matrix_df = pd.DataFrame(index=matris_takimlar, columns=matris_takimlar)
+                                on_hesap = {}
+                                for (t_a, t_b), group_df in df_gp_matches.groupby(['Takım 1', 'Takım 2']):
+                                    match_key = tuple(sorted([t_a, t_b]))
+                                    if match_key not in on_hesap:
+                                        ar_maclar = df_gp_matches[((df_gp_matches['Takım 1'] == match_key[0]) & (df_gp_matches['Takım 2'] == match_key[1])) | 
+                                                                  ((df_gp_matches['Takım 1'] == match_key[1]) & (df_gp_matches['Takım 2'] == match_key[0]))]
+                                        on_hesap[match_key] = hesapla_tum_puan_durumu(ar_maclar)
+                                        
+                                for t1 in matris_takimlar:
+                                    for t2 in matris_takimlar:
+                                        if t1 == t2:
+                                            pdf_matrix_df.at[t1, t2] = "X"
+                                        else:
+                                            match_key = tuple(sorted([t1, t2]))
+                                            matches = df_gp_matches[((df_gp_matches['Takım 1'] == t1) & (df_gp_matches['Takım 2'] == t2)) | ((df_gp_matches['Takım 1'] == t2) & (df_gp_matches['Takım 2'] == t1))]
+                                            if matches.empty:
+                                                pdf_matrix_df.at[t1, t2] = ""
+                                            else:
+                                                temp_stats = on_hesap.get(match_key, pd.DataFrame())
+                                                t1_w = 0; t2_w = 0
+                                                detay = []
+                                                for _, row_m in sort_maclar(matches).iterrows():
+                                                    w1, w2 = hesapla_mac_kazanani(row_m)
+                                                    if row_m['Takım 1'] == t1:
+                                                        t1_w += w1; t2_w += w2
+                                                    else:
+                                                        t1_w += w2; t2_w += w1
+                                                    
+                                                    fmt = get_formatted_match_score(row_m, t1)
+                                                    if fmt: 
+                                                        clean_fmt = fmt.replace("<b>", "").replace("</b>", "").replace("<span style='opacity: 0.8;'>", "").replace("</span>", "")
+                                                        detay.append(clean_fmt)
+                                                
+                                                if t1_w == 0 and t2_w == 0 and not detay:
+                                                    pdf_matrix_df.at[t1, t2] = ""
+                                                else:
+                                                    t1_galib = 0; t2_galib = 0
+                                                    if not temp_stats.empty:
+                                                        r1 = temp_stats[temp_stats['Takım'] == t1]
+                                                        r2 = temp_stats[temp_stats['Takım'] == t2]
+                                                        if not r1.empty: t1_galib = r1.iloc[0]['Galibiyet']
+                                                        if not r2.empty: t2_galib = r2.iloc[0]['Galibiyet']
+                                                        
+                                                    c1 = "* " if t1_galib > t2_galib else ""
+                                                    c2 = " *" if t2_galib > t1_galib else ""
+                                                    
+                                                    hucre_metni = f"{c1}{t1_w} - {t2_w}{c2}"
+                                                    if detay:
+                                                        hucre_metni += "\n" + "\n".join(detay)
+                                                    pdf_matrix_df.at[t1, t2] = hucre_metni
+                                                    
+                                matris_pdf_bytes = draw_matrix_pdf(gp, matris_takimlar, pdf_matrix_df)
+                                st.download_button(label="📥 Maç Matrisini İndir (PDF)", data=matris_pdf_bytes, file_name=f"matris_{gp}.pdf", mime="application/pdf", key=f"mat_pdf_{gp}")
+                            
+                            if st.session_state.admin_mi:
+                                with st.expander(f"🛠️ {gp} - Başhakem Sıralama ve Onay Paneli", expanded=False):
+                                    mevcut_takimlar = grup_df['Takım'].tolist()
+                                    mevcut_takimlar_harf_sirali = sorted(mevcut_takimlar)
+                                    
+                                    def toggle_tamam(hedef_grup):
+                                        st.session_state.grup_tamamlandi[hedef_grup] = st.session_state[f"tamam_{hedef_grup}"]
+                                        ortak_veriyi_kaydet()
+
+                                    if aktif_asama == "1. Aşama":
+                                        st.markdown("**1. Aşama Sonucu (2. Aşama İçin Grubu Kilitle):**")
+                                        st.info("Bu kutuyu işaretlediğiniz an grup kilitlenir ve takımlar 2. Aşama havuzuna düşer. Başka bir butona basmanıza gerek yoktur!")
+                                        cb_metin = f"✅ {gp} Maçları Tamamlandı (2. Aşamaya Aktar)"
+                                    else:
+                                        st.markdown("**Fikstür Sonu (Sıralamayı Kesinleştir):**")
+                                        st.info("Bu kutuyu işaretlediğiniz an gruptaki fikstür biter ve sıralama turnuva sonucu olarak kilitlenir. (Tüm gruplar kilitlendiğinde Nihai Klasman vitrinine yansır).")
+                                        cb_metin = f"✅ {gp} Fikstürünü Bitir ve Sıralamaya Aktar"
+                                        
+                                    is_tamam = st.checkbox(cb_metin, value=st.session_state.grup_tamamlandi.get(gp, False), key=f"tamam_{gp}", on_change=toggle_tamam, args=(gp,))
+                                    
+                                    st.markdown("---")
+                                    st.markdown("**2. Manuel Sıralama (Üçlü Averaj vs. için):**")
+                                    st.write("SADECE sistemin otomatik sıralamasına müdahale etmeniz gerekiyorsa aşağıdaki listeyi değiştirip kaydedin.")
+                                    
+                                    default_sel = st.session_state.grup_siralamalari.get(gp, mevcut_takimlar)
+                                    secilenler = []
+                                    cols = st.columns(len(mevcut_takimlar))
+                                    for idx_c in range(len(mevcut_takimlar)):
+                                        with cols[idx_c]:
+                                            def_team = default_sel[idx_c] if idx_c < len(default_sel) else mevcut_takimlar_harf_sirali[0]
+                                            def_idx = mevcut_takimlar_harf_sirali.index(def_team) if def_team in mevcut_takimlar_harf_sirali else 0
+                                            sec = st.selectbox(f"{idx_c+1}. Takım", options=mevcut_takimlar_harf_sirali, index=def_idx, key=f"sira_{gp}_{idx_c}")
+                                            secilenler.append(sec)
+                                    
+                                    st.write("")
+                                    c1, c2 = st.columns(2)
+                                    if c1.button(f"💾 {gp} Manuel Sıralamayı Uygula", key=f"btn_save_{gp}", type="primary"):
+                                        if len(set(secilenler)) != len(mevcut_takimlar):
+                                            st.error("Hata: Aynı takımı birden fazla sıraya yerleştiremezsiniz! Lütfen farklı takımlar seçin.")
+                                        else:
+                                            if secilenler == mevcut_takimlar:
+                                                if gp in st.session_state.grup_siralamalari:
+                                                    del st.session_state.grup_siralamalari[gp]
+                                                st.success("Sıralama otomatik hesaplamayla aynı olduğu için 'Manuel Müdahale' uyarısı kaldırıldı.")
+                                                ortak_veriyi_kaydet()
+                                                time.sleep(1.5)
+                                                st.rerun()
+                                            else:
+                                                st.session_state.grup_siralamalari[gp] = secilenler
+                                                if ortak_veriyi_kaydet():
+                                                    st.success(f"{gp} için Başhakem Özel Sıralaması uygulandı!")
+                                                    time.sleep(1.5)
+                                                    st.rerun()
+                                                else:
+                                                    st.error("Sistem meşgul, lütfen tekrar deneyin.")
+                                            
+                                    if c2.button(f"🔄 Otomatik Sıralamaya Dön", key=f"btn_reset_{gp}"):
+                                        if gp in st.session_state.grup_siralamalari:
+                                            del st.session_state.grup_siralamalari[gp]
+                                            if ortak_veriyi_kaydet():
+                                                st.success("Manuel sıralama iptal edildi, sistem otomatik hesaplamaya döndü.")
+                                                time.sleep(1.5)
+                                                st.rerun()
+                                            else:
+                                                st.error("Sistem meşgul, lütfen tekrar deneyin.")
+                                        else:
+                                            st.info("Grup zaten otomatik sıralamada.")
+
+                            st.markdown("<br><hr>", unsafe_allow_html=True)
+
+                    if pdf_gruplar_data:
+                        grup_averajlari = st.session_state.get("grup_averaj_tablolari", {})
+                        grup_aciklamalari = st.session_state.get("averaj_bilgileri", {})
+                        combined_pdf_bytes = generate_combined_standings_pdf(
+                            pdf_gruplar_data, 
+                            manuel_gruplar=manuel_siralanan_gruplar,
+                            averaj_tablolari=grup_averajlari,
+                            averaj_bilgileri=grup_aciklamalari,
+                            kategori_map=st.session_state.grup_kategorileri
+                        )
+                        st.download_button(label="📥 Seçili Grupların Puan Durumunu Tek PDF Olarak İndir", data=combined_pdf_bytes, file_name="puan_durumu_toplu.pdf", mime="application/pdf", key="pdf_puan_toplu")
+                    
+                    st.markdown("---")
+                    with st.expander("⚖️ Gelişmiş Averaj ve Çoklu Averaj Hesaplayıcı"):
+                        st.info("ℹ️ Üçlü veya dörtlü averaj kilitlenmelerinde bir grup ve sadece averaja dahil edilecek takımları seçin. Sistem, dışarıdaki takımlarla oynanan maçları yoksayarak yepyeni bir Çoklu Averaj Hesaplaması oluşturur. Bu bilgiye bakarak üstteki 'Başhakem Sıralama Paneli'nden tabloyu dizebilirsiniz.")
+                        
+                        avg_gruplar = dogal_sirala(list(df_asama_t3['Grup'].unique()))
+                        sec_avg_grup = st.selectbox("Averaj Hesaplanacak Grubu Seçin:", ["Seçiniz"] + avg_gruplar, key="avg_grup_sec")
+                        
+                        if sec_avg_grup != "Seçiniz":
+                            grup_maclari_avg = df_asama_t3[df_asama_t3['Grup'] == sec_avg_grup]
+                            takimlar_avg = dogal_sirala(list(set(grup_maclari_avg['Takım 1']).union(set(grup_maclari_avg['Takım 2']))))
+                            
+                            secilen_takimlar_avg = st.multiselect("Averaja Kalmış (Kendi aralarında hesaplanacak) Takımları Seçin:", options=takimlar_avg)
+                            
+                            if len(secilen_takimlar_avg) >= 2:
+                                if st.button("🧮 Seçili Takımların Kendi Arasındaki Averajını Hesapla"):
+                                    mask_t1 = grup_maclari_avg['Takım 1'].isin(secilen_takimlar_avg)
+                                    mask_t2 = grup_maclari_avg['Takım 2'].isin(secilen_takimlar_avg)
+                                    mini_lig_df = grup_maclari_avg[mask_t1 & mask_t2]
+                                    
+                                    if mini_lig_df.empty:
+                                        st.warning("Bu takımlar arasında oynanmış ve skoru girilmiş bir maç bulunamadı.")
+                                    else:
+                                        mini_stats = hesapla_tum_puan_durumu(mini_lig_df)
+                                        if not mini_stats.empty:
+                                            mini_grup_df = mini_stats.drop(columns=['Grup']).sort_values(by=['Galibiyet', 'Maç Av.', 'Oyun Av.'], ascending=False)
+                                            mini_grup_df.index = range(1, len(mini_grup_df) + 1)
+                                            
+                                            st.success(f"✅ {sec_avg_grup} - Çoklu Averaj Puan Durumu (Sadece seçili takımlar)")
+                                            st.dataframe(mini_grup_df, use_container_width=True)
+                            elif len(secilen_takimlar_avg) == 1:
+                                st.warning("Averaj hesaplamak için en az 2 takım seçmelisiniz.")
+                                
+            with tab_klasman:
+                st.markdown("### Nihai Klasman Vitrini")
+                if aktif_asama != "2. Aşama":
+                    st.info("Nihai klasman sıralamaları sadece '2. Aşama' tamamlandıktan sonra oluşturulur.")
+                else:
+                    st.info("Bu vitrin, maçları ve Başhakem onayları tamamen bitmiş olan kategorilerin şampiyonlarını ve play-out durumlarını listeler.")
+                    
+                    tum_gruplar_listesi = st.session_state.skor_tablosu['Grup'].unique()
+                    tum_stats_genel = hesapla_tum_puan_durumu(st.session_state.skor_tablosu)
+                    
+                    kategori_asama_map = {}
+                    for gp in tum_gruplar_listesi:
+                        g_kat = st.session_state.grup_kategorileri.get(gp, "Erkekler")
+                        g_yas = st.session_state.grup_yas_gruplari.get(gp, "Yaş Belirtme")
+                        etiket = f"{g_yas} {g_kat}" if g_yas != "Yaş Belirtme" else f"{g_kat}"
+                        asama_bilgisi = st.session_state.grup_asamalari.get(gp, "1. Aşama")
+                        
+                        if etiket not in kategori_asama_map:
+                            kategori_asama_map[etiket] = {"1. Aşama": [], "2. Aşama": []}
+                        kategori_asama_map[etiket][asama_bilgisi].append(gp)
+                        
+                    kat_gruplari_map = {}
+                    for kat_ad, asamalar in kategori_asama_map.items():
+                        if len(asamalar["2. Aşama"]) > 0:
+                            kat_gruplari_map[kat_ad] = asamalar["2. Aşama"] 
+                        else:
+                            kat_gruplari_map[kat_ad] = asamalar["1. Aşama"] 
+                            
+                    tamamlanan_kategoriler = []
+                    for kat_ad, gruplar_listesi in kat_gruplari_map.items():
+                        herkes_tamam_mi = all(st.session_state.grup_tamamlandi.get(g, False) for g in gruplar_listesi)
+                        if herkes_tamam_mi and len(gruplar_listesi) > 0:
+                            tamamlanan_kategoriler.append(kat_ad)
+                            
+                    if not tamamlanan_kategoriler:
+                        st.warning("Henüz tüm grupları 'Tamamlandı' olarak kilitlenmiş bir kategori bulunmuyor.")
+                    else:
+                        sec_klasmanlar = st.multiselect("Sonuçlarını Görmek ve Yazdırmak İstediğiniz Kategorileri Seçin:", options=sorted(tamamlanan_kategoriler), default=sorted(tamamlanan_kategoriler))
+                        
+                        if st.session_state.admin_mi:
+                            dusme_hatti = st.number_input("Play-out Gruplarında İlk Kaç Takım Ligde Kalacak? (Kırmızı Çizgi)", min_value=1, value=st.session_state.get("kayitli_dusme_hatti", 2), step=1)
+                            if dusme_hatti != st.session_state.get("kayitli_dusme_hatti", 2):
+                                st.session_state["kayitli_dusme_hatti"] = dusme_hatti
+                                ortak_veriyi_kaydet() 
+                        else:
+                            dusme_hatti = st.session_state.get("kayitli_dusme_hatti", 2)
+                        
+                        pdf_icin_hazir_veriler = {}
+                        
+                        for secilen_kategori in sec_klasmanlar:
+                            with st.expander(f"{secilen_kategori} Nihai Sıralaması", expanded=True):
+                                birinciler = []
+                                ikinciler = []
+                                playoutlar = []
+                                
+                                gruplar = kat_gruplari_map[secilen_kategori]
+                                for gp in gruplar:
+                                    statu = st.session_state.grup_statuleri.get(gp, "")
+                                    
+                                    if len(gruplar) == 1:
+                                        birinciler.append(gp) 
+                                    elif "Birinciler" in statu or "Birinciler" in gp:
+                                        birinciler.append(gp)
+                                    elif "İkinciler" in statu or "İkinciler" in gp:
+                                        ikinciler.append(gp)
+                                    else:
+                                        playoutlar.append(gp) 
+                                        
+                                current_rank = 1
+                                kat_verisi = {"birinciler": [], "ikinciler": [], "ligde_kalanlar": [], "dusenler": []}
+                                
+                                if birinciler:
+                                    st.markdown("##### ŞAMPİYONLUK KÜRSÜSÜ")
+                                    for bg in dogal_sirala(birinciler):
+                                        grup_df = tum_stats_genel[tum_stats_genel['Grup'] == bg].drop(columns=['Grup'])
+                                        grup_df = sirala_grup_df(grup_df, bg)
+                                        
+                                        for idx, row in grup_df.iterrows():
+                                            takim = row['Takım']
+                                            kat_verisi["birinciler"].append(takim)
+                                            
+                                            unvan = ""
+                                            if current_rank == 1: unvan = "🥇 (Şampiyon)"
+                                            elif current_rank == 2: unvan = "🥈 (İkinci)"
+                                            elif current_rank == 3: unvan = "🥉 (Üçüncü)"
+                                            elif current_rank == 4: unvan = "🏅 (Dördüncü)"
+                                            
+                                            st.markdown(f"**{current_rank}. Sıra:** {takim} {unvan}")
+                                            current_rank += 1
+                                            
+                                if ikinciler:
+                                    st.markdown("---")
+                                    st.markdown("##### İKİNCİLER GRUBU (Klasman)")
+                                    for ig in dogal_sirala(ikinciler):
+                                        grup_df = tum_stats_genel[tum_stats_genel['Grup'] == ig].drop(columns=['Grup'])
+                                        grup_df = sirala_grup_df(grup_df, ig)
+                                        
+                                        for idx, row in grup_df.iterrows():
+                                            takim = row['Takım']
+                                            kat_verisi["ikinciler"].append(takim)
+                                            st.markdown(f"**{current_rank}. Sıra:** {takim}")
+                                            current_rank += 1
+                                
+                                if playoutlar:
+                                    for p_grup in playoutlar:
+                                        grup_df = tum_stats_genel[tum_stats_genel['Grup'] == p_grup].drop(columns=['Grup'])
+                                        grup_df = sirala_grup_df(grup_df, p_grup)
+                                        
+                                        sira = 1
+                                        for _, row in grup_df.iterrows():
+                                            if sira <= dusme_hatti:
+                                                kat_verisi["ligde_kalanlar"].append(f"{row['Takım']} *(Grubu: {p_grup})*")
+                                            else:
+                                                kat_verisi["dusenler"].append(f"{row['Takım']} *(Grubu: {p_grup})*")
+                                            sira += 1
+                                                
+                                    st.markdown("---")
+                                    st.markdown("##### LİGDE KALANLAR (Play-Out Üst Sıralar)")
+                                    if kat_verisi["ligde_kalanlar"]:
+                                        for takim in dogal_sirala(kat_verisi["ligde_kalanlar"]):
+                                            st.markdown(f"- {takim}")
+                                    else:
+                                        st.caption("Ligde kalan takım bulunamadı.")
+                                        
+                                    st.markdown("---")
+                                    st.markdown("##### LİGDEN DÜŞENLER (Play-Out Alt Sıralar)")
+                                    if kat_verisi["dusenler"]:
+                                        for takim in dogal_sirala(kat_verisi["dusenler"]):
+                                            st.markdown(f"- {takim}")
+                                    else:
+                                        st.caption("Düşme hattında takım bulunamadı.")
+                                        
+                                pdf_icin_hazir_veriler[secilen_kategori] = kat_verisi
+                                
+                                st.markdown("<br>", unsafe_allow_html=True)
+                                tek_pdf_bytes = generate_klasman_pdf(
+                                    secilen_kategori, 
+                                    kat_verisi["birinciler"], 
+                                    kat_verisi["ikinciler"], 
+                                    kat_verisi["ligde_kalanlar"], 
+                                    kat_verisi["dusenler"]
+                                )
+                                st.download_button(
+                                    label=f"📥 SADECE {secilen_kategori} Klasmanını İndir", 
+                                    data=tek_pdf_bytes, 
+                                    file_name=f"Nihai_Klasman_{secilen_kategori.replace(' ', '_')}.pdf", 
+                                    mime="application/pdf", 
+                                    key=f"pdf_tek_{secilen_kategori}",
+                                )
+                                
+                        if pdf_icin_hazir_veriler:
+                            st.markdown("<br>", unsafe_allow_html=True)
+                            toplu_pdf_bytes = generate_toplu_klasman_pdf(pdf_icin_hazir_veriler)
+                            st.download_button(
+                                label="📥 Seçili Kategorilerin Resmi Sonuç Bildirgesini İndir (PDF)", 
+                                data=toplu_pdf_bytes, 
+                                file_name=f"TTF_Takim_Sampiyonasi_Resmi_Sonuc.pdf", 
+                                mime="application/pdf", 
+                                key="pdf_toplu_klasman_btn",
+                                type="primary",
+                                use_container_width=True
+                            )
+        else:
+            st.info(f"Bu aşamada henüz maç bulunmuyor.")
 
     # ==============================================================================
-    # 12. FİKSTÜR / MAÇ PROGRAMI 
+    # 12. MAÇ PROGRAMI (GÜNLÜK AKIŞ)
     # ==============================================================================
     elif menu_secim == "📅 Maç Programı":
         tab_gunluk, tab_genel = st.tabs(["🗓️ Günlük Akış (Tarihe Göre)", "📋 Tüm Maçların Genel Durumu"])
