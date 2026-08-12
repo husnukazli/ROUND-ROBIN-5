@@ -996,50 +996,21 @@ else:
                                         grup_stats = hesapla_tum_puan_durumu(df_guncel)
                                         if not grup_stats.empty:
                                             grup_df_display = grup_stats.drop(columns=['Grup'])
-                                            grup_df_display = sirala_grup_df(grup_df_display, secilen_grup)
+                                            # ham_maclar_df olarak df_guncel geçiriliyor
+                                            grup_df_display = sirala_grup_df(grup_df_display, secilen_grup, df_guncel)
                                             st.dataframe(grup_df_display, use_container_width=True)
                                             
-                                            # --- KURA ÇEKİMİ KONTROLÜ (GERÇEK BAŞHAKEM KURALLARI) ---
-                                            try:
-                                                if 'Oynanan Maç' in grup_df_display.columns:
-                                                    aktif_df = grup_df_display.copy()
-                                                    
-                                                    # En az 1 maç oynamış takımları al (Hiç oynamayanları sayma)
-                                                    aktif_df['Oyn_Kontrol'] = pd.to_numeric(aktif_df['Oynanan Maç'], errors='coerce').fillna(0)
-                                                    aktif_df = aktif_df[aktif_df['Oyn_Kontrol'] > 0]
-                                                    
-                                                    if len(aktif_df) >= 2:
-                                                        imzalar = {}
-                                                        
-                                                        # Aldığı/Verdiği sütunlarına ASLA BAKMA! Sadece net averajlara bak:
-                                                        hedef_sutunlar = ['Galibiyet', 'Maç Av.', 'Set Av.', 'Oyun Av.']
-                                                        mevcut_sutunlar = [c for c in hedef_sutunlar if c in aktif_df.columns]
-                                                        
-                                                        for _, row in aktif_df.iterrows():
-                                                            takim_adi = str(row.get('Takım', 'Bilinmeyen'))
-                                                            imza_parcalari = []
-                                                            
-                                                            for col in mevcut_sutunlar:
-                                                                # 0, 0.0 veya "0" fark etmeksizin hepsini matematiksel bir sayıya çevir
-                                                                try:
-                                                                    val = float(row[col])
-                                                                    imza_parcalari.append(f"{val:.2f}") # Hepsini tek tip yap (örn: 0.00)
-                                                                except:
-                                                                    imza_parcalari.append(str(row[col]).strip())
-                                                                    
-                                                            # Takımın sadece Averajlardan oluşan parmak izi
-                                                            imza = "_".join(imza_parcalari)
-                                                            
-                                                            if imza not in imzalar: imzalar[imza] = []
-                                                            imzalar[imza].append(takim_adi)
-                                                            
-                                                        for imza, takim_listesi in imzalar.items():
-                                                            if len(takim_listesi) >= 3:
-                                                                st.error(f"🚨 **KURA ÇEKİMİ GEREKİYOR:** **{', '.join(takim_listesi)}** takımlarının Galibiyet ve tüm Averajları (Maç/Set/Oyun) birbirine eşittir ({len(takim_listesi)}'lü kör düğüm). Kura çekerek sıralamayı belirleyiniz.")
-                                                            elif len(takim_listesi) == 2:
-                                                                st.warning(f"⚠️ **İkili Eşitlik:** **{', '.join(takim_listesi)}** takımlarının Galibiyet ve tüm Averajları eşit. Sıralama kendi aralarındaki maça göre belirlenir. (O maç berabereyse kura gerekebilir).")
-                                            except Exception:
-                                                pass
+                                            # --- KURA VE AVERAJ BİLDİRİMLERİ (MERKEZİ SİSTEMDEN OKUMA) ---
+                                            if secilen_grup in st.session_state.get("kura_uyarilari", {}):
+                                                st.error(st.session_state.kura_uyarilari[secilen_grup])
+                                                
+                                            if secilen_grup in st.session_state.get("averaj_bilgileri", {}):
+                                                st.markdown(f"<div style='padding: 12px; background-color: rgba(23, 162, 184, 0.1); border-left: 4px solid #17a2b8; color: #0c5460; border-radius: 4px; margin-top: 10px; margin-bottom: 10px; font-size: 14px; line-height: 1.5;'>{st.session_state.averaj_bilgileri[secilen_grup]}</div>", unsafe_allow_html=True)
+                                            
+                                            if secilen_grup in st.session_state.get("grup_averaj_tablolari", {}):
+                                                for t_adi, t_df in st.session_state.grup_averaj_tablolari[secilen_grup].items():
+                                                    with st.expander(f"📊 {t_adi}", expanded=False):
+                                                        st.dataframe(t_df, use_container_width=True)
                                             # -------------------------------------------------------------
                                         else:
                                             st.info("Bu grup için henüz puan durumu oluşmadı.")
@@ -1103,7 +1074,8 @@ else:
                             st.markdown(f"### 🏆 {gp} Puan Durumu{baslik_ek}")
                             
                             grup_df = tum_stats[tum_stats['Grup'] == gp].drop(columns=['Grup'])
-                            grup_df = sirala_grup_df(grup_df, gp)
+                            # DÜZELTME: sirala_grup_df'e ham_maclar_df parametresi geçirildi.
+                            grup_df = sirala_grup_df(grup_df, gp, df_asama_t3)
                             
                             pdf_df = grup_df.reset_index().rename(columns={"index": "Sıra"})
                             pdf_gruplar_data[gp] = pdf_df
@@ -1385,7 +1357,8 @@ else:
                                     st.markdown("##### ŞAMPİYONLUK KÜRSÜSÜ")
                                     for bg in dogal_sirala(birinciler):
                                         grup_df = tum_stats_genel[tum_stats_genel['Grup'] == bg].drop(columns=['Grup'])
-                                        grup_df = sirala_grup_df(grup_df, bg)
+                                        # DÜZELTME: sirala_grup_df'e ham_maclar_df parametresi geçirildi.
+                                        grup_df = sirala_grup_df(grup_df, bg, st.session_state.skor_tablosu)
                                         
                                         for idx, row in grup_df.iterrows():
                                             takim = row['Takım']
@@ -1405,7 +1378,8 @@ else:
                                     st.markdown("##### İKİNCİLER GRUBU (Klasman)")
                                     for ig in dogal_sirala(ikinciler):
                                         grup_df = tum_stats_genel[tum_stats_genel['Grup'] == ig].drop(columns=['Grup'])
-                                        grup_df = sirala_grup_df(grup_df, ig)
+                                        # DÜZELTME: sirala_grup_df'e ham_maclar_df parametresi geçirildi.
+                                        grup_df = sirala_grup_df(grup_df, ig, st.session_state.skor_tablosu)
                                         
                                         for idx, row in grup_df.iterrows():
                                             takim = row['Takım']
@@ -1416,7 +1390,8 @@ else:
                                 if playoutlar:
                                     for p_grup in playoutlar:
                                         grup_df = tum_stats_genel[tum_stats_genel['Grup'] == p_grup].drop(columns=['Grup'])
-                                        grup_df = sirala_grup_df(grup_df, p_grup)
+                                        # DÜZELTME: sirala_grup_df'e ham_maclar_df parametresi geçirildi.
+                                        grup_df = sirala_grup_df(grup_df, p_grup, st.session_state.skor_tablosu)
                                         
                                         sira = 1
                                         for _, row in grup_df.iterrows():
