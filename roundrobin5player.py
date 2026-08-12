@@ -30,9 +30,9 @@ basa_don_html = """
 <style>
 .basa-don-btn {
     position: fixed;
-    bottom: 70px; /* Manage App logosunun hemen üstünde durması için */
+    bottom: 70px;
     right: 20px;
-    background-color: #0B3B24; /* TTF Koyu Yeşil */
+    background-color: #0B3B24;
     color: white !important;
     padding: 10px 15px;
     border-radius: 50px;
@@ -42,21 +42,21 @@ basa_don_html = """
     font-weight: bold;
     box-shadow: 0px 4px 10px rgba(0,0,0,0.3);
     z-index: 99999;
-    transition: all 0.3s ease;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 5px;
 }
 .basa-don-btn:hover {
-    background-color: #E86C43; /* Turuncu Vurgu */
-    transform: scale(1.05);
+    background-color: #E86C43;
 }
 </style>
 <a href="#" class="basa-don-btn" onclick="
-    var main = window.parent.document.querySelector('section.main');
-    if(main) { main.scrollTo({top: 0, behavior: 'smooth'}); }
-    else { window.scrollTo({top: 0, behavior: 'smooth'}); }
+    var parentDoc = window.parent.document;
+    var containers = parentDoc.querySelectorAll('[data-testid=\\'stAppViewContainer\\'], .main, .stApp, html, body');
+    for(var i=0; i<containers.length; i++){
+        containers[i].scrollTop = 0;
+    }
     return false;
 ">
     ⬆️ Başa Dön
