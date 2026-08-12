@@ -999,29 +999,28 @@ else:
                                             grup_df_display = sirala_grup_df(grup_df_display, secilen_grup)
                                             st.dataframe(grup_df_display, use_container_width=True)
                                             
-                                            # --- KURA ÇEKİMİ KONTROLÜ (3'lü veya daha fazla eşitlik) ---
+                                            # --- KURA ÇEKİMİ KONTROLÜ (GÜNCELLENMİŞ) ---
                                             stats_cols = ['Galibiyet', 'Maç Av.', 'Set Av.', 'Oyun Av.']
                                             check_cols = [c for c in stats_cols if c in grup_df_display.columns]
-                                            if check_cols:
-                                                counts = grup_df_display[check_cols].value_counts()
-                                                for stat_tuple, count in counts.items():
-                                                    if count >= 3:
-                                                        cond = pd.Series(True, index=grup_df_display.index)
-                                                        if isinstance(stat_tuple, tuple):
-                                                            for col_name, val in zip(check_cols, stat_tuple):
-                                                                cond &= (grup_df_display[col_name] == val)
-                                                        else:
-                                                            cond &= (grup_df_display[check_cols[0]] == stat_tuple)
-                                                            
-                                                        kura_takimlari = grup_df_display.loc[cond, 'Takım'].tolist()
+                                            
+                                            if check_cols and 'Oynanan Maç' in grup_df_display.columns:
+                                                kura_df = grup_df_display.copy()
+                                                kura_df['Oynanan Maç'] = pd.to_numeric(kura_df['Oynanan Maç'], errors='coerce').fillna(0)
+                                                oynayanlar_df = kura_df[kura_df['Oynanan Maç'] > 0].copy()
+                                                
+                                                if not oynayanlar_df.empty:
+                                                    for c in check_cols:
+                                                        # "0", "0.0", 0 gibi farkları ezmek için hepsini mecburi standardize ediyoruz
+                                                        oynayanlar_df[c] = pd.to_numeric(oynayanlar_df[c], errors='coerce').fillna(0).astype(str)
                                                         
-                                                        if 'Oynanan Maç' in grup_df_display.columns:
-                                                            oynanan_mac_var = grup_df_display.loc[cond, 'Oynanan Maç'].sum() > 0
-                                                        else:
-                                                            oynanan_mac_var = True
-                                                            
-                                                        if len(kura_takimlari) >= 3 and oynanan_mac_var:
-                                                            st.error(f"🚨 **KURA ÇEKİMİ GEREKİYOR:** **{', '.join(kura_takimlari)}** takımları arasında tüm averajlar eşittir (3'lü düğüm). Kura çekerek nihai sıralamayı belirleyiniz.")
+                                                    for stats, grup in oynayanlar_df.groupby(check_cols):
+                                                        takim_sayisi = len(grup)
+                                                        if takim_sayisi >= 3:
+                                                            t_isimleri = grup['Takım'].tolist()
+                                                            st.error(f"🚨 **KURA ÇEKİMİ GEREKİYOR:** **{', '.join(t_isimleri)}** ({takim_sayisi}'lü kör düğüm). Galibiyet ve tüm averajlar %100 eşit! Kura çekerek sıralamayı belirleyiniz.")
+                                                        elif takim_sayisi == 2:
+                                                            t_isimleri = grup['Takım'].tolist()
+                                                            st.warning(f"⚠️ **İkili Eşitlik / Kura İhtimali:** **{', '.join(t_isimleri)}**. Tüm averajlar eşit. Sıralama 'kendi aralarındaki maça' göre belirlenir. Eğer kendi aralarındaki maç berabereyse veya henüz oynanmadıysa KURA gerekebilir.")
                                             # -------------------------------------------------------------
                                         else:
                                             st.info("Bu grup için henüz puan durumu oluşmadı.")
