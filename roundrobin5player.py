@@ -25,6 +25,9 @@ import ui_admin_paneli
 st.set_page_config(page_title="Tenis Turnuva Otomasyonu", page_icon="🎾", layout="wide", initial_sidebar_state="collapsed")
 
 arkaplan_ekle("arkaplan.jpg")
+# Sayfanın en üst noktası için görünmez bir hedef
+st.markdown('<div id="tepe-noktasi"></div>', unsafe_allow_html=True)
+
 # --- HER SAYFADA GÖRÜNEN BAŞA DÖN BUTONU ---
 basa_don_html = """
 <style>
@@ -42,25 +45,12 @@ basa_don_html = """
     font-weight: bold;
     box-shadow: 0px 4px 10px rgba(0,0,0,0.3);
     z-index: 99999;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
 }
 .basa-don-btn:hover {
     background-color: #E86C43;
 }
 </style>
-<a href="#" class="basa-don-btn" onclick="
-    var elements = document.querySelectorAll('*');
-    for (var i = 0; i < elements.length; i++) {
-        if (elements[i].scrollTop > 0) {
-            elements[i].scrollTop = 0;
-        }
-    }
-    window.scrollTo(0, 0);
-    return false;
-">
+<a href="#tepe-noktasi" target="_self" class="basa-don-btn">
     ⬆️ Başa Dön
 </a>
 """
