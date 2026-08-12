@@ -25,6 +25,45 @@ import ui_admin_paneli
 st.set_page_config(page_title="Tenis Turnuva Otomasyonu", page_icon="🎾", layout="wide", initial_sidebar_state="collapsed")
 
 arkaplan_ekle("arkaplan.jpg")
+# --- HER SAYFADA GÖRÜNEN BAŞA DÖN BUTONU ---
+basa_don_html = """
+<style>
+.basa-don-btn {
+    position: fixed;
+    bottom: 70px; /* Manage App logosunun hemen üstünde durması için */
+    right: 20px;
+    background-color: #0B3B24; /* TTF Koyu Yeşil */
+    color: white !important;
+    padding: 10px 15px;
+    border-radius: 50px;
+    text-align: center;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: bold;
+    box-shadow: 0px 4px 10px rgba(0,0,0,0.3);
+    z-index: 99999;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+.basa-don-btn:hover {
+    background-color: #E86C43; /* Turuncu Vurgu */
+    transform: scale(1.05);
+}
+</style>
+<a href="#" class="basa-don-btn" onclick="
+    var main = window.parent.document.querySelector('section.main');
+    if(main) { main.scrollTo({top: 0, behavior: 'smooth'}); }
+    else { window.scrollTo({top: 0, behavior: 'smooth'}); }
+    return false;
+">
+    ⬆️ Başa Dön
+</a>
+"""
+st.markdown(basa_don_html, unsafe_allow_html=True)
+# ------------------------------------------
 
 # ==============================================================================
 # 2. SESSION STATE (HAFIZA) BAŞLATMA
