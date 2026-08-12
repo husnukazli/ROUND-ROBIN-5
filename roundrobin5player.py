@@ -999,30 +999,45 @@ else:
                                             grup_df_display = sirala_grup_df(grup_df_display, secilen_grup)
                                             st.dataframe(grup_df_display, use_container_width=True)
                                             
-                                            # --- KURA ÇEKİMİ KONTROLÜ (KOPUKLUK GİDERİLDİ - SAF METİN MANTIĞI) ---
+                                            # --- KURA ÇEKİMİ KONTROLÜ (GERÇEK BAŞHAKEM KURALLARI) ---
                                             try:
                                                 if 'Oynanan Maç' in grup_df_display.columns:
-                                                    imzalar = {}
-                                                    # Arka plandaki sayısal formata değil, tablonun metin haline (ekranda ne yazıyorsa) bakıyoruz
-                                                    for r_dict in grup_df_display.to_dict('records'):
-                                                        oynanan = str(r_dict.get('Oynanan Maç', '0')).strip()
-                                                        if oynanan and oynanan != '0' and oynanan != '0.0':
+                                                    aktif_df = grup_df_display.copy()
+                                                    
+                                                    # En az 1 maç oynamış takımları al (Hiç oynamayanları sayma)
+                                                    aktif_df['Oyn_Kontrol'] = pd.to_numeric(aktif_df['Oynanan Maç'], errors='coerce').fillna(0)
+                                                    aktif_df = aktif_df[aktif_df['Oyn_Kontrol'] > 0]
+                                                    
+                                                    if len(aktif_df) >= 2:
+                                                        imzalar = {}
+                                                        
+                                                        # Aldığı/Verdiği sütunlarına ASLA BAKMA! Sadece net averajlara bak:
+                                                        hedef_sutunlar = ['Galibiyet', 'Maç Av.', 'Set Av.', 'Oyun Av.']
+                                                        mevcut_sutunlar = [c for c in hedef_sutunlar if c in aktif_df.columns]
+                                                        
+                                                        for _, row in aktif_df.iterrows():
+                                                            takim_adi = str(row.get('Takım', 'Bilinmeyen'))
+                                                            imza_parcalari = []
                                                             
-                                                            g = str(r_dict.get('Galibiyet', '0')).strip()
-                                                            ma = str(r_dict.get('Maç Av.', '0')).strip()
-                                                            sa = str(r_dict.get('Set Av.', '0')).strip()
-                                                            oa = str(r_dict.get('Oyun Av.', '0')).strip()
-                                                            
-                                                            # Takımın averaj parmak izini (imzasını) oluştur
-                                                            imza = f"{g}_{ma}_{sa}_{oa}"
-                                                            takim = str(r_dict.get('Takım', 'Bilinmiyor'))
+                                                            for col in mevcut_sutunlar:
+                                                                # 0, 0.0 veya "0" fark etmeksizin hepsini matematiksel bir sayıya çevir
+                                                                try:
+                                                                    val = float(row[col])
+                                                                    imza_parcalari.append(f"{val:.2f}") # Hepsini tek tip yap (örn: 0.00)
+                                                                except:
+                                                                    imza_parcalari.append(str(row[col]).strip())
+                                                                    
+                                                            # Takımın sadece Averajlardan oluşan parmak izi
+                                                            imza = "_".join(imza_parcalari)
                                                             
                                                             if imza not in imzalar: imzalar[imza] = []
-                                                            imzalar[imza].append(takim)
-                                                    
-                                                    for imza, takim_listesi in imzalar.items():
-                                                        if len(takim_listesi) >= 3:
-                                                            st.error(f"🚨 **KURA ÇEKİMİ GEREKİYOR:** **{', '.join(takim_listesi)}** takımlarının Galibiyet ve tüm averajları tamamen eşittir ({len(takim_listesi)}'lü düğüm).")
+                                                            imzalar[imza].append(takim_adi)
+                                                            
+                                                        for imza, takim_listesi in imzalar.items():
+                                                            if len(takim_listesi) >= 3:
+                                                                st.error(f"🚨 **KURA ÇEKİMİ GEREKİYOR:** **{', '.join(takim_listesi)}** takımlarının Galibiyet ve tüm Averajları (Maç/Set/Oyun) birbirine eşittir ({len(takim_listesi)}'lü kör düğüm). Kura çekerek sıralamayı belirleyiniz.")
+                                                            elif len(takim_listesi) == 2:
+                                                                st.warning(f"⚠️ **İkili Eşitlik:** **{', '.join(takim_listesi)}** takımlarının Galibiyet ve tüm Averajları eşit. Sıralama kendi aralarındaki maça göre belirlenir. (O maç berabereyse kura gerekebilir).")
                                             except Exception:
                                                 pass
                                             # -------------------------------------------------------------
