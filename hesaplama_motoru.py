@@ -584,8 +584,12 @@ def sirala_grup_df(grup_df, gp, ham_maclar_df=None):
                             # --- ÇÖKME (UnboundLocalError) KORUMASI ---
                             coklu_sira = sorted_coklu['Takım'].tolist()
                             
-                            if top_gal == bottom_gal and top_mac_av == bottom_mac_av and top_set_av == bottom_set_av and top_oyun_av == bottom_oyun_av:
+                           if top_gal == bottom_gal and top_mac_av == bottom_mac_av and top_set_av == bottom_set_av and top_oyun_av == bottom_oyun_av:
                                 kura_gerekir_mesajlari.append(f"⚠️ Bu grupta ({', '.join(t_list)}) {averaj_baslik.lower()} averaj tüm kriterlere rağmen çözülememiştir, kura gerekebilir!")
+                                # Tabloyu kura durumunda da göstermesi için eklenen bölüm:
+                                mini_tablo_df = sorted_coklu.drop(columns=['Grup'])
+                                mini_tablo_df.index = range(1, len(mini_tablo_df) + 1)
+                                grup_averaj_tablolari[f"({', '.join(t_list)}) Takımları {averaj_baslik} Averaj Tablosu (Kör Düğüm)"] = mini_tablo_df
                             else:
                                 sira_degisti_mi = False
                                 for i in range(len(coklu_sira)):
