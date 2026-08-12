@@ -586,8 +586,16 @@ def sirala_grup_df(grup_df, gp, ham_maclar_df=None):
                                 
                                 mini_tablo_df = sorted_coklu.drop(columns=['Grup'])
                                 mini_tablo_df.index = range(1, len(mini_tablo_df) + 1)
-                                grup_averaj_tablolari[f"({', '.join(t_list)}) Takımları {averaj_baslik} Averaj Tablosu (Çözülemeyen Eşitlik)"] = mini_tablo_df
+                                grup_averaj_tablolari[f"({', '.join(t_list)}) Takımları {averaj_baslik} Averaj Tablosu (Kör Düğüm)"] = mini_tablo_df
                             else:
+                                # --- DÜZELTME: Kısmi Eşitlikte Doğrudan Kuraya Yönlendirme ---
+                                for idx in range(len(sorted_coklu) - 1):
+                                    t1_k = sorted_coklu.iloc[idx]
+                                    t2_k = sorted_coklu.iloc[idx + 1]
+                                    if t1_k['Maç Av.'] == t2_k['Maç Av.'] and t1_k['Set Av.'] == t2_k['Set Av.'] and t1_k['Oyun Av.'] == t2_k['Oyun Av.']:
+                                        kura_gerekir_mesajlari.append(f"⚠️ {averaj_baslik} averaj tablosunda {t1_k['Takım']} ve {t2_k['Takım']} takımları ayrışamamıştır. Kural gereği ikili averaja dönülmez, bu iki takım arasında kura çekimi yapılmalıdır.")
+                                # -------------------------------------------------------------
+
                                 sira_degisti_mi = False
                                 for i in range(len(coklu_sira)):
                                     for j in range(i + 1, len(coklu_sira)):
