@@ -73,7 +73,6 @@ def hakem_panelini_ciz():
                         gun_val = g_df.iloc[0]['Gün']
                         match_key = f"{grup_adi}_{gun_val}_{eslesme_adi}"
                         
-                        # --- KATEGORİ VE YAŞ BİLGİSİ ---
                         g_kat = st.session_state.grup_kategorileri.get(grup_adi, "")
                         g_yas = st.session_state.grup_yas_gruplari.get(grup_adi, "")
                         kat_bilgisi = f"({g_yas} {g_kat})" if g_yas != "Yaş Belirtme" else f"({g_kat})"
@@ -344,7 +343,6 @@ def hakem_panelini_ciz():
                                             brans_adi = row['Branş']
                                             is_ciftler = "Çiftler" in brans_adi
                                             
-                                            # --- YENİ EKLENEN ÇİFTLER KADRO DEĞİŞTİRME ZEKASI ---
                                             if is_ciftler:
                                                 c_isim, c_degistir = st.columns([3, 1])
                                                 with c_isim:
@@ -375,7 +373,6 @@ def hakem_panelini_ciz():
                                                             st.session_state.skor_tablosu.at[idx, 'T1_Oyuncu'] = ", ".join(yeni_cift_t1) if yeni_cift_t1 else "Belirtilmedi"
                                                             st.session_state.skor_tablosu.at[idx, 'T2_Oyuncu'] = ", ".join(yeni_cift_t2) if yeni_cift_t2 else "Belirtilmedi"
                                                             
-                                                            # Arşivdeki (Esame Kasasındaki) bilgiyi de güncelliyoruz ki sonradan bakıldığında doğru görünsün
                                                             if match_key in st.session_state.esame_kasasi:
                                                                 if t1 in st.session_state.esame_kasasi[match_key]:
                                                                     st.session_state.esame_kasasi[match_key][t1][brans_adi] = ", ".join(yeni_cift_t1) if yeni_cift_t1 else ""
@@ -388,7 +385,6 @@ def hakem_panelini_ciz():
                                                     st.markdown("</div>", unsafe_allow_html=True)
                                             else:
                                                 st.markdown(f"**{brans_adi}** &nbsp;&nbsp;|&nbsp;&nbsp; {row.get('T1_Oyuncu', '-')} vs {row.get('T2_Oyuncu', '-')}")
-                                            # -----------------------------------------------------------
 
                                             st.markdown("<div style='background-color: rgba(128,128,128,0.05); padding: 15px; border-radius: 10px; border-left: 5px solid #0B3B24; margin-bottom: 10px;'>", unsafe_allow_html=True)
                                             durum_opts = ["Tamamlandı", "Takım 1 Kazandı (W/O)", "Takım 2 Kazandı (W/O)", "Takım 1 Kazandı (Ret.)", "Takım 2 Kazandı (Ret.)", "Çift Taraflı W/O"]
@@ -469,8 +465,13 @@ def hakem_panelini_ciz():
                                         elif biten_mac > 0: st.info(f"📊 **ANLIK DURUM:** {t1} **{t1_wins} - {t2_wins}** {t2} *(Girilen maç: {biten_mac}/{toplam_mac})*")
                                         else: st.write("Henüz geçerli bir skor girilmedi.")
 
+                                    # =========================================================================
+                                    # YENİ "ETSİN AMA KAYDETSİN" ZEKASI AŞAĞIDADIR
+                                    # =========================================================================
                                     if st.button(f"💾 {t1} - {t2} Skorlarını Kaydet", key=f"btn_h_skor_save_{grup_adi}_{eslesme_adi}_{tarih_str}", use_container_width=True, type="primary"):
                                         hata_mesajlari = []
+                                        uyari_mesajlari = [] # KAYDEDİLMEYİ ENGELLEMEYEN UYARILAR
+                                        
                                         for idx, guncel_row in form_verileri.items():
                                             mac_tanimi = f"{guncel_row['Branş']}"
                                             s1t1, s1t2 = guncel_row["1.Set T1"], guncel_row["1.Set T2"]
@@ -487,7 +488,8 @@ def hakem_panelini_ciz():
                                             
                                             if durum == "Tamamlandı":
                                                 if s1t1 == 0 and s1t2 == 0 and s2t1 == 0 and s2t2 == 0 and s3t1 == 0 and s3t2 == 0:
-                                                    hata_mesajlari.append(f"❌ {mac_tanimi}: Durum 'Tamamlandı' seçilmiş ama tüm skorlar 0-0! Maç oynanmadıysa durumunu 'Çift Taraflı W/O' veya benzeri bir seçenekle değiştirin.")
+                                                    # İŞTE BURASI: Hata vermek yerine sadece uyarı listesine ekliyoruz
+                                                    uyari_mesajlari.append(f"⚠️ {mac_tanimi} (0-0 Bırakıldı)")
                                                 else:
                                                     t1_s1_kazandi = s1t1 > s1t2
                                                     t2_s1_kazandi = s1t2 > s1t1
@@ -502,8 +504,11 @@ def hakem_panelini_ciz():
                                                         if s3t1 == 0 and s3t2 == 0:
                                                             hata_mesajlari.append(f"❌ {mac_tanimi}: Setlerde 1-1 eşitlik var, 3. set skoru girilmelidir.")
                                         
+                                        # EĞER KIRMIZI HATA (GERÇEK BİR KURAL İHLALİ) VARSA KAYDETTİRME:
                                         if hata_mesajlari:
                                             for h in hata_mesajlari: st.error(h)
+                                            
+                                        # EĞER SADECE SARI UYARILAR VARSA, BAŞARIYLA KAYDET VE UYARIYI FISILDA:
                                         else:
                                             for idx, guncel_row in form_verileri.items():
                                                 for k in ["1.Set T1", "1.Set T2", "2.Set T1", "2.Set T2", "3.Set T1", "3.Set T2", "Durum", "STB"]:
@@ -511,7 +516,14 @@ def hakem_panelini_ciz():
                                             if ortak_veriyi_kaydet():
                                                 t1_isim = f":red[{t1}]" if t1_wins > t2_wins else t1
                                                 t2_isim = f":red[{t2}]" if t2_wins > t1_wins else t2
-                                                st.session_state.basari_mesaji = f"Maç Skoru Kaydedildi! Güncel Sonuç: {t1_isim}: {t1_wins} - {t2_isim}: {t2_wins}"
+                                                
+                                                basari_metni = f"Skor Kaydedildi! Durum: {t1_isim}: {t1_wins} - {t2_isim}: {t2_wins}"
+                                                
+                                                # EĞER OYNANMAYAN MAÇ KALDIYSA METNİN YANINA UYARIYI EKLE:
+                                                if uyari_mesajlari:
+                                                    basari_metni += f" | Bekleyenler: {', '.join(uyari_mesajlari)}"
+                                                    
+                                                st.session_state.basari_mesaji = basari_metni
                                                 st.rerun()
                                             else:
                                                 st.error("Sistem meşgul, lütfen tekrar deneyin.")
