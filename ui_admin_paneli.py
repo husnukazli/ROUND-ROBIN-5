@@ -253,10 +253,17 @@ def grup_ayarlari_ciz(aktif_asama):
                         
                         if st.button("✅ Önizlemeyi Onayla ve Havuza Kaydet", type="primary"):
                             for t_adi, temiz_oyuncular in yeni_havuz.items():
-                                st.session_state.havuz_kategorileri[t_adi] = up_kat
-                                st.session_state.havuz_yas_gruplari[t_adi] = up_yas
-                                
-                            st.session_state.takim_havuzu.update(yeni_havuz)
+                                # --- DÜZELTME: Excel'den gelen takımları kategorisiyle birleştirip benzersiz yapıyoruz ---
+                                if up_yas != "Yaş Belirtme":
+                                    benzersiz_t_adi = f"{t_adi.strip()} ({up_yas} {up_kat})"
+                                else:
+                                    benzersiz_t_adi = f"{t_adi.strip()} ({up_kat})"
+                                    
+                                st.session_state.havuz_kategorileri[benzersiz_t_adi] = up_kat
+                                st.session_state.havuz_yas_gruplari[benzersiz_t_adi] = up_yas
+                                st.session_state.takim_havuzu[benzersiz_t_adi] = temiz_oyuncular
+                                # ------------------------------------------------------------------------------------------
+                            
                             if ortak_veriyi_kaydet():
                                 st.success(f"✅ Başarılı! Takımlar '{up_yas} {up_kat}' etiketiyle sisteme güvenle kaydedildi.")
                             else:
