@@ -662,15 +662,27 @@ def yonetim_ve_dosya_ciz(aktif_asama):
                 for t in g_k.keys():
                     if t not in tum_takim_listesi: tum_takim_listesi.append(t)
                     
-            if st.button("🚀 Tüm Takımlara 4 Haneli PIN Üret (Mevcutları Koru)", type="primary"):
-                for t in tum_takim_listesi:
-                    if t not in st.session_state.takim_pinleri:
-                        st.session_state.takim_pinleri[t] = random.randint(1000, 9999)
-                if ortak_veriyi_kaydet():
-                    st.success("Tüm takımlar için şifreler başarıyla üretildi!")
-                    st.rerun()
-                else:
-                    st.error("Sistem meşgul, lütfen tekrar deneyin.")
+            c_pin1, c_pin2 = st.columns(2)
+            
+            with c_pin1:
+                if st.button("🚀 Tüm Takımlara 4 Haneli PIN Üret (Mevcutları Koru)", type="primary", use_container_width=True):
+                    for t in tum_takim_listesi:
+                        if t not in st.session_state.takim_pinleri:
+                            st.session_state.takim_pinleri[t] = random.randint(1000, 9999)
+                    if ortak_veriyi_kaydet():
+                        st.success("Tüm takımlar için şifreler başarıyla üretildi!")
+                        st.rerun()
+                    else:
+                        st.error("Sistem meşgul, lütfen tekrar deneyin.")
+            
+            with c_pin2:
+                if st.button("🗑️ Tüm Şifreleri Sıfırla (İptal Et)", use_container_width=True):
+                    st.session_state.takim_pinleri = {}
+                    if ortak_veriyi_kaydet():
+                        st.success("Tüm şifreler sistemden silindi! Yeniden şifre üretmeniz gerekmektedir.")
+                        st.rerun()
+                    else:
+                        st.error("Sistem meşgul, lütfen tekrar deneyin.")
             
             if st.session_state.takim_pinleri:
                 pin_df = pd.DataFrame(list(st.session_state.takim_pinleri.items()), columns=["Takım Adı", "Kaptan PIN Kodu"])
