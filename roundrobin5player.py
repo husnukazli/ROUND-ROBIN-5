@@ -330,10 +330,22 @@ elif st.session_state.current_page == "📈 İstatistikler":
         st.warning(f"Seçilen kapsama ait henüz oluşturulmuş bir fikstür veya veri yok.")
     else:
         st.subheader("👥 Katılım Özeti")
-        k1, k2, k3 = st.columns(3)
-        toplam_grup = len(df_fikstur['Grup'].unique()) if 'Grup' in df_fikstur.columns else 0
         
-        # --- DÜZELTME: Takım ve Grup kombinasyonuyla benzersiz sayım ---
+        k1, k2, k3, k4 = st.columns(4)
+        
+        aktif_gruplar = df_fikstur['Grup'].unique() if 'Grup' in df_fikstur.columns else []
+        toplam_grup = len(aktif_gruplar)
+        
+        kategoriler = set()
+        for g in aktif_gruplar:
+            f_kat = st.session_state.grup_kategorileri.get(g, "")
+            f_yas = st.session_state.grup_yas_gruplari.get(g, "")
+            if f_yas and f_yas != "Yaş Belirtme":
+                kategoriler.add(f"{f_yas} {f_kat}")
+            elif f_kat:
+                kategoriler.add(f_kat)
+        toplam_kategori = len(kategoriler)
+        
         tum_takimlar = set()
         grup_takim_kombinasyonlari = set()
         
@@ -351,7 +363,6 @@ elif st.session_state.current_page == "📈 İstatistikler":
                     grup_takim_kombinasyonlari.add(f"{grup}_{t2}")
                     
         toplam_takim = len(grup_takim_kombinasyonlari)
-        # ---------------------------------------------------------------
         
         toplam_oyuncu = 0
         if 'takim_havuzu' in st.session_state:
@@ -360,9 +371,10 @@ elif st.session_state.current_page == "📈 İstatistikler":
                     gercek_oyuncular = [o for o in oyuncular if o != "Belirtilmedi" and str(o).strip() != ""]
                     toplam_oyuncu += len(gercek_oyuncular)
         
-        k1.metric("🏆 Toplam Kategori/Grup", toplam_grup)
-        k2.metric("🛡️ Toplam Takım", toplam_takim)
-        k3.metric("👥 Toplam Oyuncu (Kayıtlı)", toplam_oyuncu)
+        k1.metric("📂 Toplam Kategori", toplam_kategori)
+        k2.metric("🏆 Toplam Grup", toplam_grup)
+        k3.metric("🛡️ Toplam Takım", toplam_takim)
+        k4.metric("👥 Toplam Oyuncu (Kayıtlı)", toplam_oyuncu)
         
         st.markdown("<br>", unsafe_allow_html=True)
         st.subheader("📅 Maç ve Fikstür İlerlemesi")
