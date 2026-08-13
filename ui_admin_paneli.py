@@ -655,28 +655,39 @@ def yonetim_ve_dosya_ciz(aktif_asama):
     if st.session_state.admin_mi:
         
         with st.expander("🔑 Kaptan Şifreleri (PIN) Yönetimi", expanded=False):
-            st.info("ℹ️ Turnuvaya katılan her takıma otomatik 4 haneli PIN üretilir. Kaptanlar bu şifreyle sisteme girip kendi esamelerini teslim edebilirler.")
+            st.info("ℹ️ Turnuvaya katılan her takıma otomatik 4 haneli PIN üretilir. Sistem, kayıtlı gruplardaki takımları baz alır.")
             
-            tum_takim_listesi = dogal_sirala(list(st.session_state.takim_havuzu.keys()))
-            for g_n, g_k in st.session_state.takim_kadrolari.items():
+            # --- SADECE TAKIM KADROLARI (GRUPLAR) ÜZERİNDEN TARAMA ---
+            tum_takimlar_seti = set()
+            
+            for g_k in st.session_state.get('takim_kadrolari', {}).values():
                 for t in g_k.keys():
-                    if t not in tum_takim_listesi: tum_takim_listesi.append(t)
+                    tum_takimlar_seti.add(t)
                     
+            gecersizler = ["", "None", "nan", "--- BOŞ (BYE) ---", "W/O"]
+            tum_takim_listesi = dogal_sirala([t for t in tum_takimlar_seti if str(t).strip() not in gecersizler])
+            
+            st.write(f"📊 Gruplara yerleştirilmiş toplam benzersiz takım sayısı: **{len(tum_takim_listesi)}**")
+            
             c_pin1, c_pin2 = st.columns(2)
             
             with c_pin1:
-                if st.button("🚀 Tüm Takımlara 4 Haneli PIN Üret (Mevcutları Koru)", type="primary", use_container_width=True):
+                if st.button("🚀 Kaptan Listesini Yenile ve Şifre Üret", type="primary", use_container_width=True):
+                    yeni_pinler = {}
                     for t in tum_takim_listesi:
-                        if t not in st.session_state.takim_pinleri:
-                            st.session_state.takim_pinleri[t] = random.randint(1000, 9999)
+                        # Eski şifresi varsa koru, yoksa yeni üret
+                        eski_pin = st.session_state.takim_pinleri.get(t)
+                        yeni_pinler[t] = eski_pin if eski_pin else random.randint(1000, 9999)
+                    
+                    st.session_state.takim_pinleri = yeni_pinler
                     if ortak_veriyi_kaydet():
-                        st.success("Tüm takımlar için şifreler başarıyla üretildi!")
+                        st.success(f"Liste güncellendi ve {len(tum_takim_listesi)} takım için şifreler hazırlandı!")
                         st.rerun()
                     else:
                         st.error("Sistem meşgul, lütfen tekrar deneyin.")
             
             with c_pin2:
-                if st.button("🗑️ Tüm Şifreleri Sıfırla (İptal Et)", use_container_width=True):
+                if st.button("🗑️ Şifreleri Tamamen Sıfırla (İptal Et)", use_container_width=True):
                     st.session_state.takim_pinleri = {}
                     if ortak_veriyi_kaydet():
                         st.success("Tüm şifreler sistemden silindi! Yeniden şifre üretmeniz gerekmektedir.")
